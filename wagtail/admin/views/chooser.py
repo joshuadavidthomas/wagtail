@@ -1,12 +1,14 @@
 import re
+from collections import defaultdict
+from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
 from django.conf import settings
-from django.core.paginator import Paginator
+from django.core.paginator import InvalidPage, Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
+from django.urls import NoReverseMatch
 from django.urls.base import reverse
-from django.utils.http import urlencode
 from django.utils.translation import gettext_lazy as _
 from django.views.generic.base import View
 
@@ -21,7 +23,7 @@ from wagtail.admin.forms.search import SearchForm
 from wagtail.admin.modal_workflow import render_modal_workflow
 from wagtail.admin.ui.tables import Column, DateColumn, Table
 from wagtail.coreutils import resolve_model_string
-from wagtail.models import Locale, Page, Site, UserPagePermissionsProxy
+from wagtail.models import Locale, Page, Site
 
 
 def shared_context(request, extra_context=None):
@@ -57,7 +59,7 @@ def page_models_from_string(string):
 
 def can_choose_page(
     page,
-    permission_proxy,
+    user,
     desired_classes,
     can_choose_root=True,
     user_perm=None,
@@ -91,15 +93,24 @@ def can_choose_page(
                 return False
 
             if user_perm == "move_to":
-                return permission_proxy.for_page(page_to_move).can_move_to(page)
-    if user_perm == "copy_to":
-        return permission_proxy.for_page(page).can_add_subpage()
+                return page_to_move.permissions_for_user(user).can_move_to(page)
+    if user_perm in {"add_subpage", "copy_to"}:
+        return page.permissions_for_user(user).can_add_subpage()
 
     return True
 
 
 class PageChooserTable(Table):
     classname = "listing chooser"
+
+    def __init__(self, *args, show_locale_labels=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.show_locale_labels = show_locale_labels
+
+    def get_context_data(self, parent_context):
+        context = super().get_context_data(parent_context)
+        context["show_locale_labels"] = self.show_locale_labels
+        return context
 
     def get_row_classname(self, page):
         classnames = []
@@ -116,9 +127,9 @@ class PageChooserTable(Table):
 class PageTitleColumn(Column):
     cell_template_name = "wagtailadmin/chooser/tables/page_title_cell.html"
 
-    def __init__(self, *args, show_locale_labels=False, **kwargs):
+    def __init__(self, *args, is_multiple_choice=False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.show_locale_labels = show_locale_labels
+        self.is_multiple_choice = is_multiple_choice
 
     def get_value(self, instance):
         return instance.get_admin_display_title()
@@ -126,18 +137,23 @@ class PageTitleColumn(Column):
     def get_cell_context_data(self, instance, parent_context):
         context = super().get_cell_context_data(instance, parent_context)
         context["page"] = instance
+        # only need to show locale labels for top-level pages
+        context["show_locale_labels"] = (
+            parent_context.get("show_locale_labels") and instance.depth == 2
+        )
         return context
 
 
 class ParentPageColumn(Column):
     cell_template_name = "wagtailadmin/chooser/tables/parent_page_cell.html"
 
-    def __init__(self, *args, show_locale_labels=False, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.show_locale_labels = show_locale_labels
-
     def get_value(self, instance):
         return instance.get_parent()
+
+    def get_cell_context_data(self, instance, parent_context):
+        context = super().get_cell_context_data(instance, parent_context)
+        context["show_locale_labels"] = parent_context.get("show_locale_labels")
+        return context
 
 
 class PageStatusColumn(Column):
@@ -156,12 +172,18 @@ class PageNavigateToChildrenColumn(Column):
         return instance
 
 
+class PageCheckboxSelectColumn(Column):
+    cell_template_name = "wagtailadmin/chooser/tables/page_checkbox_select_cell.html"
+
+
 class BrowseView(View):
     @property
     def columns(self):
-        return [
+        cols = [
             PageTitleColumn(
-                "title", label=_("Title"), show_locale_labels=self.i18n_enabled
+                "title",
+                label=_("Title"),
+                is_multiple_choice=self.is_multiple_choice,
             ),
             DateColumn(
                 "updated",
@@ -178,6 +200,14 @@ class BrowseView(View):
             PageStatusColumn("status", label=_("Status"), width="12%"),
             PageNavigateToChildrenColumn("children", label="", width="10%"),
         ]
+        if self.is_multiple_choice:
+            cols.insert(
+                0,
+                PageCheckboxSelectColumn(
+                    "select", label=_("Select"), width="1%", accessor="pk"
+                ),
+            )
+        return cols
 
     def get_object_list(self):
         # Get children of parent page (without streamfields)
@@ -204,6 +234,7 @@ class BrowseView(View):
 
     def get(self, request, parent_page_id=None):
         self.i18n_enabled = getattr(settings, "WAGTAIL_I18N_ENABLED", False)
+        self.is_multiple_choice = request.GET.get("multiple")
 
         # A missing or empty page_type parameter indicates 'all page types'
         # (i.e. descendants of wagtailcore.page)
@@ -240,13 +271,10 @@ class BrowseView(View):
 
         match_subclass = request.GET.get("match_subclass", True)
 
-        # Do permission lookups for this user now, instead of for every page.
-        permission_proxy = UserPagePermissionsProxy(request.user)
-
         # Parent page can be chosen if it is a instance of desired_classes
         self.parent_page.can_choose = can_choose_page(
             self.parent_page,
-            permission_proxy,
+            request.user,
             self.desired_classes,
             can_choose_root,
             user_perm,
@@ -259,6 +287,11 @@ class BrowseView(View):
         selected_locale = None
         locale_options = []
         if self.i18n_enabled:
+            # Ensure query parameters (e.g. `page_type`, `user_perms`, etc.) are
+            # preserved when switching locales, but reset the pagination as the
+            # number of pages might be different.
+            new_params = request.GET.copy()
+            new_params.pop("p", None)
             if self.parent_page.is_root():
                 # 'locale' is the current value of the "Locale" selector in the UI
                 if request.GET.get("locale"):
@@ -271,25 +304,20 @@ class BrowseView(View):
 
                 # we are at the Root level, so get the locales from the current pages
                 choose_url = reverse("wagtailadmin_choose_page")
-                locale_options = [
-                    {
-                        "locale": locale,
-                        "url": choose_url
-                        + "?"
-                        + urlencode(
-                            {
-                                "page_type": page_type_string,
-                                "locale": locale.language_code,
-                            }
-                        ),
-                    }
-                    for locale in Locale.objects.filter(
-                        pk__in=pages.values_list("locale_id")
-                    ).exclude(pk=active_locale_id)
-                ]
+                for locale in Locale.objects.filter(
+                    pk__in=pages.values_list("locale_id")
+                ).exclude(pk=active_locale_id):
+                    new_params["locale"] = locale.language_code
+                    locale_options.append(
+                        {
+                            "locale": locale,
+                            "url": choose_url + "?" + new_params.urlencode(),
+                        }
+                    )
             else:
                 # We have a parent page (that is not the root page). Use its locale as the selected localer
                 selected_locale = self.parent_page.locale
+                new_params.pop("locale", None)
                 # and get the locales based on its available translations
                 locales_and_parent_pages = {
                     item["locale"]: item["pk"]
@@ -305,17 +333,14 @@ class BrowseView(View):
                         "wagtailadmin_choose_page_child",
                         args=[locales_and_parent_pages[locale.pk]],
                     )
-
                     locale_options.append(
                         {
                             "locale": locale,
-                            "url": choose_child_url
-                            + "?"
-                            + urlencode({"page_type": page_type_string}),
+                            "url": choose_child_url + "?" + new_params.urlencode(),
                         }
                     )
 
-            # finally, filter the browseable pages on the selected locale
+            # finally, filter the browsable pages on the selected locale
             if selected_locale:
                 pages = pages.filter(locale=selected_locale)
 
@@ -323,13 +348,16 @@ class BrowseView(View):
         # We apply pagination first so we don't need to walk the entire list
         # in the block below
         paginator = Paginator(pages, per_page=25)
-        pages = paginator.get_page(request.GET.get("p"))
+        try:
+            pages = paginator.page(request.GET.get("p", 1))
+        except InvalidPage:
+            raise Http404
 
-        # Annotate each page with can_choose/can_decend flags
+        # Annotate each page with can_choose/can_descend flags
         for page in pages:
             page.can_choose = can_choose_page(
                 page,
-                permission_proxy,
+                request.user,
                 self.desired_classes,
                 can_choose_root,
                 user_perm,
@@ -342,6 +370,7 @@ class BrowseView(View):
         table = PageChooserTable(
             self.columns,
             [self.parent_page] + list(pages),
+            show_locale_labels=self.i18n_enabled,
         )
 
         # Render
@@ -359,9 +388,10 @@ class BrowseView(View):
                     for desired_class in self.desired_classes
                 ],
                 "page_types_restricted": (page_type_string != "wagtailcore.page"),
-                "show_locale_labels": self.i18n_enabled,
+                "show_locale_controls": self.i18n_enabled,
                 "locale_options": locale_options,
                 "selected_locale": selected_locale,
+                "is_multiple_choice": self.is_multiple_choice,
             },
         )
 
@@ -377,13 +407,13 @@ class BrowseView(View):
 class SearchView(View):
     @property
     def columns(self):
-        return [
+        cols = [
             PageTitleColumn(
-                "title", label=_("Title"), show_locale_labels=self.i18n_enabled
+                "title",
+                label=_("Title"),
+                is_multiple_choice=self.is_multiple_choice,
             ),
-            ParentPageColumn(
-                "parent", label=_("Parent"), show_locale_labels=self.i18n_enabled
-            ),
+            ParentPageColumn("parent", label=_("Parent")),
             DateColumn(
                 "updated",
                 label=_("Updated"),
@@ -398,9 +428,18 @@ class SearchView(View):
             ),
             PageStatusColumn("status", label=_("Status"), width="12%"),
         ]
+        if self.is_multiple_choice:
+            cols.insert(
+                0,
+                PageCheckboxSelectColumn(
+                    "select", label=_("Select"), width="1%", accessor="pk"
+                ),
+            )
+        return cols
 
     def get(self, request):
         self.i18n_enabled = getattr(settings, "WAGTAIL_I18N_ENABLED", False)
+        self.is_multiple_choice = request.GET.get("multiple")
         # A missing or empty page_type parameter indicates 'all page types' (i.e. descendants of wagtailcore.page)
         page_type_string = request.GET.get("page_type") or "wagtailcore.page"
 
@@ -422,7 +461,8 @@ class SearchView(View):
             pages = pages.exclude(depth=1)  # never include root
             pages = pages.type(*desired_classes)
             pages = pages.specific()
-            pages = pages.search(search_form.cleaned_data["q"])
+            pages = pages.autocomplete(search_form.cleaned_data["q"])
+
         else:
             pages = pages.none()
 
@@ -436,6 +476,7 @@ class SearchView(View):
         table = PageChooserTable(
             self.columns,
             pages,
+            show_locale_labels=self.i18n_enabled,
         )
 
         return TemplateResponse(
@@ -448,10 +489,40 @@ class SearchView(View):
                     "table": table,
                     "pages": pages,
                     "page_type_string": page_type_string,
-                    "show_locale_labels": self.i18n_enabled,
                 },
             ),
         )
+
+
+class ChosenMultipleView(View):
+    """
+    A view that takes a list of 'id' URL parameters and returns a modal workflow response indicating
+    that those objects have been chosen
+    """
+
+    def render_chosen_response(self, result):
+        return render_modal_workflow(
+            self.request,
+            None,
+            None,
+            None,
+            json_data={"step": "page_chosen", "result": result},
+        )
+
+    def get(self, request):
+        pks = request.GET.getlist("id")
+        pages = Page.objects.filter(pk__in=pks).specific()
+        result = [
+            {
+                "id": page.pk,
+                "parentId": page.get_parent().pk,
+                "adminTitle": page.get_admin_display_title(),
+                "editUrl": reverse("wagtailadmin_pages:edit", args=(page.pk,)),
+                "url": page.url,
+            }
+            for page in pages
+        ]
+        return self.render_chosen_response(result)
 
 
 class BaseLinkFormView(View):
@@ -564,29 +635,57 @@ class ExternalLinkView(BaseLinkFormView):
             if sites is None:
                 sites = Site.get_site_root_paths()
 
+            try:
+                # The serve view might not be routed to the root path of the domain,
+                # e.g. /pages/, so we need to account for the path to the serve view
+                serve_path = reverse("wagtail_serve", args=("",))
+            except NoReverseMatch:
+                serve_path = None
+
             match_relative_paths = submitted_url.startswith("/") and len(sites) == 1
             # We should only match relative urls if there's only a single site
             # Otherwise this could get very annoying accidentally matching coincidentally
             # named pages on different sites
 
+            possible_sites = defaultdict(list)
+
             if match_relative_paths:
-                possible_sites = [
-                    (pk, url_without_query) for pk, path, url, language_code in sites
-                ]
+                for pk, path, url, language_code in sites:
+                    possible_sites[pk].append(url_without_query)
+
+                    # If the submitted URL is prefixed with the serve path,
+                    # also consider it without the serve path so we can match
+                    # the page using Page.route()
+                    if serve_path and url_without_query.startswith(serve_path):
+                        possible_sites[pk].append(
+                            url_without_query[len(serve_path) - 1 :]
+                        )
             else:
-                possible_sites = [
-                    (pk, url_without_query[len(url) :])
-                    for pk, path, url, language_code in sites
-                    if submitted_url.startswith(url)
-                ]
+                for pk, path, url, language_code in sites:
+                    if not submitted_url.startswith(url):
+                        continue
+                    possible_sites[pk].append(url_without_query[len(url) :])
+
+                    # If the submitted URL is prefixed with the serve path,
+                    # also consider it without the serve path so we can match
+                    # the page using Page.route()
+                    if serve_path and url_without_query.startswith(url + serve_path):
+                        possible_sites[pk].append(
+                            url_without_query[len(url) + len(serve_path) - 1 :]
+                        )
 
             # Loop over possible sites to identify a page match
-            for pk, url in possible_sites:
-                try:
-                    route = Site.objects.get(pk=pk).root_page.specific.route(
-                        request,
-                        [component for component in url.split("/") if component],
-                    )
+            for pk, possible_urls in possible_sites.items():
+                site = Site.objects.select_related("root_page").get(pk=pk)
+                root_page = site.root_page.specific
+                for url in possible_urls:
+                    try:
+                        route = root_page.route(
+                            request,
+                            [component for component in url.split("/") if component],
+                        )
+                    except Http404:
+                        continue
 
                     matched_page = route.page.specific
 
@@ -639,9 +738,6 @@ class ExternalLinkView(BaseLinkFormView):
                             },
                         )
 
-                except Http404:
-                    continue
-
             # Otherwise, with no internal matches, fall back to an external url
             return self.render_chosen_response(result)
         else:  # form invalid
@@ -666,8 +762,65 @@ class EmailLinkView(BaseLinkFormView):
     step_name = "email_link"
     link_url_field_name = "email_address"
 
+    def get_initial_data(self):
+        parsed_email = self.parse_email_link(self.request.GET.get("link_url", ""))
+        return {
+            "email_address": parsed_email["email"],
+            "link_text": self.request.GET.get("link_text", ""),
+            "subject": parsed_email["subject"],
+            "body": parsed_email["body"],
+        }
+
     def get_url_from_field_value(self, value):
         return "mailto:" + value
+
+    def get_result_data(self):
+        params = {
+            "subject": self.form.cleaned_data["subject"],
+            "body": self.form.cleaned_data["body"],
+        }
+        encoded_params = urlencode(
+            {k: v for k, v in params.items() if v is not None and v != ""},
+            quote_via=quote,
+        )
+
+        url = "mailto:" + self.form.cleaned_data["email_address"]
+        if encoded_params:
+            url += "?" + encoded_params
+
+        return {
+            "url": url,
+            "title": self.form.cleaned_data["link_text"].strip()
+            or self.form.cleaned_data["email_address"],
+            # If the user has explicitly entered / edited something in the link_text field,
+            # always use that text. If not, we should favour keeping the existing link/selection
+            # text, where applicable.
+            "prefer_this_title_as_link_text": ("link_text" in self.form.changed_data),
+        }
+
+    def post(self, request):
+        self.form = self.form_class(
+            request.POST, initial=self.get_initial_data(), prefix=self.form_prefix
+        )
+
+        if self.form.is_valid():
+            result = self.get_result_data()
+            return self.render_chosen_response(result)
+        else:  # form invalid
+            return self.render_form_response()
+
+    def parse_email_link(self, mailto):
+        result = {}
+
+        mail_result = urlsplit(mailto)
+
+        result["email"] = mail_result.path
+
+        query = parse_qs(mail_result.query)
+        result["subject"] = query["subject"][0] if "subject" in query else ""
+        result["body"] = query["body"][0] if "body" in query else ""
+
+        return result
 
 
 class PhoneLinkView(BaseLinkFormView):
@@ -678,4 +831,5 @@ class PhoneLinkView(BaseLinkFormView):
     link_url_field_name = "phone_number"
 
     def get_url_from_field_value(self, value):
+        value = re.sub(r"\s", "", value)
         return "tel:" + value

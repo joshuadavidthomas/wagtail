@@ -3,37 +3,64 @@ import unittest.mock
 from django import forms
 from django.apps import apps
 from django.conf import settings
+from django.contrib.admin.utils import quote
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
+from django.template import RequestContext, Template
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.text import capfirst
 
 from wagtail import hooks
 from wagtail.admin.admin_url_finder import AdminURLFinder
+from wagtail.admin.models import Admin
+from wagtail.admin.staticfiles import versioned_static
+from wagtail.admin.widgets.button import ButtonWithDropdown
 from wagtail.compat import AUTH_USER_APP_LABEL, AUTH_USER_MODEL_NAME
+from wagtail.coreutils import get_dummy_request
+from wagtail.log_actions import log
 from wagtail.models import (
     Collection,
+    DraftStateMixin,
     GroupCollectionPermission,
     GroupPagePermission,
+    LockableMixin,
     Page,
 )
 from wagtail.test.utils import WagtailTestUtils
-from wagtail.users.forms import UserCreationForm, UserEditForm
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
+from wagtail.users.forms import GroupForm, UserCreationForm, UserEditForm
 from wagtail.users.models import UserProfile
+from wagtail.users.permission_order import register as register_permission_order
 from wagtail.users.views.groups import GroupViewSet
-from wagtail.users.views.users import get_user_creation_form, get_user_edit_form
-from wagtail.users.wagtail_hooks import get_group_viewset_cls
+from wagtail.users.views.users import (
+    UserViewSet,
+    get_user_creation_form,
+    get_user_edit_form,
+)
+from wagtail.users.wagtail_hooks import get_viewset_cls
+from wagtail.users.widgets import UserListingButton
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
 
-delete_user_perm_codename = "delete_{0}".format(AUTH_USER_MODEL_NAME.lower())
-change_user_perm_codename = "change_{0}".format(AUTH_USER_MODEL_NAME.lower())
+add_user_perm_codename = f"add_{AUTH_USER_MODEL_NAME.lower()}"
+delete_user_perm_codename = f"delete_{AUTH_USER_MODEL_NAME.lower()}"
+change_user_perm_codename = f"change_{AUTH_USER_MODEL_NAME.lower()}"
+
+User = get_user_model()
 
 
 def test_avatar_provider(user, default, size=50):
     return "/nonexistent/path/to/avatar.png"
+
+
+class CustomGroupForm(GroupForm):
+    pass
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -49,6 +76,18 @@ class CustomUserEditForm(UserEditForm):
 class CustomGroupViewSet(GroupViewSet):
     icon = "custom-icon"
 
+    def get_form_class(self, for_update=False):
+        return CustomGroupForm
+
+
+class CustomUserViewSet(UserViewSet):
+    icon = "custom-icon"
+
+    def get_form_class(self, for_update=False):
+        if for_update:
+            return CustomUserEditForm
+        return CustomUserCreationForm
+
 
 class TestUserFormHelpers(TestCase):
     def test_get_user_edit_form_with_default_form(self):
@@ -63,28 +102,48 @@ class TestUserFormHelpers(TestCase):
         WAGTAIL_USER_CREATION_FORM="wagtail.users.tests.CustomUserCreationForm"
     )
     def test_get_user_creation_form_with_custom_form(self):
-        user_form = get_user_creation_form()
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            "The `WAGTAIL_USER_CREATION_FORM` setting is deprecated. Use a custom "
+            "`UserViewSet` subclass and override `get_form_class()` instead.",
+        ):
+            user_form = get_user_creation_form()
         self.assertIs(user_form, CustomUserCreationForm)
 
     @override_settings(WAGTAIL_USER_EDIT_FORM="wagtail.users.tests.CustomUserEditForm")
     def test_get_user_edit_form_with_custom_form(self):
-        user_form = get_user_edit_form()
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            "The `WAGTAIL_USER_EDIT_FORM` setting is deprecated. Use a custom "
+            "`UserViewSet` subclass and override `get_form_class()` instead.",
+        ):
+            user_form = get_user_edit_form()
         self.assertIs(user_form, CustomUserEditForm)
 
     @override_settings(
         WAGTAIL_USER_CREATION_FORM="wagtail.users.tests.CustomUserCreationFormDoesNotExist"
     )
     def test_get_user_creation_form_with_invalid_form(self):
-        self.assertRaises(ImproperlyConfigured, get_user_creation_form)
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            "The `WAGTAIL_USER_CREATION_FORM` setting is deprecated. Use a custom "
+            "`UserViewSet` subclass and override `get_form_class()` instead.",
+        ):
+            self.assertRaises(ImproperlyConfigured, get_user_creation_form)
 
     @override_settings(
         WAGTAIL_USER_EDIT_FORM="wagtail.users.tests.CustomUserEditFormDoesNotExist"
     )
     def test_get_user_edit_form_with_invalid_form(self):
-        self.assertRaises(ImproperlyConfigured, get_user_edit_form)
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            "The `WAGTAIL_USER_EDIT_FORM` setting is deprecated. Use a custom "
+            "`UserViewSet` subclass and override `get_form_class()` instead.",
+        ):
+            self.assertRaises(ImproperlyConfigured, get_user_edit_form)
 
 
-class TestGroupUsersView(TestCase, WagtailTestUtils):
+class TestGroupUsersView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         # create a user that should be visible in the listing
         self.test_user = self.create_user(
@@ -107,40 +166,25 @@ class TestGroupUsersView(TestCase, WagtailTestUtils):
         )
 
     def test_simple(self):
-        response = self.get()
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtailusers/users/index.html")
-        self.assertContains(response, "testuser")
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            "Accessing the list of users in a group via "
+            f"/admin/groups/{self.test_group.pk}/users/ is deprecated, use "
+            f"/admin/users/?group={self.test_group.pk} instead.",
+        ):
+            response = self.get()
+
+        self.assertRedirects(
+            response,
+            reverse("wagtailusers_users:index") + f"?group={self.test_group.pk}",
+        )
 
     def test_inexisting_group(self):
         response = self.get(group_id=9999)
         self.assertEqual(response.status_code, 404)
 
-    def test_search(self):
-        response = self.get({"q": "Hello"})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["query_string"], "Hello")
 
-    def test_search_query_one_field(self):
-        response = self.get({"q": "first name"})
-        self.assertEqual(response.status_code, 200)
-        results = response.context["users"].object_list
-        self.assertIn(self.test_user, results)
-
-    def test_search_query_multiple_fields(self):
-        response = self.get({"q": "first name last name"})
-        self.assertEqual(response.status_code, 200)
-        results = response.context["users"].object_list
-        self.assertIn(self.test_user, results)
-
-    def test_pagination(self):
-        pages = ["0", "1", "-1", "9999", "Not a page"]
-        for page in pages:
-            response = self.get({"p": page})
-            self.assertEqual(response.status_code, 200)
-
-
-class TestUserIndexView(TestCase, WagtailTestUtils):
+class TestUserIndexView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         # create a user that should be visible in the listing
         self.test_user = self.create_user(
@@ -150,7 +194,7 @@ class TestUserIndexView(TestCase, WagtailTestUtils):
             first_name="First Name",
             last_name="Last Name",
         )
-        self.login()
+        self.user = self.login()
 
     def get(self, params={}):
         return self.client.get(reverse("wagtailusers_users:index"), params)
@@ -160,6 +204,12 @@ class TestUserIndexView(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailusers/users/index.html")
         self.assertContains(response, "testuser")
+        # response should contain page furniture, including the "Add a user" button
+        self.assertContains(response, "Add a user")
+        self.assertBreadcrumbsItemsRendered(
+            [{"url": "", "label": "Users"}],
+            response.content,
+        )
 
     @unittest.skipIf(
         settings.AUTH_USER_MODEL == "emailuser.EmailUser", "Negative UUID not possible"
@@ -176,17 +226,23 @@ class TestUserIndexView(TestCase, WagtailTestUtils):
         response = self.get({"q": "Hello"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["query_string"], "Hello")
+        soup = self.get_soup(response.content)
+        filter_options = soup.select(".filter-options a")
+        self.assertIn(
+            ("Users", reverse("wagtailusers_users:index") + "?q=Hello"),
+            [(a.text.strip(), a.get("href")) for a in filter_options],
+        )
 
     def test_search_query_one_field(self):
         response = self.get({"q": "first name"})
         self.assertEqual(response.status_code, 200)
-        results = response.context["users"].object_list
+        results = response.context["users"]
         self.assertIn(self.test_user, results)
 
     def test_search_query_multiple_fields(self):
         response = self.get({"q": "first name last name"})
         self.assertEqual(response.status_code, 200)
-        results = response.context["users"].object_list
+        results = response.context["users"]
         self.assertIn(self.test_user, results)
 
     def test_pagination(self):
@@ -195,16 +251,219 @@ class TestUserIndexView(TestCase, WagtailTestUtils):
             response = self.get({"p": page})
             self.assertEqual(response.status_code, 200)
 
+    def test_ordering(self):
+        # checking that only valid ordering used, in case of `IndexView` the valid
+        # ordering fields are:
+        # - `name`: maps to `User.last_name` and `User.first_name` fields if available
+        # - `User.USERNAME_FIELD`: dynamically maps to User.USERNAME_FIELD
+        # - `is_superuser`: maps to User.is_superuser (from PermissionsMixin)
+        # - `is_active`: maps to User.is_active if available
+        # - `last_login`: maps to User.last_login (from AbstractBaseUser)
+        cases = {
+            "name": ("last_name", "first_name"),
+            "-name": ("-last_name", "-first_name"),
+            User.USERNAME_FIELD: (User.USERNAME_FIELD,),
+            f"-{User.USERNAME_FIELD}": (f"-{User.USERNAME_FIELD}",),
+            "is_superuser": ("is_superuser",),
+            "-is_superuser": ("-is_superuser",),
+            "is_active": ("is_active",),
+            "-is_active": ("-is_active",),
+            "last_login": ("last_login",),
+            "-last_login": ("-last_login",),
+        }
+        for param, order_by in cases.items():
+            with self.subTest(param=param):
+                response = self.get({"ordering": param})
+                self.assertEqual(
+                    response.context_data["object_list"].query.order_by,
+                    order_by,
+                )
 
-class TestUserCreateView(TestCase, WagtailTestUtils):
+    def test_filters(self):
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            response.context["object_list"],
+            [self.test_user, self.user],
+        )
+
+        response = self.get({"is_superuser": True})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [self.user])
+
+        response = self.get({"is_superuser": False})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [self.test_user])
+
+        self.test_user.is_active = False
+        self.test_user.save()
+
+        response = self.get({"is_active": True})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [self.user])
+
+        response = self.get({"is_active": False})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [self.test_user])
+
+        now = timezone.now()
+        if timezone.is_aware(now):
+            today = timezone.localtime(now).date()
+        else:
+            today = now.date()
+        tomorrow = today + timezone.timedelta(days=1)
+        yesterday = today - timezone.timedelta(days=1)
+
+        response = self.get({"last_login_from": str(today)})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [self.user])
+
+        response = self.get({"last_login_from": str(tomorrow)})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [])
+
+        response = self.get({"last_login_to": str(today)})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [self.user])
+
+        response = self.get({"last_login_to": str(yesterday)})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [])
+
+        musicians = Group.objects.create(name="Musicians")
+        songwriters = Group.objects.create(name="Songwriters")
+        self.test_user.groups.add(musicians)
+        self.user.groups.add(songwriters)
+
+        response = self.get({"group": musicians.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["object_list"], [self.test_user])
+
+        response = self.get({"group": [musicians.pk, songwriters.pk]})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            response.context["object_list"],
+            [self.test_user, self.user],
+        )
+
+    def test_num_queries(self):
+        # Warm up
+        self.get()
+
+        num_queries = 10
+        with self.assertNumQueries(num_queries):
+            self.get()
+
+        # Ensure we don't have any N+1 queries
+        self.create_user("test", "test@example.com", "gu@rd14n")
+        with self.assertNumQueries(num_queries):
+            self.get()
+
+    def test_default_buttons(self):
+        response = self.get()
+        soup = self.get_soup(response.content)
+        dropdown_buttons = soup.select("li [data-controller='w-dropdown'] a")
+        expected_urls = [
+            reverse("wagtailusers_users:edit", args=(self.user.pk,)),
+            reverse("wagtailusers_users:copy", args=(self.user.pk,)),
+            # Should not link to delete page for the current user
+            reverse("wagtailusers_users:edit", args=(self.test_user.pk,)),
+            reverse("wagtailusers_users:copy", args=(self.test_user.pk,)),
+            reverse("wagtailusers_users:delete", args=(self.test_user.pk,)),
+        ]
+        urls = [button.attrs.get("href") for button in dropdown_buttons]
+        self.assertSequenceEqual(urls, expected_urls)
+
+    def test_buttons_hook(self):
+        def hook(user, request_user):
+            self.assertEqual(request_user, self.user)
+            yield UserListingButton(
+                "Show profile",
+                f"/goes/to/a/url/{user.pk}",
+                priority=30,
+            )
+            yield ButtonWithDropdown(
+                label="Moar pls!",
+                buttons=[UserListingButton("Alrighty", "/cheers", priority=10)],
+            )
+
+        with self.register_hook("register_user_listing_buttons", hook):
+            response = self.get()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailadmin/shared/buttons.html")
+
+        soup = self.get_soup(response.content)
+        row = soup.select_one(f"tbody tr:has([data-object-id='{self.test_user.pk}'])")
+        self.assertIsNotNone(row)
+
+        profile_url = f"/goes/to/a/url/{self.test_user.pk}"
+        actions = row.select_one("td ul.actions")
+        top_level_custom_button = actions.select_one(f"li > a[href='{profile_url}']")
+        self.assertIsNone(top_level_custom_button)
+        custom_button = actions.select_one(
+            f"li [data-controller='w-dropdown'] a[href='{profile_url}']"
+        )
+        self.assertIsNotNone(custom_button)
+        self.assertEqual(
+            custom_button.text.strip(),
+            "Show profile",
+        )
+
+        nested_dropdown = actions.select_one(
+            "li [data-controller='w-dropdown'] [data-controller='w-dropdown']"
+        )
+        self.assertIsNone(nested_dropdown)
+        dropdown_buttons = actions.select("li > [data-controller='w-dropdown']")
+        # Default "More" button and the custom "Moar pls!" button
+        self.assertEqual(len(dropdown_buttons), 2)
+        custom_dropdown = None
+        for button in dropdown_buttons:
+            if "Moar pls!" in button.text.strip():
+                custom_dropdown = button
+        self.assertIsNotNone(custom_dropdown)
+        self.assertEqual(custom_dropdown.select_one("button").text.strip(), "Moar pls!")
+        # Should contain the custom button inside the custom dropdown
+        custom_button = custom_dropdown.find("a", attrs={"href": "/cheers"})
+        self.assertIsNotNone(custom_button)
+        self.assertEqual(custom_button.text.strip(), "Alrighty")
+
+
+class TestUserIndexResultsView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
+    def setUp(self):
+        # create a user that should be visible in the listing
+        self.test_user = self.create_user(
+            username="testuser",
+            email="testuser@email.com",
+            password="password",
+            first_name="First Name",
+            last_name="Last Name",
+        )
+        self.login()
+
+    def get(self, params={}):
+        return self.client.get(reverse("wagtailusers_users:index_results"), params)
+
+    def test_simple(self):
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailusers/users/index_results.html")
+        self.assertContains(response, "testuser")
+        # response should not contain page furniture
+        self.assertBreadcrumbsNotRendered(response.content)
+
+
+class TestUserCreateView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
     def get(self, params={}):
         return self.client.get(reverse("wagtailusers_users:add"), params)
 
-    def post(self, post_data={}):
-        return self.client.post(reverse("wagtailusers_users:add"), post_data)
+    def post(self, post_data={}, follow=False):
+        return self.client.post(
+            reverse("wagtailusers_users:add"), post_data, follow=follow
+        )
 
     def test_simple(self):
         response = self.get()
@@ -212,6 +471,16 @@ class TestUserCreateView(TestCase, WagtailTestUtils):
         self.assertTemplateUsed(response, "wagtailusers/users/create.html")
         self.assertContains(response, "Password")
         self.assertContains(response, "Password confirmation")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {
+                    "url": "/admin/users/",
+                    "label": capfirst(User._meta.verbose_name_plural),
+                },
+                {"url": "", "label": f"New: {capfirst(User._meta.verbose_name)}"},
+            ],
+            response.content,
+        )
 
     def test_create(self):
         response = self.post(
@@ -222,7 +491,8 @@ class TestUserCreateView(TestCase, WagtailTestUtils):
                 "last_name": "User",
                 "password1": "password",
                 "password2": "password",
-            }
+            },
+            follow=True,
         )
 
         # Should redirect back to index
@@ -231,6 +501,10 @@ class TestUserCreateView(TestCase, WagtailTestUtils):
         # Check that the user was created
         users = get_user_model().objects.filter(email="test@user.com")
         self.assertEqual(users.count(), 1)
+        if settings.AUTH_USER_MODEL == "emailuser.EmailUser":
+            self.assertContains(response, "User &#x27;test@user.com&#x27; created.")
+        else:
+            self.assertContains(response, "User &#x27;testuser&#x27; created.")
 
     @unittest.skipUnless(
         settings.AUTH_USER_MODEL == "customuser.CustomUser",
@@ -238,7 +512,6 @@ class TestUserCreateView(TestCase, WagtailTestUtils):
     )
     @override_settings(
         WAGTAIL_USER_CREATION_FORM="wagtail.users.tests.CustomUserCreationForm",
-        WAGTAIL_USER_CUSTOM_FIELDS=["country", "document"],
     )
     def test_create_with_custom_form(self):
         response = self.post(
@@ -262,6 +535,26 @@ class TestUserCreateView(TestCase, WagtailTestUtils):
         self.assertEqual(users.count(), 1)
         self.assertEqual(users.first().country, "testcountry")
         self.assertEqual(users.first().attachment.read(), b"Uploaded file")
+
+    def test_create_with_whitespaced_password(self):
+        """Password should not be stripped"""
+        self.post(
+            {
+                "username": "testuser2",
+                "email": "test@user2.com",
+                "first_name": "Test",
+                "last_name": "User",
+                "password1": "  whitespaced_password  ",
+                "password2": "  whitespaced_password  ",
+            },
+            follow=True,
+        )
+        # Try to login with the password
+        self.client.logout()
+        username = "testuser2"
+        if settings.AUTH_USER_MODEL == "emailuser.EmailUser":
+            username = "test@user2.com"
+        self.login(username=username, password="  whitespaced_password  ")
 
     def test_create_with_password_mismatch(self):
         response = self.post(
@@ -502,7 +795,7 @@ class TestUserCreateView(TestCase, WagtailTestUtils):
         self.assertEqual(response.content, b"Overridden!")
 
 
-class TestUserDeleteView(TestCase, WagtailTestUtils):
+class TestUserDeleteView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         # create a user that should be visible in the listing
         self.test_user = self.create_user(
@@ -521,18 +814,27 @@ class TestUserDeleteView(TestCase, WagtailTestUtils):
             reverse("wagtailusers_users:delete", args=(self.test_user.pk,)), params
         )
 
-    def post(self, post_data={}):
+    def post(self, post_data={}, follow=False):
         return self.client.post(
-            reverse("wagtailusers_users:delete", args=(self.test_user.pk,)), post_data
+            reverse("wagtailusers_users:delete", args=(self.test_user.pk,)),
+            post_data,
+            follow=follow,
         )
 
     def test_simple(self):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailusers/users/confirm_delete.html")
+        self.assertBreadcrumbsNotRendered(response.content)
+
+        # Should render the form with the correct action URL
+        soup = self.get_soup(response.content)
+        delete_url = reverse("wagtailusers_users:delete", args=(self.test_user.pk,))
+        form_action = soup.select_one("form").attrs["action"]
+        self.assertEqual(form_action, delete_url)
 
     def test_delete(self):
-        response = self.post()
+        response = self.post(follow=True)
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailusers_users:index"))
@@ -540,6 +842,12 @@ class TestUserDeleteView(TestCase, WagtailTestUtils):
         # Check that the user was deleted
         users = get_user_model().objects.filter(email="testuser@email.com")
         self.assertEqual(users.count(), 0)
+        if settings.AUTH_USER_MODEL == "emailuser.EmailUser":
+            self.assertContains(
+                response, "User &#x27;testuser@email.com&#x27; deleted."
+            )
+        else:
+            self.assertContains(response, "User &#x27;testuser&#x27; deleted.")
 
     def test_user_cannot_delete_self(self):
         response = self.client.get(
@@ -616,7 +924,9 @@ class TestUserDeleteView(TestCase, WagtailTestUtils):
         self.assertEqual(response.content, b"Overridden!")
 
 
-class TestUserDeleteViewForNonSuperuser(TestCase, WagtailTestUtils):
+class TestUserDeleteViewForNonSuperuser(
+    AdminTemplateTestUtils, WagtailTestUtils, TestCase
+):
     def setUp(self):
         # create a user that should be visible in the listing
         self.test_user = self.create_user(
@@ -644,6 +954,7 @@ class TestUserDeleteViewForNonSuperuser(TestCase, WagtailTestUtils):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailusers/users/confirm_delete.html")
+        self.assertBreadcrumbsNotRendered(response.content)
 
     def test_delete(self):
         response = self.client.post(
@@ -680,7 +991,7 @@ class TestUserDeleteViewForNonSuperuser(TestCase, WagtailTestUtils):
         self.assertTrue(get_user_model().objects.filter(pk=self.superuser.pk).exists())
 
 
-class TestUserEditView(TestCase, WagtailTestUtils):
+class TestUserEditView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a user to edit
         self.test_user = self.create_user(
@@ -700,10 +1011,11 @@ class TestUserEditView(TestCase, WagtailTestUtils):
             params,
         )
 
-    def post(self, post_data={}, user_id=None):
+    def post(self, post_data={}, user_id=None, follow=False):
         return self.client.post(
             reverse("wagtailusers_users:edit", args=(user_id or self.test_user.pk,)),
             post_data,
+            follow=follow,
         )
 
     def test_simple(self):
@@ -712,12 +1024,48 @@ class TestUserEditView(TestCase, WagtailTestUtils):
         self.assertTemplateUsed(response, "wagtailusers/users/edit.html")
         self.assertContains(response, "Password")
         self.assertContains(response, "Password confirmation")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {
+                    "url": "/admin/users/",
+                    "label": capfirst(User._meta.verbose_name_plural),
+                },
+                {"url": "", "label": "Original User"},
+            ],
+            response.content,
+        )
+
+        soup = self.get_soup(response.content)
+        header = soup.select_one(".w-slim-header")
+        history_url = reverse("wagtailusers_users:history", args=(self.test_user.pk,))
+        history_link = header.find("a", attrs={"href": history_url})
+        self.assertIsNotNone(history_link)
+
+        # Should render the form with the correct action URL
+        edit_url = reverse("wagtailusers_users:edit", args=(self.test_user.pk,))
+        form_action = soup.select_one("form").attrs["action"]
+        self.assertEqual(form_action, edit_url)
 
         url_finder = AdminURLFinder(self.current_user)
-        expected_url = "/admin/users/%s/" % self.test_user.pk
-        self.assertEqual(url_finder.get_edit_url(self.test_user), expected_url)
+        self.assertEqual(url_finder.get_edit_url(self.test_user), edit_url)
 
-    def test_nonexistant_redirect(self):
+    def test_legacy_url_redirect(self):
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            (
+                "UserViewSet's `/<pk>/` edit view URL pattern has been "
+                "deprecated in favour of /edit/<pk>/."
+            ),
+        ):
+            response = self.client.get(f"/admin/users/{self.test_user.pk}/")
+
+        self.assertRedirects(
+            response,
+            f"/admin/users/edit/{self.test_user.pk}/",
+            status_code=301,
+        )
+
+    def test_nonexistent_redirect(self):
         invalid_id = (
             "99999999-9999-9999-9999-999999999999"
             if settings.AUTH_USER_MODEL == "emailuser.EmailUser"
@@ -735,7 +1083,8 @@ class TestUserEditView(TestCase, WagtailTestUtils):
                 "password1": "newpassword",
                 "password2": "newpassword",
                 "is_active": "on",
-            }
+            },
+            follow=True,
         )
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailusers_users:index"))
@@ -744,6 +1093,27 @@ class TestUserEditView(TestCase, WagtailTestUtils):
         user = get_user_model().objects.get(pk=self.test_user.pk)
         self.assertEqual(user.first_name, "Edited")
         self.assertTrue(user.check_password("newpassword"))
+        if settings.AUTH_USER_MODEL == "emailuser.EmailUser":
+            self.assertContains(response, "User &#x27;test@user.com&#x27; updated.")
+        else:
+            self.assertContains(response, "User &#x27;testuser&#x27; updated.")
+
+        # On next load of the edit view,
+        # should render the status panel with the last updated time
+        response = self.get()
+        self.assertContains(response, "Edited User")
+        soup = self.get_soup(response.content)
+        status_panel = soup.select_one('[data-side-panel="status"]')
+        self.assertIsNotNone(status_panel)
+        last_updated = status_panel.select_one(".w-help-text")
+        self.assertIsNotNone(last_updated)
+        self.assertRegex(
+            last_updated.get_text(strip=True),
+            f"[0-9][0-9]:[0-9][0-9] by {self.current_user.get_username()}",
+        )
+        history_url = reverse("wagtailusers_users:history", args=(self.test_user.pk,))
+        history_link = status_panel.select_one(f'a[href="{history_url}"]')
+        self.assertIsNotNone(history_link)
 
     def test_password_optional(self):
         """Leaving password fields blank should leave it unchanged"""
@@ -1108,7 +1478,62 @@ class TestUserEditView(TestCase, WagtailTestUtils):
         self.assertEqual(response.content, b"Overridden!")
 
 
-class TestUserProfileCreation(TestCase, WagtailTestUtils):
+class TestUserCopyView(WagtailTestUtils, TestCase):
+    def setUp(self):
+        self.user = self.login()
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.test_user = cls.create_user(
+            username="testuser",
+            email="testuser@email.com",
+            first_name="Original",
+            last_name="User",
+            password="password",
+        )
+        cls.url = reverse("wagtailusers_users:copy", args=[quote(cls.test_user.pk)])
+
+    def test_without_permission(self):
+        self.user.is_superuser = False
+        self.user.save()
+        admin_permission = Permission.objects.get(
+            content_type__app_label="wagtailadmin", codename="access_admin"
+        )
+        self.user.user_permissions.add(admin_permission)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+
+    def test_with_minimal_permission(self):
+        self.user.is_superuser = False
+        self.user.save()
+        self.user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="wagtailadmin", codename="access_admin"
+            ),
+            Permission.objects.get(
+                content_type__app_label=AUTH_USER_APP_LABEL,
+                codename=add_user_perm_codename,
+            ),
+        )
+
+        # Form should be prefilled
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        soup = self.get_soup(response.content)
+        first_name = soup.select_one('input[name="first_name"]')
+        self.assertEqual(first_name.attrs.get("value"), "Original")
+        last_name = soup.select_one('input[name="last_name"]')
+        self.assertEqual(last_name.attrs.get("value"), "User")
+        # Password fields should be empty
+        password1 = soup.select_one('input[name="password1"]')
+        password2 = soup.select_one('input[name="password2"]')
+        self.assertIsNone(password1.attrs.get("value"))
+        self.assertIsNone(password2.attrs.get("value"))
+
+
+class TestUserProfileCreation(WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a user
         self.test_user = self.create_user(
@@ -1131,7 +1556,7 @@ class TestUserProfileCreation(TestCase, WagtailTestUtils):
         self.assertFalse(user_profile.avatar)
 
 
-class TestUserEditViewForNonSuperuser(TestCase, WagtailTestUtils):
+class TestUserEditViewForNonSuperuser(WagtailTestUtils, TestCase):
     def setUp(self):
         # create a user with edit permission
         self.editor_user = self.create_user(username="editor", password="password")
@@ -1186,7 +1611,33 @@ class TestUserEditViewForNonSuperuser(TestCase, WagtailTestUtils):
         self.assertIs(user.is_superuser, False)
 
 
-class TestGroupIndexView(TestCase, WagtailTestUtils):
+class TestUserHistoryView(WagtailTestUtils, TestCase):
+    # More thorough tests are in test_model_viewset
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.test_user = cls.create_user(
+            username="testuser",
+            email="testuser@email.com",
+            first_name="Original",
+            last_name="User",
+            password="password",
+        )
+        cls.url = reverse("wagtailusers_users:history", args=(cls.test_user.pk,))
+
+    def setUp(self):
+        self.user = self.login()
+
+    def test_simple(self):
+        log(self.test_user, "wagtail.create", user=self.user)
+        log(self.test_user, "wagtail.edit", user=self.user)
+        response = self.client.get(self.url)
+        self.assertTemplateUsed("wagtailadmin/generic/listing.html")
+        self.assertContains(response, "Created")
+        self.assertContains(response, "Edited")
+
+
+class TestGroupIndexView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
@@ -1197,6 +1648,41 @@ class TestGroupIndexView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailusers/groups/index.html")
+        self.assertTemplateUsed(response, "wagtailadmin/generic/index.html")
+        # response should contain page furniture, including the "Add a group" button
+        self.assertContains(response, "Add a group")
+        self.assertBreadcrumbsItemsRendered(
+            [{"url": "", "label": "Groups"}], response.content
+        )
+
+    def test_search(self):
+        response = self.get({"q": "Hello"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["search_form"]["q"].value(), "Hello")
+
+    def test_default_ordering(self):
+        # This group should display after the default groups but will display
+        # before them if default_ordering is lost.
+        Group.objects.create(name="Photographers")
+        response = self.get()
+        # groups should be returned in alpha order by name
+        names = [group.name for group in response.context_data["object_list"]]
+        self.assertEqual(names, ["Editors", "Moderators", "Photographers"])
+
+
+class TestGroupIndexResultsView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
+    def setUp(self):
+        self.login()
+
+    def get(self, params={}):
+        return self.client.get(reverse("wagtailusers_groups:index_results"), params)
+
+    def test_simple(self):
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailadmin/generic/listing_results.html")
+        # response should not contain page furniture
+        self.assertBreadcrumbsNotRendered(response.content)
 
     def test_search(self):
         response = self.get({"q": "Hello"})
@@ -1204,7 +1690,7 @@ class TestGroupIndexView(TestCase, WagtailTestUtils):
         self.assertEqual(response.context["search_form"]["q"].value(), "Hello")
 
 
-class TestGroupCreateView(TestCase, WagtailTestUtils):
+class TestGroupCreateView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
         self.add_doc_permission = Permission.objects.get(
@@ -1240,6 +1726,22 @@ class TestGroupCreateView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailusers/groups/create.html")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"url": "/admin/groups/", "label": "Groups"},
+                {"url": "", "label": "New: Group"},
+            ],
+            response.content,
+        )
+        # Should contain the JS from the form and the template include
+        page_chooser_js = versioned_static("wagtailadmin/js/page-chooser.js")
+        self.assertContains(response, page_chooser_js)
+
+    def test_num_queries(self):
+        # Warm up the cache
+        self.get()
+        with self.assertNumQueries(20):
+            self.get()
 
     def test_create_group(self):
         response = self.post({"name": "test group"})
@@ -1256,7 +1758,7 @@ class TestGroupCreateView(TestCase, WagtailTestUtils):
             {
                 "name": "test group",
                 "page_permissions-0-page": ["1"],
-                "page_permissions-0-permission_types": ["edit", "publish"],
+                "page_permissions-0-permissions": ["change_page", "publish_page"],
                 "page_permissions-TOTAL_FORMS": ["1"],
                 "document_permissions-0-collection": [
                     Collection.get_first_root_node().pk
@@ -1284,9 +1786,9 @@ class TestGroupCreateView(TestCase, WagtailTestUtils):
             {
                 "name": "test group",
                 "page_permissions-0-page": ["1"],
-                "page_permissions-0-permission_types": ["publish"],
+                "page_permissions-0-permissions": ["publish_page"],
                 "page_permissions-1-page": ["1"],
-                "page_permissions-1-permission_types": ["edit"],
+                "page_permissions-1-permissions": ["change_page"],
                 "page_permissions-TOTAL_FORMS": ["2"],
             }
         )
@@ -1352,17 +1854,204 @@ class TestGroupCreateView(TestCase, WagtailTestUtils):
             | Q(codename__startswith="delete")
         ).delete()
 
+        # A custom permission that happens to also start with "change"
+        Permission.objects.filter(
+            codename="change_text",
+            content_type__app_label="tests",
+            content_type__model="custompermissionmodel",
+        ).delete()
+
         response = self.get()
 
-        self.assertInHTML("Custom permissions", str(response.content), count=0)
+        self.assertInHTML("Custom permissions", response.content.decode(), count=0)
 
     def test_custom_permissions_shown(self):
         response = self.get()
 
-        self.assertInHTML("Custom permissions", str(response.content))
+        self.assertInHTML("Custom permissions", response.content.decode())
+
+    def test_show_mixin_permissions(self):
+        response = self.get()
+        soup = self.get_soup(response.content)
+        object_permissions = soup.select_one("#object-permissions-section")
+        self.assertIsNotNone(object_permissions)
+
+        # Should not show separate Publish, Lock, or Unlock columns
+        # (i.e. the checkboxes should be in the "Custom permissions" column)
+        self.assertFalse(
+            {th.text.strip() for th in object_permissions.select("th")}
+            & {"Publish", "Lock", "Unlock"}
+        )
+
+        mixin_permissions = (
+            ("publish", DraftStateMixin),
+            ("lock", LockableMixin),
+            ("unlock", LockableMixin),
+        )
+        for action, mixin in mixin_permissions:
+            with self.subTest(action=action):
+                permissions = Permission.objects.filter(
+                    codename__startswith=action,
+                    content_type__app_label="tests",
+                ).select_related("content_type")
+                self.assertGreater(len(permissions), 0)
+
+                for permission in permissions:
+                    # Should show a checkbox for each permission in the
+                    # "Custom permissions" column (thus inside a fieldset), with a
+                    # simple "Can {action}" label (without the model name)
+                    checkbox = object_permissions.select_one(
+                        f'td > fieldset input[value="{permission.pk}"]'
+                    )
+                    self.assertIsNotNone(checkbox)
+                    label = checkbox.parent
+                    self.assertEqual(label.name, "label")
+                    self.assertEqual(label.text.strip(), f"Can {action}")
+                    # Should only show the permission for models with the mixin applied
+                    content_type = permission.content_type
+                    self.assertTrue(issubclass(content_type.model_class(), mixin))
+
+    def test_strip_model_name_from_custom_permissions(self):
+        """
+        https://github.com/wagtail/wagtail/issues/10982
+        Ensure model name or verbose name is stripped from permissions' labels
+        for consistency with built-in permissions.
+        """
+        response = self.get()
+
+        self.assertContains(response, "Can bulk update")
+        self.assertContains(response, "Can start trouble")
+        self.assertContains(response, "Cause chaos for")
+        self.assertContains(response, "Change text")
+        self.assertContains(response, "Manage")
+        self.assertNotContains(response, "Can bulk_update")
+        self.assertNotContains(response, "Can bulk update ADVANCED permission model")
+        self.assertNotContains(response, "Cause chaos for advanced permission model")
+        self.assertNotContains(response, "Manage custom permission model")
+
+    def test_permission_with_same_action(self):
+        """
+        https://github.com/wagtail/wagtail/issues/11650
+        Ensure that permissions with the same action (part before the first _ in
+        the codename) are not hidden.
+        """
+        response = self.get()
+        soup = self.get_soup(response.content)
+        main_change_permission = Permission.objects.get(
+            codename="change_custompermissionmodel",
+            content_type__app_label="tests",
+            content_type__model="custompermissionmodel",
+        )
+        custom_change_permission = Permission.objects.get(
+            codename="change_text",
+            content_type__app_label="tests",
+            content_type__model="custompermissionmodel",
+        )
+
+        # Main change permission is in the dedicated column, so it's directly
+        # inside a <td>, not inside a <fieldset>"
+        self.assertIsNotNone(
+            soup.select_one(f'td > input[value="{main_change_permission.pk}"]')
+        )
+        self.assertIsNone(
+            soup.select_one(f'td > fieldset input[value="{main_change_permission.pk}"]')
+        )
+
+        # Custom "change_text" permission is in the custom permissions column,
+        # so it's inside a <fieldset> and not directly inside a <td>
+        self.assertIsNone(
+            soup.select_one(f'td > input[value="{custom_change_permission.pk}"]')
+        )
+        self.assertIsNotNone(
+            soup.select_one(
+                f'td > fieldset input[value="{custom_change_permission.pk}"]'
+            )
+        )
+
+    def test_custom_other_permissions_with_wagtail_admin_content_type(self):
+        """
+        https://github.com/wagtail/wagtail/issues/8086
+        Allow custom permissions using Wagtail's Admin content type to be
+        displayed in the "Other permissions" section.
+        """
+        admin_ct = ContentType.objects.get_for_model(Admin)
+        custom_permission = Permission.objects.create(
+            codename="roadmap_sync",
+            name="Can sync roadmap items from GitHub",
+            content_type=admin_ct,
+        )
+
+        with self.register_hook(
+            "register_permissions",
+            lambda: Permission.objects.filter(
+                codename="roadmap_sync", content_type=admin_ct
+            ),
+        ):
+            response = self.get()
+
+        soup = self.get_soup(response.content)
+
+        other_permissions = soup.select_one("#other-permissions-section")
+        self.assertIsNotNone(other_permissions)
+
+        custom_checkbox = other_permissions.select_one(
+            f'input[value="{custom_permission.pk}"]'
+        )
+        self.assertIsNotNone(custom_checkbox)
+
+        custom_label = other_permissions.select_one(
+            f'label[for="{custom_checkbox.attrs.get("id")}"]'
+        )
+        self.assertIsNotNone(custom_label)
+        self.assertEqual(
+            custom_label.get_text(strip=True), "Can sync roadmap items from GitHub"
+        )
+
+    def test_formset_data_attributes(self):
+        response = self.get()
+        soup = self.get_soup(response.content)
+
+        panel = soup.find(id="page-permissions-section")
+        self.assertIn("w-formset", panel.attrs["data-controller"])
+        self.assertEqual(
+            "totalFormsInput",
+            panel.find(id="id_page_permissions-TOTAL_FORMS").attrs[
+                "data-w-formset-target"
+            ],
+        )
+        self.assertEqual(
+            "template",
+            panel.find("template").attrs["data-w-formset-target"],
+        )
+
+        self.assertEqual(
+            "forms",
+            panel.find("table").find("tbody").attrs["data-w-formset-target"],
+        )
+
+        # Other panels are rendered with different formset classes, test one of them
+
+        panel = soup.find(id="collection-management-permissions-section")
+        self.assertIn("w-formset", panel.attrs["data-controller"])
+
+        self.assertEqual(
+            "totalFormsInput",
+            panel.find(id="id_collection_permissions-TOTAL_FORMS").attrs[
+                "data-w-formset-target"
+            ],
+        )
+        self.assertEqual(
+            "template",
+            panel.find("template").attrs["data-w-formset-target"],
+        )
+
+        self.assertEqual(
+            "forms",
+            panel.find("table").find("tbody").attrs["data-w-formset-target"],
+        )
 
 
-class TestGroupEditView(TestCase, WagtailTestUtils):
+class TestGroupEditView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a group to edit
         self.test_group = Group.objects.create(name="test group")
@@ -1413,7 +2102,7 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
             "page_permissions-MAX_NUM_FORMS": ["1000"],
             "page_permissions-INITIAL_FORMS": ["1"],
             "page_permissions-0-page": [self.root_page.pk],
-            "page_permissions-0-permission_types": ["add"],
+            "page_permissions-0-permissions": ["add_page"],
             "document_permissions-TOTAL_FORMS": ["1"],
             "document_permissions-MAX_NUM_FORMS": ["1000"],
             "document_permissions-INITIAL_FORMS": ["1"],
@@ -1449,12 +2138,37 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailusers/groups/edit.html")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {
+                    "url": "/admin/groups/",
+                    "label": "Groups",
+                },
+                {"url": "", "label": str(self.test_group)},
+            ],
+            response.content,
+        )
+        # Should contain the JS from the form and the template include
+        page_chooser_js = versioned_static("wagtailadmin/js/page-chooser.js")
+        self.assertContains(response, page_chooser_js)
+
+        soup = self.get_soup(response.content)
+        header = soup.select_one(".w-slim-header")
+        history_url = reverse("wagtailusers_groups:history", args=(self.test_group.pk,))
+        history_link = header.find("a", attrs={"href": history_url})
+        self.assertIsNotNone(history_link)
 
         url_finder = AdminURLFinder(self.user)
-        expected_url = "/admin/groups/%d/" % self.test_group.id
+        expected_url = "/admin/groups/edit/%d/" % self.test_group.id
         self.assertEqual(url_finder.get_edit_url(self.test_group), expected_url)
 
-    def test_nonexistant_group_redirect(self):
+    def test_num_queries(self):
+        # Warm up the cache
+        self.get()
+        with self.assertNumQueries(32):
+            self.get()
+
+    def test_nonexistent_group_redirect(self):
         self.assertEqual(self.get(group_id=100000).status_code, 404)
 
     def test_group_edit(self):
@@ -1466,6 +2180,23 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
         # Check that the group was edited
         group = Group.objects.get(pk=self.test_group.pk)
         self.assertEqual(group.name, "test group edited")
+
+        # On next load of the edit view,
+        # should render the status panel with the last updated time
+        response = self.get()
+        self.assertContains(response, "test group edited")
+        soup = self.get_soup(response.content)
+        status_panel = soup.select_one('[data-side-panel="status"]')
+        self.assertIsNotNone(status_panel)
+        last_updated = status_panel.select_one(".w-help-text")
+        self.assertIsNotNone(last_updated)
+        self.assertRegex(
+            last_updated.get_text(strip=True),
+            f"[0-9][0-9]:[0-9][0-9] by {self.user.get_username()}",
+        )
+        history_url = reverse("wagtailusers_groups:history", args=(self.test_group.pk,))
+        history_link = status_panel.select_one(f'a[href="{history_url}"]')
+        self.assertIsNotNone(history_link)
 
     def test_group_edit_validation_error(self):
         # Leave "name" field blank. This should give a validation error
@@ -1480,7 +2211,11 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
         self.assertEqual(self.test_group.page_permissions.count(), 1)
         response = self.post(
             {
-                "page_permissions-0-permission_types": ["add", "publish", "edit"],
+                "page_permissions-0-permissions": [
+                    "add_page",
+                    "publish_page",
+                    "change_page",
+                ],
             }
         )
 
@@ -1592,7 +2327,7 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
         self.assertTagInHTML(
             '<input name="permissions" type="checkbox" checked value="%s">'
             % self.existing_permission.id,
-            str(response.content),
+            response.content.decode(),
             allow_extra_attrs=True,
         )
 
@@ -1622,12 +2357,12 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
             page_permissions_formset.forms[0]["page"].value(), self.root_page.pk
         )
         self.assertEqual(
-            page_permissions_formset.forms[0]["permission_types"].value(), ["add"]
+            page_permissions_formset.forms[0]["permissions"].value(), ["add_page"]
         )
 
         # add edit permission on root
         GroupPagePermission.objects.create(
-            page=self.root_page, permission_type="edit", group=self.test_group
+            page=self.root_page, permission_type="change", group=self.test_group
         )
 
         # The test group now has two page permissions on root (but only one form covering both)
@@ -1644,13 +2379,13 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
             page_permissions_formset.forms[0]["page"].value(), self.root_page.pk
         )
         self.assertEqual(
-            set(page_permissions_formset.forms[0]["permission_types"].value()),
-            {"add", "edit"},
+            set(page_permissions_formset.forms[0]["permissions"].value()),
+            {"add_page", "change_page"},
         )
 
         # add edit permission on home
         GroupPagePermission.objects.create(
-            page=self.home_page, permission_type="edit", group=self.test_group
+            page=self.home_page, permission_type="change", group=self.test_group
         )
 
         # The test group now has three page permissions, over two forms
@@ -1666,14 +2401,14 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
             page_permissions_formset.forms[0]["page"].value(), self.root_page.pk
         )
         self.assertEqual(
-            set(page_permissions_formset.forms[0]["permission_types"].value()),
-            {"add", "edit"},
+            set(page_permissions_formset.forms[0]["permissions"].value()),
+            {"add_page", "change_page"},
         )
         self.assertEqual(
             page_permissions_formset.forms[1]["page"].value(), self.home_page.pk
         )
         self.assertEqual(
-            page_permissions_formset.forms[1]["permission_types"].value(), ["edit"]
+            page_permissions_formset.forms[1]["permissions"].value(), ["change_page"]
         )
 
     def test_duplicate_page_permissions_error(self):
@@ -1681,7 +2416,7 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
         response = self.post(
             {
                 "page_permissions-1-page": [self.root_page.pk],
-                "page_permissions-1-permission_types": ["edit"],
+                "page_permissions-1-permissions": ["change_page"],
                 "page_permissions-TOTAL_FORMS": ["2"],
             }
         )
@@ -1755,54 +2490,672 @@ class TestGroupEditView(TestCase, WagtailTestUtils):
 
     def test_is_custom_permission_checked(self):
         # Add a permission from the 'custom permission' column to the user's group
-        custom_permission = Permission.objects.get(codename="view_person")
+        custom_permission = Permission.objects.get(codename="view_fullfeaturedsnippet")
         self.test_group.permissions.add(custom_permission)
 
         response = self.get()
 
-        self.assertTagInHTML(
-            '<input type="checkbox" name="permissions" value="%s" checked>'
-            % custom_permission.id,
-            str(response.content),
+        soup = self.get_soup(response.content)
+        checkbox = soup.find_all(
+            "input",
+            attrs={
+                "name": "permissions",
+                "checked": True,
+                "value": custom_permission.id,
+                "data-action": "w-bulk#toggle",
+                "data-w-bulk-group-param": "custom",
+                "data-w-bulk-target": "item",
+            },
+        )
+
+        self.assertEqual(len(checkbox), 1)
+
+    def test_show_mixin_permissions(self):
+        response = self.get()
+        soup = self.get_soup(response.content)
+        object_permissions = soup.select_one("#object-permissions-section")
+        self.assertIsNotNone(object_permissions)
+
+        # Should not show separate Publish, Lock, or Unlock columns
+        # (i.e. the checkboxes should be in the "Custom permissions" column)
+        self.assertFalse(
+            {th.text.strip() for th in object_permissions.select("th")}
+            & {"Publish", "Lock", "Unlock"}
+        )
+
+        mixin_permissions = (
+            ("publish", DraftStateMixin),
+            ("lock", LockableMixin),
+            ("unlock", LockableMixin),
+        )
+        for action, mixin in mixin_permissions:
+            with self.subTest(action=action):
+                permissions = Permission.objects.filter(
+                    codename__startswith=action,
+                    content_type__app_label="tests",
+                ).select_related("content_type")
+                self.assertGreater(len(permissions), 0)
+
+                for permission in permissions:
+                    # Should show a checkbox for each permission in the
+                    # "Custom permissions" column (thus inside a fieldset), with a
+                    # simple "Can {action}" label (without the model name)
+                    checkbox = object_permissions.select_one(
+                        f'td > fieldset input[value="{permission.pk}"]'
+                    )
+                    self.assertIsNotNone(checkbox)
+                    label = checkbox.parent
+                    self.assertEqual(label.name, "label")
+                    self.assertEqual(label.text.strip(), f"Can {action}")
+                    # Should only show the permission for models with the mixin applied
+                    content_type = permission.content_type
+                    self.assertTrue(issubclass(content_type.model_class(), mixin))
+
+    def test_group_edit_loads_with_django_permissions_in_order(self):
+        # ensure objects are ordered as registered, followed by the default ordering
+
+        def object_position(object_perms):
+            # returns the list of objects in the object permsissions
+            # as provided by the format_permissions tag
+
+            def flatten(perm_set):
+                # iterates through perm_set dict, flattens the list if present
+                for v in perm_set.values():
+                    if isinstance(v, list):
+                        yield from v
+                    else:
+                        yield v
+
+            return [
+                (
+                    perm.content_type.app_label,
+                    perm.content_type.model,
+                )
+                for perm_set in object_perms
+                for perm in [
+                    next(
+                        v
+                        for v in flatten(perm_set)
+                        if isinstance(v, dict) and "perm" in v
+                    )["perm"]
+                ]
+            ]
+
+        # Set order on two objects, should appear first and second
+        register_permission_order("snippetstests.fancysnippet", order=100)
+        register_permission_order("snippetstests.standardsnippet", order=110)
+
+        response = self.get()
+        object_positions = object_position(response.context["object_perms"])
+        self.assertEqual(
+            object_positions[0],
+            ("snippetstests", "fancysnippet"),
+            msg="Configured object permission order is incorrect",
+        )
+        self.assertEqual(
+            object_positions[1],
+            ("snippetstests", "standardsnippet"),
+            msg="Configured object permission order is incorrect",
+        )
+
+        # Swap order of the objects
+        register_permission_order("snippetstests.standardsnippet", order=90)
+        response = self.get()
+        object_positions = object_position(response.context["object_perms"])
+
+        self.assertEqual(
+            object_positions[0],
+            ("snippetstests", "standardsnippet"),
+            msg="Configured object permission order is incorrect",
+        )
+        self.assertEqual(
+            object_positions[1],
+            ("snippetstests", "fancysnippet"),
+            msg="Configured object permission order is incorrect",
+        )
+
+        # Test remainder of objects are sorted
+        self.assertEqual(
+            object_positions[2:],
+            sorted(object_positions[2:]),
+            msg="Default object permission order is incorrect",
+        )
+
+    def test_data_attributes_for_bulk_selection(self):
+        response = self.get()
+        soup = self.get_soup(response.content)
+
+        table = soup.find("table", "listing")
+        self.assertIn(table["data-controller"], "w-bulk")
+
+        # confirm there is a single select all checkbox for all items
+        toggle_all = table.select('tfoot th input[data-w-bulk-target="all"]')
+        self.assertEqual(len(toggle_all), 1)
+        self.assertEqual(toggle_all[0]["data-action"], "w-bulk#toggleAll")
+
+        # confirm there is one 'add' select all checkbox
+        toggle_all_add = table.select(
+            'tfoot td input[data-w-bulk-target="all"][data-w-bulk-group-param="add"]'
+        )
+        self.assertEqual(len(toggle_all_add), 1)
+        self.assertEqual(toggle_all_add[0]["data-action"], "w-bulk#toggleAll")
+
+        # confirm that the individual object permissions have the correct attributes
+        toggle_add_items = table.select(
+            'tbody td input[data-w-bulk-target="item"][data-w-bulk-group-param="add"]'
+        )
+        self.assertGreaterEqual(len(toggle_add_items), 30)
+        self.assertEqual(toggle_add_items[0]["data-action"], "w-bulk#toggle")
+
+    def test_formset_data_attributes(self):
+        response = self.get()
+        soup = self.get_soup(response.content)
+
+        panel = soup.find(id="page-permissions-section")
+        self.assertIn("w-formset", panel.attrs["data-controller"])
+        self.assertEqual(
+            "totalFormsInput",
+            panel.find(id="id_page_permissions-TOTAL_FORMS").attrs[
+                "data-w-formset-target"
+            ],
+        )
+        self.assertEqual(
+            "template",
+            panel.find("template").attrs["data-w-formset-target"],
+        )
+
+        tbody = panel.find("table").find("tbody")
+        self.assertEqual(
+            "forms",
+            tbody.attrs["data-w-formset-target"],
+        )
+
+        row = tbody.find("tr")
+        self.assertEqual(
+            "child",
+            row.attrs["data-w-formset-target"],
+        )
+        self.assertEqual(
+            "deleteInput",
+            row.find(id="id_page_permissions-0-DELETE").attrs["data-w-formset-target"],
+        )
+
+        # Other panels are rendered with different formset classes, test one of them
+
+        panel = soup.find(id="collection-management-permissions-section")
+        self.assertIn("w-formset", panel.attrs["data-controller"])
+
+        self.assertEqual(
+            "totalFormsInput",
+            panel.find(id="id_collection_permissions-TOTAL_FORMS").attrs[
+                "data-w-formset-target"
+            ],
+        )
+        self.assertEqual(
+            "template",
+            panel.find("template").attrs["data-w-formset-target"],
+        )
+        self.assertEqual(
+            "forms",
+            panel.find("table").find("tbody").attrs["data-w-formset-target"],
         )
 
 
+class TestGroupHistoryView(WagtailTestUtils, TestCase):
+    # More thorough tests are in test_model_viewset
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.test_group = Group.objects.create(name="test group")
+        cls.url = reverse("wagtailusers_groups:history", args=(cls.test_group.pk,))
+
+    def setUp(self):
+        self.user = self.login()
+
+    def test_simple(self):
+        log(self.test_group, "wagtail.create", user=self.user)
+        log(self.test_group, "wagtail.edit", user=self.user)
+        response = self.client.get(self.url)
+        self.assertTemplateUsed("wagtailadmin/generic/listing.html")
+        self.assertContains(response, "Created")
+        self.assertContains(response, "Edited")
+
+
 class TestGroupViewSet(TestCase):
+    app_config_attr = "group_viewset"
+    default_viewset_cls = GroupViewSet
+    custom_viewset_cls = CustomGroupViewSet
+    create_form_cls = CustomGroupForm
+    edit_form_cls = CustomGroupForm
+
     def setUp(self):
         self.app_config = apps.get_app_config("wagtailusers")
 
-    def test_get_group_viewset_cls(self):
-        self.assertIs(get_group_viewset_cls(self.app_config), GroupViewSet)
+    def test_get_viewset_cls(self):
+        self.assertIs(
+            get_viewset_cls(self.app_config, self.app_config_attr),
+            self.default_viewset_cls,
+        )
 
-    def test_get_group_viewset_cls_with_custom_form(self):
+    def test_get_viewset_cls_with_custom_form(self):
         with unittest.mock.patch.object(
             self.app_config,
-            "group_viewset",
-            new="wagtail.users.tests.CustomGroupViewSet",
+            self.app_config_attr,
+            new=f"wagtail.users.tests.{self.custom_viewset_cls.__name__}",
         ):
-            group_viewset = get_group_viewset_cls(self.app_config)
-        self.assertIs(group_viewset, CustomGroupViewSet)
+            group_viewset = get_viewset_cls(self.app_config, self.app_config_attr)
+        self.assertIs(group_viewset, self.custom_viewset_cls)
         self.assertEqual(group_viewset.icon, "custom-icon")
+        viewset = group_viewset()
+        self.assertIs(viewset.get_form_class(for_update=False), self.create_form_cls)
+        self.assertIs(viewset.get_form_class(for_update=True), self.edit_form_cls)
 
-    def test_get_group_viewset_cls_custom_form_invalid_value(self):
+    def test_get_viewset_cls_custom_form_invalid_value(self):
         with unittest.mock.patch.object(
-            self.app_config, "group_viewset", new="asdfasdf"
+            self.app_config, self.app_config_attr, new="asdfasdf"
         ):
-            with self.assertRaises(ImproperlyConfigured) as exc_info:
-                get_group_viewset_cls(self.app_config)
-            self.assertIn(
-                "asdfasdf doesn't look like a module path", str(exc_info.exception)
-            )
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                f"Invalid setting for WagtailUsersAppConfig.{self.app_config_attr}: "
+                "asdfasdf doesn't look like a module path",
+            ):
+                get_viewset_cls(self.app_config, self.app_config_attr)
 
-    def test_get_group_viewset_cls_custom_form_does_not_exist(self):
+    def test_get_viewset_cls_custom_form_does_not_exist(self):
         with unittest.mock.patch.object(
             self.app_config,
-            "group_viewset",
+            self.app_config_attr,
             new="wagtail.users.tests.CustomClassDoesNotExist",
         ):
-            with self.assertRaises(ImproperlyConfigured) as exc_info:
-                get_group_viewset_cls(self.app_config)
-            self.assertIn(
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                f"Invalid setting for WagtailUsersAppConfig.{self.app_config_attr}: "
                 'Module "wagtail.users.tests" does not define a "CustomClassDoesNotExist" attribute/class',
-                str(exc_info.exception),
+            ):
+                get_viewset_cls(self.app_config, self.app_config_attr)
+
+
+class TestUserViewSet(TestGroupViewSet):
+    app_config_attr = "user_viewset"
+    default_viewset_cls = UserViewSet
+    custom_viewset_cls = CustomUserViewSet
+    create_form_cls = CustomUserCreationForm
+    edit_form_cls = CustomUserEditForm
+
+    def test_registered_permissions(self):
+        group_ct = ContentType.objects.get_for_model(Group)
+        qs = Permission.objects.none()
+        for fn in hooks.get_hooks("register_permissions"):
+            qs |= fn()
+        registered_user_permissions = qs.filter(content_type=group_ct)
+        self.assertEqual(
+            set(registered_user_permissions.values_list("codename", flat=True)),
+            {"add_group", "change_group", "delete_group"},
+        )
+
+
+class TestAuthorisationIndexView(WagtailTestUtils, TestCase):
+    def setUp(self):
+        self._user = self.create_user(username="auth_user", password="password")
+        self._user.user_permissions.add(Permission.objects.get(codename="access_admin"))
+        self.login(username="auth_user", password="password")
+
+    def get(self, params={}):
+        return self.client.get(reverse("wagtailusers_users:index"))
+
+    def test_simple(self):
+        response = self.get()
+        # Should redirect to admin index (permission denied)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertEqual(
+            response.context["message"],
+            "Sorry, you do not have permission to access this area.",
+        )
+
+    def test_authorised(self):
+        for permission in ("add", "change", "delete"):
+            permission_name = f"{permission}_{AUTH_USER_MODEL_NAME.lower()}"
+            permission_object = Permission.objects.get(codename=permission_name)
+            self._user.user_permissions.add(permission_object)
+
+            response = self.get()
+            self.assertEqual(response.status_code, 200)
+            self.assertTemplateUsed(response, "wagtailusers/users/index.html")
+            self.assertContains(response, "auth_user")
+
+            self._user.user_permissions.remove(permission_object)
+
+
+class TestAuthorisationCreateView(WagtailTestUtils, TestCase):
+    def setUp(self):
+        self._user = self.create_user(username="auth_user", password="password")
+        self._user.user_permissions.add(Permission.objects.get(codename="access_admin"))
+        self.login(username="auth_user", password="password")
+
+    def get(self, params={}):
+        return self.client.get(reverse("wagtailusers_users:add"), params)
+
+    def post(self, post_data={}):
+        return self.client.post(reverse("wagtailusers_users:add"), post_data)
+
+    def gain_permissions(self):
+        self._user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label=AUTH_USER_APP_LABEL,
+                codename=f"add_{AUTH_USER_MODEL_NAME.lower()}",
             )
+        )
+
+    def test_simple(self):
+        response = self.get()
+        # Should redirect to admin index (permission denied)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertEqual(
+            response.context["message"],
+            "Sorry, you do not have permission to access this area.",
+        )
+
+    def test_authorised(self):
+        self.gain_permissions()
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailusers/users/create.html")
+
+    def test_unauthorised_post(self):
+        response = self.post(
+            {
+                "username": "testuser",
+                "email": "test@user.com",
+                "first_name": "Test",
+                "last_name": "User",
+                "password1": "password",
+                "password2": "password",
+            }
+        )
+        # Should redirect to admin index (permission denied)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertEqual(
+            response.context["message"],
+            "Sorry, you do not have permission to access this area.",
+        )
+        user = get_user_model().objects.filter(email="test@user.com")
+        self.assertFalse(user.exists())
+
+    def test_authorised_post(self):
+        self.gain_permissions()
+        response = self.post(
+            {
+                "username": "testuser",
+                "email": "test@user.com",
+                "first_name": "Test",
+                "last_name": "User",
+                "password1": "password",
+                "password2": "password",
+            }
+        )
+        self.assertRedirects(response, reverse("wagtailusers_users:index"))
+        user = get_user_model().objects.filter(email="test@user.com")
+        self.assertTrue(user.exists())
+
+
+class TestAuthorisationEditView(WagtailTestUtils, TestCase):
+    def setUp(self):
+        self._user = self.create_user(username="auth_user", password="password")
+        self._user.user_permissions.add(Permission.objects.get(codename="access_admin"))
+        self.login(username="auth_user", password="password")
+        self.test_user = self.create_user(
+            username="testuser",
+            email="testuser@email.com",
+            first_name="Original",
+            last_name="User",
+            password="password",
+        )
+
+    def get(self, params={}, user_id=None):
+        return self.client.get(
+            reverse("wagtailusers_users:edit", args=(user_id or self.test_user.pk,)),
+            params,
+        )
+
+    def post(self, post_data={}, user_id=None):
+        return self.client.post(
+            reverse("wagtailusers_users:edit", args=(user_id or self.test_user.pk,)),
+            post_data,
+        )
+
+    def gain_permissions(self):
+        self._user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label=AUTH_USER_APP_LABEL,
+                codename=f"change_{AUTH_USER_MODEL_NAME.lower()}",
+            )
+        )
+
+    def test_simple(self):
+        response = self.get()
+        # Should redirect to admin index (permission denied)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertEqual(
+            response.context["message"],
+            "Sorry, you do not have permission to access this area.",
+        )
+
+    def test_authorised_get(self):
+        self.gain_permissions()
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailusers/users/edit.html")
+
+    def test_unauthorised_post(self):
+        response = self.post(
+            {
+                "username": "testuser",
+                "email": "test@user.com",
+                "first_name": "Edited",
+                "last_name": "User",
+                "password1": "newpassword",
+                "password2": "newpassword",
+                "is_active": "on",
+            }
+        )
+        # Should redirect to admin index (permission denied)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertEqual(
+            response.context["message"],
+            "Sorry, you do not have permission to access this area.",
+        )
+        user = get_user_model().objects.get(pk=self.test_user.pk)
+        self.assertNotEqual(user.first_name, "Edited")
+        self.assertFalse(user.check_password("newpassword"))
+
+    def test_authorised_post(self):
+        self.gain_permissions()
+        response = self.post(
+            {
+                "username": "testuser",
+                "email": "test@user.com",
+                "first_name": "Edited",
+                "last_name": "User",
+                "password1": "newpassword",
+                "password2": "newpassword",
+                "is_active": "on",
+            }
+        )
+        self.assertRedirects(response, reverse("wagtailusers_users:index"))
+        user = get_user_model().objects.get(pk=self.test_user.pk)
+        self.assertEqual(user.first_name, "Edited")
+        self.assertTrue(user.check_password("newpassword"))
+
+
+class TestAuthorisationDeleteView(WagtailTestUtils, TestCase):
+    def setUp(self):
+        self._user = self.create_user(username="auth_user", password="password")
+        self._user.user_permissions.add(Permission.objects.get(codename="access_admin"))
+        self.login(username="auth_user", password="password")
+        self.test_user = self.create_user(
+            username="test_user",
+            email="test_user@email.com",
+            password="password",
+        )
+
+    def get(self, params={}):
+        return self.client.get(
+            reverse("wagtailusers_users:delete", args=(self.test_user.pk,)), params
+        )
+
+    def post(self, post_data={}):
+        return self.client.post(
+            reverse("wagtailusers_users:delete", args=(self.test_user.pk,)), post_data
+        )
+
+    def gain_permissions(self):
+        self._user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label=AUTH_USER_APP_LABEL,
+                codename=f"delete_{AUTH_USER_MODEL_NAME.lower()}",
+            )
+        )
+
+    def test_simple(self):
+        response = self.get()
+        # Should redirect to admin index (permission denied)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertEqual(
+            response.context["message"],
+            "Sorry, you do not have permission to access this area.",
+        )
+
+    def test_authorised_get(self):
+        self.gain_permissions()
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailusers/users/confirm_delete.html")
+
+    def test_unauthorised_post(self):
+        response = self.post()
+        # Should redirect to admin index (permission denied)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertEqual(
+            response.context["message"],
+            "Sorry, you do not have permission to access this area.",
+        )
+        user = get_user_model().objects.filter(email="test_user@email.com")
+        self.assertTrue(user.exists())
+
+    def test_authorised_post(self):
+        self.gain_permissions()
+        response = self.post()
+        self.assertRedirects(response, reverse("wagtailusers_users:index"))
+        user = get_user_model().objects.filter(email="test_user@email.com")
+        self.assertFalse(user.exists())
+
+
+class TestTemplateTags(WagtailTestUtils, TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls.create_superuser("admin")
+        cls.request = get_dummy_request()
+        cls.request.user = cls.user
+        cls.test_user = cls.create_user(
+            username="testuser",
+            email="testuser@email.com",
+            password="password",
+        )
+
+    def test_user_listing_buttons(self):
+        template = """
+            {% load wagtailusers_tags %}
+            {% for user in users %}
+                <ul class="actions">
+                    {% user_listing_buttons user %}
+                </ul>
+            {% endfor %}
+        """
+
+        def hook(user, request_user):
+            self.assertEqual(user, self.test_user)
+            self.assertEqual(request_user, self.user)
+            yield UserListingButton(
+                "Show profile",
+                f"/goes/to/a/url/{user.pk}",
+                priority=30,
+            )
+
+        with self.register_hook("register_user_listing_buttons", hook):
+            with self.assertWarnsMessage(
+                RemovedInWagtail70Warning,
+                "`user_listing_buttons` template tag is deprecated.",
+            ):
+                html = Template(template).render(
+                    RequestContext(self.request, {"users": [self.test_user]})
+                )
+
+        soup = self.get_soup(html)
+
+        profile_url = f"/goes/to/a/url/{self.test_user.pk}"
+        top_level_custom_button = soup.select_one(f"li > a[href='{profile_url}']")
+        self.assertIsNotNone(top_level_custom_button)
+        self.assertEqual(
+            top_level_custom_button.text.strip(),
+            "Show profile",
+        )
+
+    def test_user_listing_buttons_with_deprecated_hook(self):
+        template = """
+            {% load wagtailusers_tags %}
+            {% for user in users %}
+                <ul class="actions">
+                    {% user_listing_buttons user %}
+                </ul>
+            {% endfor %}
+        """
+
+        def deprecated_hook(context, user):
+            self.assertEqual(user, self.test_user)
+            self.assertEqual(context.request.user, self.user)
+            yield UserListingButton(
+                "Show profile",
+                f"/goes/to/a/url/{user.pk}",
+                priority=30,
+            )
+
+        with self.register_hook("register_user_listing_buttons", deprecated_hook):
+            with self.assertWarns(RemovedInWagtail70Warning) as warning_manager:
+                html = Template(template).render(
+                    RequestContext(self.request, {"users": [self.test_user]})
+                )
+
+        self.assertEqual(
+            [str(w.message) for w in warning_manager.warnings],
+            [
+                # Deprecation of the template tag
+                "`user_listing_buttons` template tag is deprecated.",
+                # Deprecation of the hook signature
+                "`register_user_listing_buttons` hook functions should accept a "
+                "`request_user` argument instead of `context` - "
+                "wagtail.users.tests.test_admin_views.deprecated_hook needs to be updated",
+            ],
+        )
+
+        soup = self.get_soup(html)
+        profile_url = f"/goes/to/a/url/{self.test_user.pk}"
+        top_level_custom_button = soup.select_one(f"li > a[href='{profile_url}']")
+        self.assertIsNotNone(top_level_custom_button)
+        self.assertEqual(
+            top_level_custom_button.text.strip(),
+            "Show profile",
+        )
+
+
+class TestAdminPermissions(WagtailTestUtils, TestCase):
+    def test_registered_user_permissions(self):
+        user_ct = ContentType.objects.get_for_model(User)
+        model_name = User._meta.model_name
+        qs = Permission.objects.none()
+        for fn in hooks.get_hooks("register_permissions"):
+            qs |= fn()
+        registered_user_permissions = qs.filter(content_type=user_ct)
+        self.assertEqual(
+            set(registered_user_permissions.values_list("codename", flat=True)),
+            {f"add_{model_name}", f"change_{model_name}", f"delete_{model_name}"},
+        )

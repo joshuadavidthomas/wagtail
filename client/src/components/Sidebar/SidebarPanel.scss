@@ -1,10 +1,13 @@
+@use '../../../scss/tools' as *;
+@use '../../../scss/settings' as *;
+
 .sidebar-panel {
-  @apply w-transition-sidebar;
   // With CSS variable allows panels with different widths to animate properly
   --width: #{$menu-width};
+  @apply w-transition-sidebar;
 
   visibility: hidden;
-  transform: translateX(-100%);
+  transform: translateX(calc(var(--w-direction-factor) * -100%));
   position: fixed;
   height: 100vh;
   padding: 0;
@@ -20,7 +23,7 @@
     width: var(--width);
   }
 
-  @media (forced-colors: $media-forced-colours) {
+  @media (forced-colors: active) {
     border-inline-start: 1px solid transparent;
     border-inline-end: 1px solid transparent;
   }

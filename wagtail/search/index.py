@@ -102,7 +102,7 @@ class Indexed:
 
     @classmethod
     def check(cls, **kwargs):
-        errors = super(Indexed, cls).check(**kwargs)
+        errors = super().check(**kwargs)
         errors.extend(cls._check_search_fields(**kwargs))
         return errors
 
@@ -128,7 +128,9 @@ def get_indexed_models():
     return [
         model
         for model in apps.get_models()
-        if issubclass(model, Indexed) and not model._meta.abstract
+        if issubclass(model, Indexed)
+        and not model._meta.abstract
+        and model.search_fields
     ]
 
 
@@ -137,6 +139,7 @@ def class_is_indexed(cls):
         issubclass(cls, Indexed)
         and issubclass(cls, models.Model)
         and not cls._meta.abstract
+        and cls.search_fields
     )
 
 
@@ -286,14 +289,13 @@ class BaseField:
             return value
 
     def __repr__(self):
-        return "<%s: %s>" % (self.__class__.__name__, self.field_name)
+        return f"<{self.__class__.__name__}: {self.field_name}>"
 
 
 class SearchField(BaseField):
-    def __init__(self, field_name, boost=None, partial_match=False, **kwargs):
+    def __init__(self, field_name, boost=None, **kwargs):
         super().__init__(field_name, **kwargs)
         self.boost = boost
-        self.partial_match = partial_match
 
 
 class AutocompleteField(BaseField):

@@ -1,11 +1,7 @@
 import $ from 'jquery';
 import * as uuid from 'uuid';
 import { FieldBlockDefinition } from './FieldBlock';
-import {
-  StreamBlockDefinition,
-  StreamBlockValidationError,
-} from './StreamBlock';
-import { StructBlockDefinition } from './StructBlock';
+import { StreamBlockDefinition } from './StreamBlock';
 
 // Mock uuid for consistent snapshot results
 jest.mock('uuid');
@@ -54,12 +50,6 @@ class DummyWidgetDefinition {
       },
       idForLabel: id,
     };
-  }
-}
-
-class ValidationError {
-  constructor(messages) {
-    this.messages = messages;
   }
 }
 
@@ -115,13 +105,14 @@ describe('telepath: wagtail.blocks.StreamBlock', () => {
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>plenty</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         maxNum: null,
         minNum: null,
         blockCounts: {},
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -321,18 +312,16 @@ describe('telepath: wagtail.blocks.StreamBlock', () => {
   });
 
   test('setError renders error messages', () => {
-    boundBlock.setError([
-      new StreamBlockValidationError(
-        [
-          /* non-block error */
-          new ValidationError(['At least three blocks are required']),
-        ],
-        {
-          /* block error */
-          1: [new ValidationError(['Not as good as the first one'])],
-        },
-      ),
-    ]);
+    boundBlock.setError({
+      messages: [
+        /* non-block error */
+        'At least three blocks are required',
+      ],
+      blockErrors: {
+        /* block error */
+        1: { messages: ['Not as good as the first one.'] },
+      },
+    });
     expect(document.body.innerHTML).toMatchSnapshot();
   });
 });
@@ -376,6 +365,7 @@ describe('telepath: wagtail.blocks.StreamBlock with nested stream block', () => 
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -393,13 +383,14 @@ describe('telepath: wagtail.blocks.StreamBlock with nested stream block', () => 
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>plenty</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         maxNum: null,
         minNum: null,
         blockCounts: {},
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -485,13 +476,14 @@ describe('telepath: wagtail.blocks.StreamBlock with labels that need escaping', 
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>plenty</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         maxNum: null,
         minNum: null,
         blockCounts: {},
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete & kill with fire',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -517,7 +509,8 @@ describe('telepath: wagtail.blocks.StreamBlock with labels that need escaping', 
 
   test('it renders correctly', () => {
     boundBlock.inserters[0].open();
-    expect(document.body.innerHTML).toMatchSnapshot();
+    const listbox = document.querySelector('[role="listbox"]');
+    expect(listbox.innerHTML).toMatchSnapshot();
   });
 });
 
@@ -563,13 +556,14 @@ describe('telepath: wagtail.blocks.StreamBlock with maxNum set', () => {
       icon: 'placeholder',
       classname: null,
       helpText: 'use <strong>plenty</strong> of these',
-      helpIcon: '<div class="icon-help">?</div>',
+      helpIcon: '<svg></svg>',
       maxNum: 3,
       minNum: null,
       blockCounts: {},
       strings: {
         MOVE_UP: 'Move up',
         MOVE_DOWN: 'Move down',
+        DRAG: 'Drag',
         DELETE: 'Delete & kill with fire',
         DUPLICATE: 'Duplicate',
         ADD: 'Add',
@@ -589,48 +583,22 @@ describe('telepath: wagtail.blocks.StreamBlock with maxNum set', () => {
     // Test menu
     expect(
       document
-        .querySelector('button[data-streamblock-menu-open]')
+        .querySelector('button[title="Insert a block"]')
         .getAttribute('disabled'),
     ).toBe(null);
   };
 
-  const assertCannotAddBlock = () => {
-    // Test duplicate button is still enabled even when at block limit
-    // querySelector always returns the first element it sees so this only checks the first block
-    expect(
-      document
-        .querySelector('button[title="Duplicate"]')
-        .getAttribute('disabled'),
-    ).toBe(null);
-
-    // Test menu
-    expect(
-      document
-        .querySelector('button[data-streamblock-menu-open]')
-        .getAttribute('disabled'),
-    ).toEqual('disabled');
+  const assertShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical').innerHTML).toBe(
+      'The maximum number of items is 3',
+    );
   };
 
-  test('test can add block when under limit', () => {
-    document.body.innerHTML = '<div id="placeholder"></div>';
-    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
-      {
-        id: '1',
-        type: 'test_block_a',
-        value: 'First value',
-      },
-      {
-        id: '2',
-        type: 'test_block_b',
-        value: 'Second value',
-      },
-    ]);
-    boundBlock.inserters[0].open();
+  const assertNotShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical')).toBe(null);
+  };
 
-    assertCanAddBlock();
-  });
-
-  test('initialising at maxNum disables adding new block and duplication', () => {
+  test('test no error message when at limit', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       {
@@ -651,7 +619,38 @@ describe('telepath: wagtail.blocks.StreamBlock with maxNum set', () => {
     ]);
     boundBlock.inserters[0].open();
 
-    assertCannotAddBlock();
+    assertCanAddBlock();
+    assertNotShowingErrorMessage();
+  });
+
+  test('initialising over maxNum shows error message', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      {
+        id: '1',
+        type: 'test_block_a',
+        value: 'First value',
+      },
+      {
+        id: '2',
+        type: 'test_block_b',
+        value: 'Second value',
+      },
+      {
+        id: '3',
+        type: 'test_block_b',
+        value: 'Third value',
+      },
+      {
+        id: '4',
+        type: 'test_block_b',
+        value: 'Fourth value',
+      },
+    ]);
+    boundBlock.inserters[0].open();
+
+    assertCanAddBlock();
+    assertShowingErrorMessage();
   });
 
   test('addSibling capability works', () => {
@@ -678,7 +677,7 @@ describe('telepath: wagtail.blocks.StreamBlock with maxNum set', () => {
     expect(boundBlock.children[1].type).toEqual('test_block_a');
   });
 
-  test('insert disables new block', () => {
+  test('insert at limit triggers error', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       {
@@ -691,24 +690,31 @@ describe('telepath: wagtail.blocks.StreamBlock with maxNum set', () => {
         type: 'test_block_b',
         value: 'Second value',
       },
-    ]);
-    boundBlock.inserters[0].open();
-
-    assertCanAddBlock();
-
-    boundBlock.insert(
       {
         id: '3',
         type: 'test_block_b',
         value: 'Third value',
+      },
+    ]);
+    boundBlock.inserters[0].open();
+
+    assertCanAddBlock();
+    assertNotShowingErrorMessage();
+
+    boundBlock.insert(
+      {
+        id: '4',
+        type: 'test_block_b',
+        value: 'Fourth value',
       },
       2,
     );
 
-    assertCannotAddBlock();
+    assertCanAddBlock();
+    assertShowingErrorMessage();
   });
 
-  test('delete enables new block', () => {
+  test('delete removes error mesage', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       {
@@ -726,14 +732,170 @@ describe('telepath: wagtail.blocks.StreamBlock with maxNum set', () => {
         type: 'test_block_b',
         value: 'Third value',
       },
+      {
+        id: '4',
+        type: 'test_block_b',
+        value: 'Fourth value',
+      },
     ]);
     boundBlock.inserters[0].open();
 
-    assertCannotAddBlock();
+    assertCanAddBlock();
+    assertShowingErrorMessage();
 
     boundBlock.deleteBlock(2);
 
     assertCanAddBlock();
+    assertNotShowingErrorMessage();
+  });
+});
+
+describe('telepath: wagtail.blocks.StreamBlock with minNum set', () => {
+  // Define a test block
+  const blockDef = new StreamBlockDefinition(
+    '',
+    [
+      [
+        '',
+        [
+          new FieldBlockDefinition(
+            'test_block_a',
+            new DummyWidgetDefinition('Block A widget'),
+            {
+              label: 'Test Block <A>',
+              required: true,
+              icon: 'placeholder',
+              classname: 'w-field w-field--char_field w-field--text_input',
+            },
+          ),
+          new FieldBlockDefinition(
+            'test_block_b',
+            new DummyWidgetDefinition('Block B widget'),
+            {
+              label: 'Test Block <B>',
+              required: true,
+              icon: 'pilcrow',
+              classname:
+                'w-field w-field--char_field w-field--admin_auto_height_text_input',
+            },
+          ),
+        ],
+      ],
+    ],
+    {
+      test_block_a: 'Block A options',
+      test_block_b: 'Block B options',
+    },
+    {
+      label: '',
+      required: true,
+      icon: 'placeholder',
+      classname: null,
+      helpText: 'use <strong>plenty</strong> of these',
+      helpIcon: '<svg></svg>',
+      maxNum: null,
+      minNum: 2,
+      blockCounts: {},
+      strings: {
+        MOVE_UP: 'Move up',
+        MOVE_DOWN: 'Move down',
+        DRAG: 'Drag',
+        DELETE: 'Delete & kill with fire',
+        DUPLICATE: 'Duplicate',
+        ADD: 'Add',
+      },
+    },
+  );
+
+  const assertShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical').innerHTML).toBe(
+      'The minimum number of items is 2',
+    );
+  };
+
+  const assertNotShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical')).toBe(null);
+  };
+
+  test('test no error message when at lower limit', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      {
+        id: '1',
+        type: 'test_block_a',
+        value: 'First value',
+      },
+      {
+        id: '2',
+        type: 'test_block_b',
+        value: 'Second value',
+      },
+    ]);
+    boundBlock.inserters[0].open();
+
+    assertNotShowingErrorMessage();
+  });
+
+  test('initialising under minNum shows error message', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      {
+        id: '1',
+        type: 'test_block_a',
+        value: 'First value',
+      },
+    ]);
+    boundBlock.inserters[0].open();
+
+    assertShowingErrorMessage();
+  });
+
+  test('inserting to reach lower limit removes error', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      {
+        id: '1',
+        type: 'test_block_a',
+        value: 'First value',
+      },
+    ]);
+    boundBlock.inserters[0].open();
+
+    assertShowingErrorMessage();
+
+    boundBlock.insert(
+      {
+        id: '2',
+        type: 'test_block_b',
+        value: 'Second value',
+      },
+      1,
+    );
+
+    assertNotShowingErrorMessage();
+  });
+
+  test('deleting to under lower limit shows error mesage', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      {
+        id: '1',
+        type: 'test_block_a',
+        value: 'First value',
+      },
+      {
+        id: '2',
+        type: 'test_block_b',
+        value: 'Second value',
+      },
+    ]);
+    boundBlock.inserters[0].open();
+
+    assertNotShowingErrorMessage();
+
+    boundBlock.deleteBlock(1);
+
+    assertShowingErrorMessage();
   });
 });
 
@@ -779,7 +941,7 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
       icon: 'placeholder',
       classname: null,
       helpText: 'use <strong>plenty</strong> of these',
-      helpIcon: '<div class="icon-help">?</div>',
+      helpIcon: '<svg></svg>',
       maxNum: null,
       minNum: null,
       blockCounts: {
@@ -790,6 +952,7 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
       strings: {
         MOVE_UP: 'Move up',
         MOVE_DOWN: 'Move down',
+        DRAG: 'Drag',
         DELETE: 'Delete & kill with fire',
         DUPLICATE: 'Duplicate',
         ADD: 'Add',
@@ -807,28 +970,19 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
     ).toBe(null);
 
     // Test menu item
-    expect(
-      document
-        .querySelector('button.action-add-block-test_block_a')
-        .getAttribute('disabled'),
-    ).toBe(null);
+    expect(document.querySelector('[role="listbox"]').innerHTML).toContain(
+      'Test Block &lt;A&gt;',
+    );
   };
 
-  const assertCannotAddBlock = () => {
-    // Test duplicate button is always enabled
-    // querySelector always returns the first element it sees so this only checks the first block
-    expect(
-      document
-        .querySelector('button[title="Duplicate"]')
-        .getAttribute('disabled'),
-    ).toBe(null);
+  const assertShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical').innerHTML).toBe(
+      'Test Block &lt;A&gt;: The maximum number of items is 2',
+    );
+  };
 
-    // Test menu item
-    expect(
-      document
-        .querySelector('button.action-add-block-test_block_a')
-        .getAttribute('disabled'),
-    ).toEqual('disabled');
+  const assertNotShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical')).toBe(null);
   };
 
   test('addSibling capability works', () => {
@@ -845,6 +999,7 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
         value: 'Second value',
       },
     ]);
+    assertNotShowingErrorMessage();
     const addSibling =
       boundBlock.children[0].block.parentCapabilities.get('addSibling');
     expect(addSibling.getBlockMax('test_block_a')).toEqual(2);
@@ -852,6 +1007,7 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
     addSibling.fn({ type: 'test_block_a' });
     expect(boundBlock.children.length).toEqual(3);
     expect(boundBlock.children[1].type).toEqual('test_block_a');
+    assertNotShowingErrorMessage();
   });
 
   test('single instance allows creation of new block and duplication', () => {
@@ -871,9 +1027,10 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
     boundBlock.inserters[0].open();
 
     assertCanAddBlock();
+    assertNotShowingErrorMessage();
   });
 
-  test('initialising at max_num disables adding new block of that type', () => {
+  test('initialising at max_num retains ability to add new block of that type', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       {
@@ -894,10 +1051,11 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
     ]);
     boundBlock.inserters[0].open();
 
-    assertCannotAddBlock();
+    assertCanAddBlock();
+    assertNotShowingErrorMessage();
   });
 
-  test('insert disables new block', () => {
+  test('insert retains ability to add new block', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       {
@@ -914,6 +1072,7 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
     boundBlock.inserters[0].open();
 
     assertCanAddBlock();
+    assertNotShowingErrorMessage();
 
     boundBlock.insert(
       {
@@ -924,10 +1083,159 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
       2,
     );
 
-    assertCannotAddBlock();
+    assertCanAddBlock();
+    assertNotShowingErrorMessage();
+
+    boundBlock.insert(
+      {
+        id: '4',
+        type: 'test_block_a',
+        value: 'Fourth value',
+      },
+      2,
+    );
+
+    assertCanAddBlock();
+    assertShowingErrorMessage();
   });
 
-  test('delete enables new block', () => {
+  test('delete removes error message and does not change availability of new block', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      {
+        id: '1',
+        type: 'test_block_a',
+        value: 'First value',
+      },
+      {
+        id: '2',
+        type: 'test_block_b',
+        value: 'Second value',
+      },
+      {
+        id: '3',
+        type: 'test_block_a',
+        value: 'Third value',
+      },
+      {
+        id: '4',
+        type: 'test_block_a',
+        value: 'Fourth value',
+      },
+    ]);
+    boundBlock.inserters[0].open();
+
+    assertCanAddBlock();
+    assertShowingErrorMessage();
+
+    boundBlock.deleteBlock(2);
+
+    assertCanAddBlock();
+    assertNotShowingErrorMessage();
+  });
+});
+
+describe('telepath: wagtail.blocks.StreamBlock with blockCounts.min_num set', () => {
+  // Define a test block
+  const blockDef = new StreamBlockDefinition(
+    '',
+    [
+      [
+        '',
+        [
+          new FieldBlockDefinition(
+            'test_block_a',
+            new DummyWidgetDefinition('Block A widget'),
+            {
+              label: 'Test Block <A>',
+              required: true,
+              icon: 'placeholder',
+              classname: 'w-field w-field--char_field w-field--text_input',
+            },
+          ),
+          new FieldBlockDefinition(
+            'test_block_b',
+            new DummyWidgetDefinition('Block B widget'),
+            {
+              label: 'Test Block <B>',
+              required: true,
+              icon: 'pilcrow',
+              classname:
+                'w-field w-field--char_field w-field--admin_auto_height_text_input',
+            },
+          ),
+        ],
+      ],
+    ],
+    {
+      test_block_a: 'Block A options',
+      test_block_b: 'Block B options',
+    },
+    {
+      label: '',
+      required: true,
+      icon: 'placeholder',
+      classname: null,
+      helpText: 'use <strong>plenty</strong> of these',
+      helpIcon: '<svg></svg>',
+      maxNum: null,
+      minNum: null,
+      blockCounts: {
+        test_block_a: {
+          min_num: 2,
+        },
+      },
+      strings: {
+        MOVE_UP: 'Move up',
+        MOVE_DOWN: 'Move down',
+        DRAG: 'Drag',
+        DELETE: 'Delete & kill with fire',
+        DUPLICATE: 'Duplicate',
+        ADD: 'Add',
+      },
+    },
+  );
+
+  const assertShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical').innerHTML).toBe(
+      'Test Block &lt;A&gt;: The minimum number of items is 2',
+    );
+  };
+
+  const assertNotShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical')).toBe(null);
+  };
+
+  test('inserting block to get count above min_num removes error mesage', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      {
+        id: '1',
+        type: 'test_block_a',
+        value: 'First value',
+      },
+      {
+        id: '2',
+        type: 'test_block_b',
+        value: 'Second value',
+      },
+    ]);
+
+    assertShowingErrorMessage();
+
+    boundBlock.insert(
+      {
+        id: '3',
+        type: 'test_block_a',
+        value: 'Third value',
+      },
+      2,
+    );
+
+    assertNotShowingErrorMessage();
+  });
+
+  test('deleting block to get count below min_num shows error message', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       {
@@ -946,12 +1254,86 @@ describe('telepath: wagtail.blocks.StreamBlock with blockCounts.max_num set', ()
         value: 'Third value',
       },
     ]);
-    boundBlock.inserters[0].open();
 
-    assertCannotAddBlock();
+    assertNotShowingErrorMessage();
 
     boundBlock.deleteBlock(2);
 
-    assertCanAddBlock();
+    assertShowingErrorMessage();
+  });
+});
+
+describe('telepath: wagtail.blocks.StreamBlock with unique block type', () => {
+  let boundBlock;
+
+  beforeEach(() => {
+    // Create mocks for callbacks
+    constructor = jest.fn();
+    setState = jest.fn();
+    getState = jest.fn();
+    getValue = jest.fn();
+    focus = jest.fn();
+
+    // Define a test block
+    const blockDef = new StreamBlockDefinition(
+      '',
+      [
+        [
+          '',
+          [
+            new FieldBlockDefinition(
+              'test_block_a',
+              new DummyWidgetDefinition('Block A widget'),
+              {
+                label: 'Test Block A',
+                required: true,
+                icon: 'placeholder',
+                classname: 'w-field w-field--char_field w-field--text_input',
+              },
+            ),
+          ],
+        ],
+      ],
+      {
+        test_block_a: 'Block A options',
+      },
+      {
+        label: '',
+        required: true,
+        icon: 'placeholder',
+        classname: null,
+        helpText: 'use <strong>plenty</strong> of this',
+        helpIcon: '<svg></svg>',
+        maxNum: null,
+        minNum: null,
+        blockCounts: {},
+        strings: {
+          MOVE_UP: 'Move up',
+          MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
+          DELETE: 'Delete',
+          DUPLICATE: 'Duplicate',
+          ADD: 'Add',
+        },
+      },
+    );
+
+    // Render it
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    boundBlock = blockDef.render($('#placeholder'), 'the-prefix', []);
+  });
+
+  test('it renders correctly without combobox', () => {
+    expect(document.body.innerHTML).toMatchSnapshot();
+    expect(document.querySelector('[role="listbox"]')).toBe(null);
+    expect(boundBlock.children.length).toEqual(0);
+  });
+
+  test('it can add block', () => {
+    boundBlock.inserters[0].addButton.click();
+
+    expect(document.body.innerHTML).toMatchSnapshot();
+    expect(boundBlock.children.length).toEqual(1);
+    expect(boundBlock.children[0].type).toEqual('test_block_a');
   });
 });

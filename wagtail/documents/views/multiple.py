@@ -1,5 +1,10 @@
 import os.path
 
+from django.urls import reverse
+from django.utils.text import capfirst
+from django.utils.translation import gettext_lazy
+
+from wagtail.admin.views.generic.base import WagtailAdminTemplateMixin
 from wagtail.admin.views.generic.multiple_upload import AddView as BaseAddView
 from wagtail.admin.views.generic.multiple_upload import (
     CreateFromUploadView as BaseCreateFromUploadView,
@@ -12,15 +17,16 @@ from wagtail.admin.views.generic.multiple_upload import EditView as BaseEditView
 
 from .. import get_document_model
 from ..forms import get_document_form, get_document_multi_form
-from ..models import UploadedDocument
 from ..permissions import permission_policy
 
 
-class AddView(BaseAddView):
+class AddView(WagtailAdminTemplateMixin, BaseAddView):
     permission_policy = permission_policy
     template_name = "wagtaildocs/multiple/add.html"
-    upload_model = UploadedDocument
+    header_icon = "doc-full-inverse"
+    page_title = gettext_lazy("Add documents")
 
+    index_url_name = "wagtaildocs:index"
     edit_object_url_name = "wagtaildocs:edit_multiple"
     delete_object_url_name = "wagtaildocs:delete_multiple"
     edit_object_form_prefix = "doc"
@@ -31,7 +37,16 @@ class AddView(BaseAddView):
     delete_upload_url_name = "wagtaildocs:delete_upload_multiple"
     edit_upload_form_prefix = "uploaded-document"
     context_upload_name = "uploaded_document"
-    context_upload_id_name = "uploaded_document_id"
+    context_upload_id_name = "uploaded_file_id"
+
+    def get_breadcrumbs_items(self):
+        return self.breadcrumbs_items + [
+            {
+                "url": reverse(self.index_url_name),
+                "label": capfirst(self.model._meta.verbose_name_plural),
+            },
+            {"url": "", "label": self.get_page_title()},
+        ]
 
     def get_model(self):
         return get_document_model()
@@ -90,8 +105,7 @@ class DeleteView(BaseDeleteView):
 class CreateFromUploadedDocumentView(BaseCreateFromUploadView):
     edit_upload_url_name = "wagtaildocs:create_multiple_from_uploaded_document"
     delete_upload_url_name = "wagtaildocs:delete_upload_multiple"
-    upload_model = UploadedDocument
-    upload_pk_url_kwarg = "uploaded_document_id"
+    upload_pk_url_kwarg = "uploaded_file_id"
     edit_upload_form_prefix = "uploaded-document"
     context_object_id_name = "doc_id"
     context_upload_name = "uploaded_document"
@@ -118,5 +132,7 @@ class CreateFromUploadedDocumentView(BaseCreateFromUploadView):
 
 
 class DeleteUploadView(BaseDeleteUploadView):
-    upload_model = UploadedDocument
-    upload_pk_url_kwarg = "uploaded_document_id"
+    upload_pk_url_kwarg = "uploaded_file_id"
+
+    def get_model(self):
+        return get_document_model()

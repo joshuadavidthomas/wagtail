@@ -1,4 +1,6 @@
 @use 'sass:map';
+@use '../../tools' as *;
+@use '../../settings' as *;
 
 /**
  * The field component handles form fields’ layout and ancillary elements such as error messages and help text.
@@ -15,10 +17,10 @@
 .w-field__errors {
   .error-message {
     @apply w-label-2;
-    color: theme('colors.critical.200');
+    color: theme('colors.text-error');
     display: inline-block;
     margin: 0;
-    margin-bottom: theme('spacing.[2.5]');
+    margin-top: theme('spacing.[0.5]');
   }
 }
 
@@ -28,8 +30,8 @@
   top: 0.125em;
   width: 1em;
   height: 1em;
-  margin-inline-end: 0.375em;
-  color: theme('colors.critical.200');
+  margin-inline-end: 0.625rem;
+  color: theme('colors.text-error');
 
   // Avoid displaying the error message icon if we already have an icon.
   + .error-message::before {
@@ -38,9 +40,10 @@
 }
 
 .w-field__label {
-  @apply w-label-3;
+  @apply w-label-2;
   display: block;
-  margin-bottom: theme('spacing.3');
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .w-field__wrapper {
@@ -48,11 +51,21 @@
   // This is primarily helpful to add margins between fields, but fields can often
   // be wrapped into groups (for example a row), so it’s safer to add a margin regardless
   // of what the next element is.
-  margin-bottom: theme('spacing.5');
+  margin-bottom: $form-field-spacing;
+
+  // Inside of listing tables we don't need margins because the table row will handle them.
+  table.listing td & {
+    margin-bottom: 0;
+
+    .w-field__input {
+      margin-top: 0;
+    }
+  }
 }
 
 .w-field__input {
   position: relative;
+  margin-top: calc(theme('spacing.[2.5]') * var(--w-density-factor));
 }
 
 .w-field__icon {
@@ -60,7 +73,7 @@
   $offset: calc($text-input-height / 2 - $size / 2);
   width: $size;
   height: $size;
-  color: theme('colors.primary.DEFAULT');
+  color: theme('colors.icon-primary');
   position: absolute;
   // Top padding of text input and half of text size.
   top: $offset;

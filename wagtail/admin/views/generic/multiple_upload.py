@@ -1,5 +1,6 @@
 import os.path
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -10,13 +11,13 @@ from django.views.decorators.vary import vary_on_headers
 from django.views.generic.base import TemplateView, View
 
 from wagtail.admin.views.generic import PermissionCheckedMixin
+from wagtail.models import UploadedFile
 
 
 class AddView(PermissionCheckedMixin, TemplateView):
     # subclasses need to provide:
     # - permission_policy
     # - template_name
-    # - upload_model
 
     # - edit_object_url_name
     # - delete_object_url_name
@@ -54,13 +55,13 @@ class AddView(PermissionCheckedMixin, TemplateView):
         edit_form_class = self.get_edit_form_class()
         return {
             self.context_object_name: self.object,
-            "edit_action": reverse(self.edit_object_url_name, args=(self.object.id,)),
+            "edit_action": reverse(self.edit_object_url_name, args=(self.object.pk,)),
             "delete_action": reverse(
-                self.delete_object_url_name, args=(self.object.id,)
+                self.delete_object_url_name, args=(self.object.pk,)
             ),
             "form": edit_form_class(
                 instance=self.object,
-                prefix="%s-%d" % (self.edit_object_form_prefix, self.object.id),
+                prefix="%s-%d" % (self.edit_object_form_prefix, self.object.pk),
                 user=self.request.user,
             ),
         }
@@ -71,7 +72,7 @@ class AddView(PermissionCheckedMixin, TemplateView):
         """
         return {
             "success": True,
-            self.context_object_id_name: int(self.object.id),
+            self.context_object_id_name: self.object.pk,
             "form": render_to_string(
                 self.edit_form_template_name,
                 self.get_edit_object_form_context_data(),
@@ -152,10 +153,12 @@ class AddView(PermissionCheckedMixin, TemplateView):
             return JsonResponse(self.get_invalid_response_data(form))
         else:
             # Some other field of the form has failed validation, e.g. a required metadata field
-            # on a custom image model. Store the object as an upload_model instance instead and
+            # on a custom image model. Store the object as an UploadedFile instance instead and
             # present the edit form so that it will become a proper object when successfully filled in
-            self.upload_object = self.upload_model.objects.create(
-                file=self.request.FILES["files[]"], uploaded_by_user=self.request.user
+            self.upload_object = UploadedFile.objects.create(
+                for_content_type=ContentType.objects.get_for_model(self.get_model()),
+                file=self.request.FILES["files[]"],
+                uploaded_by_user=self.request.user,
             )
             self.object = self.model(
                 title=self.request.FILES["files[]"].name,
@@ -171,6 +174,7 @@ class AddView(PermissionCheckedMixin, TemplateView):
         # actual rendering of forms will happen on AJAX POST rather than here
         upload_form_class = self.get_upload_form_class()
         self.form = upload_form_class(user=self.request.user)
+        selected_collection_id = self.request.GET.get("collection_id")
 
         collections = self.permission_policy.collections_user_has_permission_for(
             self.request.user, "add"
@@ -184,6 +188,7 @@ class AddView(PermissionCheckedMixin, TemplateView):
                 "help_text": self.form.fields["file"].help_text,
                 "collections": collections,
                 "form_media": self.form.media,
+                "selected_collection_id": selected_collection_id,
             }
         )
 
@@ -213,7 +218,7 @@ class EditView(View):
         self.model = self.get_model()
         self.form_class = self.get_edit_form_class()
 
-        self.object = get_object_or_404(self.model, id=object_id)
+        self.object = get_object_or_404(self.model, pk=object_id)
 
         if not self.permission_policy.user_has_permission_for_instance(
             request.user, "change", self.object
@@ -234,14 +239,14 @@ class EditView(View):
             return JsonResponse(
                 {
                     "success": True,
-                    self.context_object_id_name: int(object_id),
+                    self.context_object_id_name: self.object.pk,
                 }
             )
         else:
             return JsonResponse(
                 {
                     "success": False,
-                    self.context_object_id_name: int(object_id),
+                    self.context_object_id_name: self.object.pk,
                     "form": render_to_string(
                         self.edit_form_template_name,
                         {
@@ -271,7 +276,10 @@ class DeleteView(View):
     def post(self, request, *args, **kwargs):
         object_id = kwargs[self.pk_url_kwarg]
         self.model = self.get_model()
-        self.object = get_object_or_404(self.model, id=object_id)
+        self.object = get_object_or_404(self.model, pk=object_id)
+        object_id = (
+            self.object.pk
+        )  # retrieve object id cast to the appropriate type (usually int)
 
         if not self.permission_policy.user_has_permission_for_instance(
             request.user, "delete", self.object
@@ -283,7 +291,7 @@ class DeleteView(View):
         return JsonResponse(
             {
                 "success": True,
-                self.context_object_id_name: int(object_id),
+                self.context_object_id_name: object_id,
             }
         )
 
@@ -292,7 +300,6 @@ class CreateFromUploadView(View):
     # subclasses need to provide:
     # - edit_upload_url_name
     # - delete_upload_url_name
-    # - upload_model
     # - upload_pk_url_kwarg
     # - edit_upload_form_prefix
     # - context_object_id_name
@@ -315,7 +322,11 @@ class CreateFromUploadView(View):
         self.model = self.get_model()
         self.form_class = self.get_edit_form_class()
 
-        self.upload = get_object_or_404(self.upload_model, id=upload_id)
+        self.upload = get_object_or_404(
+            UploadedFile,
+            id=upload_id,
+            for_content_type=ContentType.objects.get_for_model(self.model),
+        )
 
         if self.upload.uploaded_by_user != request.user:
             raise PermissionDenied
@@ -364,14 +375,17 @@ class CreateFromUploadView(View):
 
 class DeleteUploadView(View):
     # subclasses need to provide:
-    # - upload_model
     # - upload_pk_url_kwarg
 
     http_method_names = ["post"]
 
     def post(self, request, *args, **kwargs):
         upload_id = kwargs[self.upload_pk_url_kwarg]
-        upload = get_object_or_404(self.upload_model, id=upload_id)
+        upload = get_object_or_404(
+            UploadedFile,
+            id=upload_id,
+            for_content_type=ContentType.objects.get_for_model(self.get_model()),
+        )
 
         if upload.uploaded_by_user != request.user:
             raise PermissionDenied

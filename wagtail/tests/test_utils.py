@@ -1,7 +1,16 @@
-# -*- coding: utf-8 -*
+import hashlib
+import os
 import pickle
+import tempfile
+import unittest
+import warnings
+from io import BytesIO
+from pathlib import Path
 
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, SuspiciousOperation
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils.text import slugify
 from django.utils.translation import _trans
@@ -14,6 +23,7 @@ from wagtail.coreutils import (
     cautious_slugify,
     find_available_slug,
     get_content_languages,
+    get_content_type_label,
     get_dummy_request,
     get_supported_content_language_variant,
     multigetattr,
@@ -21,7 +31,11 @@ from wagtail.coreutils import (
     string_to_ascii,
 )
 from wagtail.models import Page, Site
-from wagtail.utils.utils import deep_update
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
+from wagtail.utils.file import hash_filelike
+from wagtail.utils.templates import template_is_overridden
+from wagtail.utils.utils import deep_update, flatten_choices
+from wagtail.utils.version import get_main_version
 
 
 class TestCamelCaseToUnderscore(TestCase):
@@ -31,7 +45,7 @@ class TestCamelCaseToUnderscore(TestCase):
             ("longValueWithVarious subStrings", "long_value_with_various sub_strings"),
         ]
 
-        for (original, expected_result) in test_cases:
+        for original, expected_result in test_cases:
             self.assertEqual(camelcase_to_underscore(original), expected_result)
 
 
@@ -52,7 +66,7 @@ class TestStringToAscii(TestCase):
             ("〔山脈〕", "[ShanMai]"),
         ]
 
-        for (original, expected_result) in test_cases:
+        for original, expected_result in test_cases:
             self.assertEqual(string_to_ascii(original), expected_result)
 
 
@@ -71,7 +85,7 @@ class TestCautiousSlugify(TestCase):
             ("Hello☃world", "helloworld"),
         ]
 
-        for (original, expected_result) in test_cases:
+        for original, expected_result in test_cases:
             self.assertEqual(slugify(original), expected_result)
             self.assertEqual(cautious_slugify(original), expected_result)
 
@@ -82,7 +96,7 @@ class TestCautiousSlugify(TestCase):
             ("〔山脈〕", "u5c71u8108"),
         ]
 
-        for (original, expected_result) in test_cases:
+        for original, expected_result in test_cases:
             self.assertEqual(cautious_slugify(original), expected_result)
 
 
@@ -111,7 +125,7 @@ class TestSafeSnakeCase(TestCase):
             ),
         ]
 
-        for (original, expected_result) in test_cases:
+        for original, expected_result in test_cases:
             self.assertEqual(safe_snake_case(original), expected_result)
 
     def test_strings_with__non_latin_chars(self):
@@ -120,7 +134,7 @@ class TestSafeSnakeCase(TestCase):
             ("Сп орт!", "u0421u043f_u043eu0440u0442"),
         ]
 
-        for (original, expected_result) in test_cases:
+        for original, expected_result in test_cases:
             self.assertEqual(safe_snake_case(original), expected_result)
 
 
@@ -169,16 +183,16 @@ class TestInvokeViaAttributeShortcut(SimpleTestCase):
     def test_pickleability(self):
         try:
             pickled = pickle.dumps(self.test_object, -1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             raise AssertionError(
-                "An error occured when attempting to pickle %r: %s"
+                "An error occurred when attempting to pickle %r: %s"
                 % (self.test_object, e)
             )
         try:
             self.test_object = pickle.loads(pickled)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             raise AssertionError(
-                "An error occured when attempting to unpickle %r: %s"
+                "An error occurred when attempting to unpickle %r: %s"
                 % (self.test_object, e)
             )
 
@@ -293,6 +307,21 @@ class TestGetContentLanguages(TestCase):
                 "The language zh is specified in WAGTAIL_CONTENT_LANGUAGES but not LANGUAGES. WAGTAIL_CONTENT_LANGUAGES must be a subset of LANGUAGES.",
             ),
         )
+
+
+def TestGetContentTypeLabel(TestCase):
+    def test_none(self):
+        self.assertEqual(get_content_type_label(None), "Unknown content type")
+
+    def test_valid_content_type(self):
+        page_content_type = ContentType.objects.get_for_model(Page)
+        self.assertEqual(get_content_type_label(page_content_type), "Page")
+
+    def test_stale_content_type(self):
+        stale_content_type = ContentType.objects.create(
+            app_label="fake_app", model="deleted model"
+        )
+        self.assertEqual(get_content_type_label(stale_content_type), "Deleted model")
 
 
 @override_settings(
@@ -457,6 +486,12 @@ class TestGetDummyRequest(TestCase):
         request = get_dummy_request(site=site)
         self.assertEqual(request.get_host(), "other.example.com:8888")
 
+    def test_server_name_for_wildcard_allowed_hosts(self):
+        # Django's test runner adds "testserver" at the end of ALLOWED_HOSTS.
+        with self.settings(ALLOWED_HOSTS=["*", "testserver"]):
+            request = get_dummy_request()
+            self.assertEqual(request.get_host(), "example.com")
+
 
 class TestDeepUpdate(TestCase):
     def test_deep_update(self):
@@ -490,4 +525,155 @@ class TestDeepUpdate(TestCase):
                 },
                 "starship": "enterprise",
             },
+        )
+
+
+class HashFileLikeTestCase(SimpleTestCase):
+    test_file = Path.cwd() / "LICENSE"
+
+    def test_hashes_io(self):
+        self.assertEqual(
+            hash_filelike(BytesIO(b"test")), "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
+        )
+
+    def test_hashes_file(self):
+        with self.test_file.open(mode="rb") as f:
+            self.assertEqual(
+                hash_filelike(f), "9e58400061ca660ef7b5c94338a5205627c77eda"
+            )
+
+    def test_hashes_file_bytes(self):
+        with self.test_file.open(mode="rb") as f:
+            self.assertEqual(
+                hash_filelike(f), "9e58400061ca660ef7b5c94338a5205627c77eda"
+            )
+
+    def test_hashes_django_uploaded_file(self):
+        """
+        Check Django's file shims can be hashed as-is.
+        `SimpleUploadedFile` inherits the base `UploadedFile`, but is easiest to test against
+        """
+        self.assertEqual(
+            hash_filelike(SimpleUploadedFile("example.txt", b"test")),
+            "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+        )
+
+    @unittest.skipIf(
+        hasattr(hashlib, "file_digest"),
+        reason="`file_digest` doesn't support this interface",
+    )
+    def test_hashes_large_file(self):
+        class FakeLargeFile:
+            """
+            A class that pretends to be a huge file (~1.3GB)
+            """
+
+            def __init__(self):
+                self.iterations = 5000
+
+            def read(self, bytes):
+                self.iterations -= 1
+                if not self.iterations:
+                    return b""
+
+                return b"A" * bytes
+
+        self.assertEqual(
+            hash_filelike(FakeLargeFile()),
+            "bd36f0c5a02cd6e9e34202ea3ff8db07b533e025",
+        )
+
+
+class TestTemplateIsOverridden(SimpleTestCase):
+    def setUp(self):
+        template_is_overridden.cache_clear()
+
+    def test_template_is_overridden_false(self):
+        self.assertIs(
+            template_is_overridden(
+                "wagtailcore/shared/block_preview.html",
+                "templates",
+            ),
+            False,
+        )
+
+    def test_template_is_overridden_true(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "wagtailcore/shared")
+            os.makedirs(path, exist_ok=True)
+            with open(os.path.join(path, "block_preview.html"), "w") as f:
+                f.write("Custom file")
+
+            with self.settings(
+                TEMPLATES=[
+                    {**settings.TEMPLATES[0], "DIRS": [temp_dir], "NAME": "tmp"},
+                    *settings.TEMPLATES,
+                ]
+            ):
+                self.assertIs(
+                    template_is_overridden(
+                        "wagtailcore/shared/block_preview.html",
+                        "templates",
+                    ),
+                    True,
+                )
+
+
+class TestVersion(SimpleTestCase):
+    def test_get_main_version(self):
+        cases = [
+            ((6, 2, 0, "final", 0), False, "6.2"),
+            ((6, 2, 1, "final", 0), False, "6.2"),
+            ((6, 2, 0, "final", 0), True, "6.2"),
+            ((6, 2, 1, "final", 0), True, "6.2.1"),
+        ]
+        for version, include_patch, expected in cases:
+            with self.subTest(version=version, include_patch=include_patch):
+                self.assertEqual(get_main_version(version, include_patch), expected)
+
+
+class TestFlattenChoices(SimpleTestCase):
+    def test_tuple_choices(self):
+        choices = [(1, "1st"), (2, "2nd")]
+        self.assertEqual(flatten_choices(choices), {"1": "1st", "2": "2nd"})
+
+    def test_grouped_tuple_choices(self):
+        choices = [("Group", [(1, "1st"), (2, "2nd")])]
+        self.assertEqual(flatten_choices(choices), {"1": "1st", "2": "2nd"})
+
+    def test_dictionary_choices(self):
+        choices = {
+            "Martial Arts": {"judo": "Judo", "karate": "Karate"},
+            "Racket": {"badminton": "Badminton", "tennis": "Tennis"},
+            "unknown": "Unknown",
+        }
+        self.assertEqual(
+            flatten_choices(choices),
+            {
+                "judo": "Judo",
+                "karate": "Karate",
+                "badminton": "Badminton",
+                "tennis": "Tennis",
+                "unknown": "Unknown",
+            },
+        )
+
+
+class TestWidgetWithScript(TestCase):
+    def test_deprecation(self):
+        message = "The usage of `WidgetWithScript` hook is deprecated. Use external scripts instead."
+
+        with unittest.mock.patch("warnings.warn", wraps=warnings.warn) as warn_mock:
+            with self.assertWarnsMessage(RemovedInWagtail70Warning, message):
+                from wagtail.utils.widgets import WidgetWithScript
+
+                class MyWidget(WidgetWithScript):
+                    pass
+
+        # Make sure warn was called with stacklevel=3, so the actual caller
+        # that imports WidgetWithScript is shown in the warning message
+        warn_mock.assert_called_with(
+            message,
+            category=RemovedInWagtail70Warning,
+            stacklevel=3,
         )

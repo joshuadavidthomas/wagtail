@@ -1,12 +1,19 @@
-# -*- coding: utf-8 -*-
+from io import BytesIO
+
+from django.conf import settings
+from django.contrib.auth.models import Permission
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from openpyxl.reader.excel import load_workbook
 
 from wagtail.admin.admin_url_finder import AdminURLFinder
+from wagtail.contrib.frontend_cache.tests import PURGED_URLS
 from wagtail.contrib.redirects import models
+from wagtail.log_actions import registry as log_registry
 from wagtail.models import Page, Site
 from wagtail.test.routablepage.models import RoutablePageTest
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
 
 
 @override_settings(
@@ -198,6 +205,24 @@ class TestRedirects(TestCase):
         # Check that we were redirected temporarily
         self.assertRedirects(
             response, "/redirectto", status_code=302, fetch_redirect_response=False
+        )
+
+    def test_redirect_without_trailing_slash(self):
+        # Create a redirect
+        redirect = models.Redirect(old_path="/redirectme", redirect_link="/redirectto")
+        redirect.save()
+
+        # confirm that CommonMiddleware's append-slash behaviour is enabled
+        self.assertTrue(settings.APPEND_SLASH)
+
+        response = self.client.get("/redirectme")
+        # Request should be picked up by RedirectMiddleware, not CommonMiddleware
+        # (which would redirect to /redirectme/ instead).
+        # Before Django 4.2, CommonMiddleware performed the 'add trailing slash' test
+        # during the initial request processing, which took precedence over RedirectMiddleware
+        # and caused a double redirect (/redirectme -> /redirectme/ -> /redirectto).
+        self.assertRedirects(
+            response, "/redirectto", status_code=301, fetch_redirect_response=False
         )
 
     def test_redirect_stripping_query_string(self):
@@ -572,7 +597,14 @@ class TestRedirects(TestCase):
         self.assertIs(redirect.is_permanent, True)
 
 
-class TestRedirectsIndexView(TestCase, WagtailTestUtils):
+@override_settings(
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+)
+class TestRedirectsIndexView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.site = Site.objects.first()
+
     def setUp(self):
         self.login()
 
@@ -583,11 +615,25 @@ class TestRedirectsIndexView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailredirects/index.html")
+        self.assertBreadcrumbsItemsRendered(
+            [{"url": "", "label": "Redirects"}],
+            response.content,
+        )
+        self.assertContains(response, "No redirects have been created")
 
     def test_search(self):
-        response = self.get({"q": "Hello"})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["query_string"], "Hello")
+        models.Redirect.objects.create(
+            old_path="/aaargh", redirect_link="http://torchbox.com/"
+        )
+        models.Redirect.objects.create(
+            old_path="/torchbox", redirect_link="http://aaargh.com/"
+        )
+        models.Redirect.objects.create(
+            old_path="/unrelated", redirect_link="http://unrelated.com/"
+        )
+        response = self.get({"q": "Aaargh"})
+        self.assertEqual(len(response.context["redirects"]), 2)
+        self.assertEqual(response.context["query_string"], "Aaargh")
 
     def test_search_results(self):
         models.Redirect.objects.create(
@@ -596,8 +642,15 @@ class TestRedirectsIndexView(TestCase, WagtailTestUtils):
         models.Redirect.objects.create(
             old_path="/torchbox", redirect_link="http://aaargh.com/"
         )
-        response = self.get({"q": "aaargh"})
+        models.Redirect.objects.create(
+            old_path="/unrelated", redirect_link="http://unrelated.com/"
+        )
+        response = self.client.get(
+            reverse("wagtailredirects:index_results"),
+            {"q": "Aaargh"},
+        )
         self.assertEqual(len(response.context["redirects"]), 2)
+        self.assertEqual(response.context["query_string"], "Aaargh")
 
     def test_pagination(self):
         pages = ["0", "1", "-1", "9999", "Not a page"]
@@ -605,7 +658,7 @@ class TestRedirectsIndexView(TestCase, WagtailTestUtils):
             response = self.get({"p": page})
             self.assertEqual(response.status_code, 200)
 
-    def test_listing_order(self):
+    def test_default_ordering(self):
         for i in range(0, 10):
             models.Redirect.objects.create(
                 old_path="/redirect%d" % i, redirect_link="http://torchbox.com/"
@@ -619,12 +672,122 @@ class TestRedirectsIndexView(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["redirects"][0].old_path, "/aaargh")
 
+    def test_custom_orderings(self):
+        models.Redirect.objects.create(
+            old_path="/test", redirect_link="http://wagtail.org/"
+        )
+        valid_orderings = {
+            "old_path",
+            "-old_path",
+            "site__site_name",
+            "-site__site_name",
+            "is_permanent",
+            "-is_permanent",
+        }
+        for ordering in valid_orderings:
+            with self.subTest(ordering=ordering):
+                response = self.get({"ordering": ordering})
+                self.assertEqual(response.status_code, 200)
+                soup = self.get_soup(response.content)
+                links = {
+                    reverse("wagtailredirects:index") + "?ordering=" + other
+                    for other in valid_orderings
+                    if not other.startswith("-")
+                    and other != ordering
+                    or other == f"-{ordering}"
+                }
+                for link in links:
+                    self.assertIsNotNone(soup.find("a", {"href": link}))
+                self.assertEqual(
+                    response.context["object_list"].query.order_by,
+                    (ordering,),
+                )
 
-class TestRedirectsAddView(TestCase, WagtailTestUtils):
+    def test_filtering_by_type(self):
+        temp_redirect = models.Redirect.add_redirect("/from", "/to", False)
+        perm_redirect = models.Redirect.add_redirect("/cat", "/dog", True)
+
+        response = self.get(params={"is_permanent": "True"})
+
+        self.assertContains(response, perm_redirect.old_path)
+        self.assertNotContains(response, temp_redirect.old_path)
+
+    def test_filtering_by_site(self):
+        site_redirect = models.Redirect.add_redirect("/cat", "/dog")
+        site_redirect.site = self.site
+        site_redirect.save()
+        nosite_redirect = models.Redirect.add_redirect("/from", "/to")
+
+        response = self.get(params={"site": self.site.pk})
+
+        self.assertContains(response, site_redirect.old_path)
+        self.assertNotContains(response, nosite_redirect.old_path)
+
+    def test_csv_export(self):
+        models.Redirect.add_redirect("/from", "/to", False)
+
+        # Session, User, UserProfile, Redirects
+        with self.assertNumQueries(4):
+            response = self.get(params={"export": "csv"})
+
+            csv_data = response.getvalue().decode().split("\n")
+
+        self.assertEqual(response.status_code, 200)
+        csv_header = csv_data[0]
+        csv_entries = csv_data[1:]
+        csv_entries = csv_entries[:-1]  # Drop empty last line
+
+        self.assertEqual(csv_header, "From,To,Type,Site\r")
+        self.assertEqual(len(csv_entries), 1)
+        self.assertEqual(csv_entries[0], "/from,/to,temporary,\r")
+
+    def test_xlsx_export(self):
+        models.Redirect.add_redirect("/from", "/to", True)
+
+        # Session, User, UserProfile, Redirects
+        with self.assertNumQueries(4):
+            response = self.get(params={"export": "xlsx"})
+            workbook_data = response.getvalue()
+
+        self.assertEqual(response.status_code, 200)
+
+        worksheet = load_workbook(filename=BytesIO(workbook_data))["Sheet1"]
+        cell_array = [[cell.value for cell in row] for row in worksheet.rows]
+
+        self.assertEqual(cell_array[0], ["From", "To", "Type", "Site"])
+        self.assertEqual(len(cell_array), 2)
+        self.assertEqual(cell_array[1], ["/from", "/to", "permanent", None])
+
+    def test_num_queries_in_export(self):
+        page = Page.objects.get(id=2)
+        for i in range(3):
+            models.Redirect.add_redirect(f"/from{i}", "/to", False)
+            models.Redirect.add_redirect(f"/from-site{i}", "/to", False, site=self.site)
+            models.Redirect.add_redirect(f"/to-page{i}", page, False)
+
+        response = self.get(params={"export": "csv"})
+        csv_data = response.getvalue().decode().strip().split("\n")
+        # Session, User, UserProfile, Redirects
+        with self.assertNumQueries(4):
+            response = self.get(params={"export": "csv"})
+            csv_data = response.getvalue().decode().strip().split("\n")
+
+        self.assertEqual(len(csv_data), 10)
+
+
+@override_settings(
+    WAGTAILFRONTENDCACHE={
+        "dummy": {
+            "BACKEND": "wagtail.contrib.frontend_cache.tests.MockBackend",
+        },
+    },
+)
+class TestRedirectsAddView(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
         self.login()
+        PURGED_URLS.clear()
 
     def get(self, params={}):
         return self.client.get(reverse("wagtailredirects:add"), params)
@@ -638,34 +801,43 @@ class TestRedirectsAddView(TestCase, WagtailTestUtils):
         self.assertTemplateUsed(response, "wagtailredirects/add.html")
 
     def test_add(self):
-        response = self.post(
-            {
-                "old_path": "/test",
-                "site": "",
-                "is_permanent": "on",
-                "redirect_link": "http://www.test.com/",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "site": "",
+                    "is_permanent": "on",
+                    "redirect_link": "http://www.test.com/",
+                }
+            )
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailredirects:index"))
 
         # Check that the redirect was created
         redirects = models.Redirect.objects.filter(old_path="/test")
+        redirect = redirects.first()
         self.assertEqual(redirects.count(), 1)
-        self.assertEqual(redirects.first().redirect_link, "http://www.test.com/")
-        self.assertIsNone(redirects.first().site)
+        self.assertEqual(redirect.redirect_link, "http://www.test.com/")
+        self.assertIsNone(redirect.site)
+
+        # Check that the action log is marked as "created"
+        log_entry = log_registry.get_logs_for_instance(redirect).first()
+        self.assertEqual(log_entry.action, "wagtail.create")
+
+        self.assertEqual(PURGED_URLS, {"http://localhost/test"})
 
     def test_add_with_site(self):
-        localhost = Site.objects.get(hostname="localhost")
-        response = self.post(
-            {
-                "old_path": "/test",
-                "site": localhost.id,
-                "is_permanent": "on",
-                "redirect_link": "http://www.test.com/",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            localhost = Site.objects.get(hostname="localhost")
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "site": localhost.id,
+                    "is_permanent": "on",
+                    "redirect_link": "http://www.test.com/",
+                }
+            )
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailredirects:index"))
@@ -676,70 +848,79 @@ class TestRedirectsAddView(TestCase, WagtailTestUtils):
         self.assertEqual(redirects.first().redirect_link, "http://www.test.com/")
         self.assertEqual(redirects.first().site, localhost)
 
+        self.assertEqual(PURGED_URLS, {"http://localhost/test"})
+
     def test_add_validation_error(self):
-        response = self.post(
-            {
-                "old_path": "",
-                "site": "",
-                "is_permanent": "on",
-                "redirect_link": "http://www.test.com/",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.post(
+                {
+                    "old_path": "",
+                    "site": "",
+                    "is_permanent": "on",
+                    "redirect_link": "http://www.test.com/",
+                }
+            )
 
         # Should not redirect to index
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(PURGED_URLS, set())
 
     def test_cannot_add_duplicate_with_no_site(self):
-        models.Redirect.objects.create(
-            old_path="/test", site=None, redirect_link="http://elsewhere.com/"
-        )
-        response = self.post(
-            {
-                "old_path": "/test",
-                "site": "",
-                "is_permanent": "on",
-                "redirect_link": "http://www.test.com/",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            models.Redirect.objects.create(
+                old_path="/test", site=None, redirect_link="http://elsewhere.com/"
+            )
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "site": "",
+                    "is_permanent": "on",
+                    "redirect_link": "http://www.test.com/",
+                }
+            )
 
         # Should not redirect to index
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(PURGED_URLS, set())
 
     def test_cannot_add_duplicate_on_same_site(self):
-        localhost = Site.objects.get(hostname="localhost")
-        models.Redirect.objects.create(
-            old_path="/test", site=localhost, redirect_link="http://elsewhere.com/"
-        )
-        response = self.post(
-            {
-                "old_path": "/test",
-                "site": localhost.pk,
-                "is_permanent": "on",
-                "redirect_link": "http://www.test.com/",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            localhost = Site.objects.get(hostname="localhost")
+            models.Redirect.objects.create(
+                old_path="/test", site=localhost, redirect_link="http://elsewhere.com/"
+            )
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "site": localhost.pk,
+                    "is_permanent": "on",
+                    "redirect_link": "http://www.test.com/",
+                }
+            )
 
         # Should not redirect to index
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(PURGED_URLS, set())
 
     def test_can_reuse_path_on_other_site(self):
-        localhost = Site.objects.get(hostname="localhost")
-        contact_page = Page.objects.get(url_path="/home/contact-us/")
-        other_site = Site.objects.create(
-            hostname="other.example.com", port=80, root_page=contact_page
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            localhost = Site.objects.get(hostname="localhost")
+            contact_page = Page.objects.get(url_path="/home/contact-us/")
+            other_site = Site.objects.create(
+                hostname="other.example.com", port=80, root_page=contact_page
+            )
 
-        models.Redirect.objects.create(
-            old_path="/test", site=localhost, redirect_link="http://elsewhere.com/"
-        )
-        response = self.post(
-            {
-                "old_path": "/test",
-                "site": other_site.pk,
-                "is_permanent": "on",
-                "redirect_link": "http://www.test.com/",
-            }
-        )
+            models.Redirect.objects.create(
+                old_path="/test", site=localhost, redirect_link="http://elsewhere.com/"
+            )
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "site": other_site.pk,
+                    "is_permanent": "on",
+                    "redirect_link": "http://www.test.com/",
+                }
+            )
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailredirects:index"))
@@ -748,15 +929,18 @@ class TestRedirectsAddView(TestCase, WagtailTestUtils):
         redirects = models.Redirect.objects.filter(redirect_link="http://www.test.com/")
         self.assertEqual(redirects.count(), 1)
 
+        self.assertEqual(PURGED_URLS, redirects.get().old_links())
+
     def test_add_long_redirect(self):
-        response = self.post(
-            {
-                "old_path": "/test",
-                "site": "",
-                "is_permanent": "on",
-                "redirect_link": "https://www.google.com/search?q=this+is+a+very+long+url+because+it+has+a+huge+search+term+appended+to+the+end+of+it+even+though+someone+should+really+not+be+doing+something+so+crazy+without+first+seeing+a+psychiatrist",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "site": "",
+                    "is_permanent": "on",
+                    "redirect_link": "https://www.google.com/search?q=this+is+a+very+long+url+because+it+has+a+huge+search+term+appended+to+the+end+of+it+even+though+someone+should+really+not+be+doing+something+so+crazy+without+first+seeing+a+psychiatrist",
+                }
+            )
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailredirects:index"))
@@ -770,8 +954,17 @@ class TestRedirectsAddView(TestCase, WagtailTestUtils):
         )
         self.assertIsNone(redirects.first().site)
 
+        self.assertEqual(PURGED_URLS, redirects.get().old_links())
 
-class TestRedirectsEditView(TestCase, WagtailTestUtils):
+
+@override_settings(
+    WAGTAILFRONTENDCACHE={
+        "dummy": {
+            "BACKEND": "wagtail.contrib.frontend_cache.tests.MockBackend",
+        },
+    },
+)
+class TestRedirectsEditView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a redirect to edit
         self.redirect = models.Redirect(
@@ -781,6 +974,8 @@ class TestRedirectsEditView(TestCase, WagtailTestUtils):
 
         # Login
         self.user = self.login()
+
+        PURGED_URLS.clear()
 
     def get(self, params={}, redirect_id=None):
         return self.client.get(
@@ -798,23 +993,31 @@ class TestRedirectsEditView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailredirects/edit.html")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"url": reverse("wagtailredirects:index"), "label": "Redirects"},
+                {"url": "", "label": "/test"},
+            ],
+            response.content,
+        )
 
         url_finder = AdminURLFinder(self.user)
         expected_url = "/admin/redirects/%d/" % self.redirect.id
         self.assertEqual(url_finder.get_edit_url(self.redirect), expected_url)
 
-    def test_nonexistant_redirect(self):
+    def test_nonexistent_redirect(self):
         self.assertEqual(self.get(redirect_id=100000).status_code, 404)
 
     def test_edit(self):
-        response = self.post(
-            {
-                "old_path": "/test",
-                "is_permanent": "on",
-                "site": "",
-                "redirect_link": "http://www.test.com/ive-been-edited",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "is_permanent": "on",
+                    "site": "",
+                    "redirect_link": "http://www.test.com/ive-been-edited",
+                }
+            )
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailredirects:index"))
@@ -827,17 +1030,20 @@ class TestRedirectsEditView(TestCase, WagtailTestUtils):
         )
         self.assertIsNone(redirects.first().site)
 
-    def test_edit_with_site(self):
-        localhost = Site.objects.get(hostname="localhost")
+        self.assertEqual(PURGED_URLS, {"http://localhost/test"})
 
-        response = self.post(
-            {
-                "old_path": "/test",
-                "is_permanent": "on",
-                "site": localhost.id,
-                "redirect_link": "http://www.test.com/ive-been-edited",
-            }
-        )
+    def test_edit_with_site(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            localhost = Site.objects.get(hostname="localhost")
+
+            response = self.post(
+                {
+                    "old_path": "/test",
+                    "is_permanent": "on",
+                    "site": localhost.id,
+                    "redirect_link": "http://www.test.com/ive-been-edited",
+                }
+            )
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailredirects:index"))
@@ -849,38 +1055,83 @@ class TestRedirectsEditView(TestCase, WagtailTestUtils):
             redirects.first().redirect_link, "http://www.test.com/ive-been-edited"
         )
         self.assertEqual(redirects.first().site, localhost)
+        self.assertEqual(PURGED_URLS, {"http://localhost/test"})
 
     def test_edit_validation_error(self):
-        response = self.post(
-            {
-                "old_path": "",
-                "is_permanent": "on",
-                "site": "",
-                "redirect_link": "http://www.test.com/ive-been-edited",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.post(
+                {
+                    "old_path": "",
+                    "is_permanent": "on",
+                    "site": "",
+                    "redirect_link": "http://www.test.com/ive-been-edited",
+                }
+            )
 
         # Should not redirect to index
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(PURGED_URLS, set())
 
     def test_edit_duplicate(self):
-        models.Redirect.objects.create(
-            old_path="/othertest", site=None, redirect_link="http://elsewhere.com/"
-        )
-        response = self.post(
-            {
-                "old_path": "/othertest",
-                "is_permanent": "on",
-                "site": "",
-                "redirect_link": "http://www.test.com/ive-been-edited",
-            }
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            models.Redirect.objects.create(
+                old_path="/othertest", site=None, redirect_link="http://elsewhere.com/"
+            )
+            response = self.post(
+                {
+                    "old_path": "/othertest",
+                    "is_permanent": "on",
+                    "site": "",
+                    "redirect_link": "http://www.test.com/ive-been-edited",
+                }
+            )
 
         # Should not redirect to index
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(PURGED_URLS, set())
+
+    def test_get_with_no_permission(self, redirect_id=None):
+        self.user.is_superuser = False
+        self.user.save()
+        # Only basic access_admin permission is given
+        self.user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="wagtailadmin",
+                codename="access_admin",
+            )
+        )
+
+        response = self.get()
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+
+    def test_get_with_edit_permission_only(self):
+        self.user.is_superuser = False
+        self.user.save()
+        self.user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="wagtailadmin",
+                codename="access_admin",
+            ),
+            Permission.objects.get(
+                content_type__app_label="wagtailredirects",
+                codename="change_redirect",
+            ),
+        )
+
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailredirects/edit.html")
 
 
-class TestRedirectsDeleteView(TestCase, WagtailTestUtils):
+@override_settings(
+    WAGTAILFRONTENDCACHE={
+        "dummy": {
+            "BACKEND": "wagtail.contrib.frontend_cache.tests.MockBackend",
+        },
+    },
+)
+class TestRedirectsDeleteView(WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a redirect to edit
         self.redirect = models.Redirect(
@@ -890,6 +1141,8 @@ class TestRedirectsDeleteView(TestCase, WagtailTestUtils):
 
         # Login
         self.login()
+
+        PURGED_URLS.clear()
 
     def get(self, params={}, redirect_id=None):
         return self.client.get(
@@ -907,11 +1160,12 @@ class TestRedirectsDeleteView(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailredirects/confirm_delete.html")
 
-    def test_nonexistant_redirect(self):
+    def test_nonexistent_redirect(self):
         self.assertEqual(self.get(redirect_id=100000).status_code, 404)
 
     def test_delete(self):
-        response = self.post()
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.post()
 
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailredirects:index"))
@@ -919,3 +1173,5 @@ class TestRedirectsDeleteView(TestCase, WagtailTestUtils):
         # Check that the redirect was deleted
         redirects = models.Redirect.objects.filter(old_path="/test")
         self.assertEqual(redirects.count(), 0)
+
+        self.assertEqual(PURGED_URLS, {"http://localhost/test"})

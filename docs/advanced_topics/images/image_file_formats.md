@@ -12,6 +12,9 @@ image formats and let the browser choose the one it prefers. For example:
 {% load wagtailimages_tags %}
 
 <picture>
+    {% image myimage width-1000 format-avif as image_avif %}
+    <source srcset="{{ image_avif.url }}" type="image/avif">
+
     {% image myimage width-1000 format-webp as image_webp %}
     <source srcset="{{ image_webp.url }}" type="image/webp">
 
@@ -22,23 +25,26 @@ image formats and let the browser choose the one it prefers. For example:
 </picture>
 ```
 
-### Customising output formats
+(customizing_output_formats)=
 
-By default all `bmp` and `webp` images are converted to the `png` format
-when no image output format is given.
+### Customizing output formats
+
+By default, all `avif`, `bmp` and `webp` images are converted to the `png` format
+when no image output format is given, and `heic` images are converted to `jpeg`.
 
 The default conversion mapping can be changed by setting the
-`WAGTAILIMAGES_FORMAT_CONVERSIONS` to a dictionary which maps the input type
+`WAGTAILIMAGES_FORMAT_CONVERSIONS` to a dictionary, which maps the input type
 to an output type.
 
 For example:
 
 ```python
     WAGTAILIMAGES_FORMAT_CONVERSIONS = {
+        'avif': 'avif',
         'bmp': 'jpeg',
         'webp': 'webp',
     }
 ```
 
-will convert `bmp` images to `jpeg` and disable the default `webp`
+will convert `bmp` images to `jpeg` and disable the default `avif` and `webp`
 to `png` conversion.

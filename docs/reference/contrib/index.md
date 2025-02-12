@@ -11,7 +11,6 @@ forms/index
 sitemaps
 frontendcache
 routablepage
-modeladmin/index
 searchpromotions
 simple_translation
 table_block
@@ -35,15 +34,11 @@ Provides a view that generates a Google XML sitemap of your public Wagtail conte
 
 ## [](frontendcache)
 
-A module for automatically purging pages from a cache (Varnish, Squid, Cloudflare or Cloudfront) when their content is changed.
+A module for automatically purging pages from a cache (Varnish, Squid, Cloudflare or CloudFront) when their content is changed.
 
 ## [](routablepage)
 
 Provides a way of embedding Django URLconfs into pages.
-
-## [](modeladmin/index)
-
-A module allowing for more customisable representation and management of custom models in Wagtail's admin area.
 
 ## [](searchpromotions)
 

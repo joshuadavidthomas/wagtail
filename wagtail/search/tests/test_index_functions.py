@@ -47,7 +47,7 @@ class TestGetIndexedInstance(TestCase):
         "default": {"BACKEND": "wagtail.search.tests.DummySearchBackend"}
     }
 )
-class TestInsertOrUpdateObject(TestCase, WagtailTestUtils):
+class TestInsertOrUpdateObject(WagtailTestUtils, TestCase):
     def test_inserts_object(self, backend):
         obj = models.Book.objects.create(
             title="Test", publication_date=date(2017, 10, 18), number_of_pages=100
@@ -110,7 +110,7 @@ class TestInsertOrUpdateObject(TestCase, WagtailTestUtils):
         "default": {"BACKEND": "wagtail.search.tests.DummySearchBackend"}
     }
 )
-class TestRemoveObject(TestCase, WagtailTestUtils):
+class TestRemoveObject(WagtailTestUtils, TestCase):
     def test_removes_object(self, backend):
         obj = models.Book.objects.create(
             title="Test", publication_date=date(2017, 10, 18), number_of_pages=100
@@ -157,12 +157,13 @@ class TestRemoveObject(TestCase, WagtailTestUtils):
         "default": {"BACKEND": "wagtail.search.tests.DummySearchBackend"}
     }
 )
-class TestSignalHandlers(TestCase, WagtailTestUtils):
+class TestSignalHandlers(WagtailTestUtils, TestCase):
     def test_index_on_create(self, backend):
         backend().reset_mock()
-        obj = models.Book.objects.create(
-            title="Test", publication_date=date(2017, 10, 18), number_of_pages=100
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            obj = models.Book.objects.create(
+                title="Test", publication_date=date(2017, 10, 18), number_of_pages=100
+            )
         backend().add.assert_called_with(obj)
 
     def test_index_on_update(self, backend):
@@ -172,7 +173,8 @@ class TestSignalHandlers(TestCase, WagtailTestUtils):
 
         backend().reset_mock()
         obj.title = "Updated test"
-        obj.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            obj.save()
 
         self.assertEqual(backend().add.call_count, 1)
         indexed_object = backend().add.call_args[0][0]
@@ -184,7 +186,8 @@ class TestSignalHandlers(TestCase, WagtailTestUtils):
         )
 
         backend().reset_mock()
-        obj.delete()
+        with self.captureOnCommitCallbacks(execute=True):
+            obj.delete()
         backend().delete.assert_called_with(obj)
 
     def test_do_not_index_fields_omitted_from_update_fields(self, backend):
@@ -195,9 +198,33 @@ class TestSignalHandlers(TestCase, WagtailTestUtils):
         backend().reset_mock()
         obj.title = "Updated test"
         obj.publication_date = date(2001, 10, 19)
-        obj.save(update_fields=["title"])
+        with self.captureOnCommitCallbacks(execute=True):
+            obj.save(update_fields=["title"])
 
         self.assertEqual(backend().add.call_count, 1)
         indexed_object = backend().add.call_args[0][0]
         self.assertEqual(indexed_object.title, "Updated test")
         self.assertEqual(indexed_object.publication_date, date(2017, 10, 18))
+
+
+@mock.patch("wagtail.search.tests.DummySearchBackend", create=True)
+@override_settings(
+    WAGTAILSEARCH_BACKENDS={
+        "default": {"BACKEND": "wagtail.search.tests.DummySearchBackend"}
+    }
+)
+class TestSignalHandlersSearchDisabled(TestCase, WagtailTestUtils):
+    def test_index_on_create_and_update(self, backend):
+        obj = models.UnindexedBook.objects.create(
+            title="Test", publication_date=date(2017, 10, 18), number_of_pages=100
+        )
+
+        self.assertEqual(backend().add.call_count, 0)
+        self.assertIsNone(backend().add.call_args)
+
+        backend().reset_mock()
+        obj.title = "Updated test"
+        obj.save()
+
+        self.assertEqual(backend().add.call_count, 0)
+        self.assertIsNone(backend().add.call_args)

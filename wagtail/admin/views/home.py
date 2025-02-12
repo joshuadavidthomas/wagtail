@@ -1,30 +1,32 @@
-import itertools
-from typing import Any, Mapping, Union
+from collections.abc import Mapping
+from typing import Any, Union
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import permission_required
-from django.db import connection
-from django.db.models import Max, Q
+from django.db.models import Exists, IntegerField, Max, OuterRef, Q
+from django.db.models.functions import Cast
 from django.forms import Media
 from django.http import Http404, HttpResponse
-from django.template.loader import render_to_string
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext_lazy as _
 from django.views.generic.base import TemplateView
 
 from wagtail import hooks
+from wagtail.admin.forms.search import SearchForm
+from wagtail.admin.icons import get_icons
 from wagtail.admin.navigation import get_site_for_user
 from wagtail.admin.site_summary import SiteSummaryPanel
 from wagtail.admin.ui.components import Component
 from wagtail.admin.views.generic import WagtailAdminTemplateMixin
 from wagtail.models import (
     Page,
+    PageLogEntry,
     Revision,
     TaskState,
-    UserPagePermissionsProxy,
     WorkflowState,
     get_default_page_content_type,
 )
+from wagtail.permissions import page_permission_policy
 
 User = get_user_model()
 
@@ -33,9 +35,8 @@ User = get_user_model()
 
 
 class UpgradeNotificationPanel(Component):
-    name = "upgrade_notification"
     template_name = "wagtailadmin/home/upgrade_notification.html"
-    order = 100
+    dismissible_id = "last_upgrade_check"
 
     def get_upgrade_check_setting(self) -> Union[bool, str]:
         return getattr(settings, "WAGTAIL_ENABLE_UPDATE_CHECK", True)
@@ -46,8 +47,19 @@ class UpgradeNotificationPanel(Component):
             return True
         return False
 
+    def get_dismissible_value(self, user) -> str:
+        if profile := getattr(user, "wagtail_userprofile", None):
+            return profile.dismissibles.get(self.dismissible_id)
+        return None
+
     def get_context_data(self, parent_context: Mapping[str, Any]) -> Mapping[str, Any]:
-        return {"lts_only": self.upgrade_check_lts_only()}
+        return {
+            "lts_only": self.upgrade_check_lts_only(),
+            "dismissible_id": self.dismissible_id,
+            "dismissible_value": self.get_dismissible_value(
+                parent_context["request"].user
+            ),
+        }
 
     def render_html(self, parent_context: Mapping[str, Any] = None) -> str:
         if (
@@ -59,84 +71,160 @@ class UpgradeNotificationPanel(Component):
             return ""
 
 
-class PagesForModerationPanel(Component):
-    name = "pages_for_moderation"
-    template_name = "wagtailadmin/home/pages_for_moderation.html"
-    order = 200
+class WhatsNewInWagtailVersionPanel(Component):
+    name = "whats_new_in_wagtail_version"
+    template_name = "wagtailadmin/home/whats_new_in_wagtail_version.html"
+    order = 110
+    _version = "4"
 
-    def get_context_data(self, parent_context):
-        request = parent_context["request"]
-        context = super().get_context_data(parent_context)
-        user_perms = UserPagePermissionsProxy(request.user)
-        context["page_revisions_for_moderation"] = (
-            user_perms.revisions_for_moderation()
-            .select_related("user")
-            .order_by("-created_at")
-        )
-        context["request"] = request
-        context["csrf_token"] = parent_context["csrf_token"]
-        return context
+    def get_whats_new_banner_setting(self) -> Union[bool, str]:
+        return getattr(settings, "WAGTAIL_ENABLE_WHATS_NEW_BANNER", True)
+
+    def get_dismissible_id(self) -> str:
+        return f"{self.name}_{self._version}"
+
+    def get_context_data(self, parent_context: Mapping[str, Any]) -> Mapping[str, Any]:
+        return {"dismissible_id": self.get_dismissible_id(), "version": self._version}
+
+    def is_shown(self, parent_context: Mapping[str, Any] = None) -> bool:
+        if not self.get_whats_new_banner_setting():
+            return False
+
+        profile = getattr(parent_context["request"].user, "wagtail_userprofile", None)
+        if profile and profile.dismissibles.get(self.get_dismissible_id()):
+            return False
+
+        return True
+
+    def render_html(self, parent_context: Mapping[str, Any] = None) -> str:
+        if not self.is_shown(parent_context):
+            return ""
+        return super().render_html(parent_context)
 
 
-class UserPagesInWorkflowModerationPanel(Component):
-    name = "user_pages_in_workflow_moderation"
-    template_name = "wagtailadmin/home/user_pages_in_workflow_moderation.html"
+class UserObjectsInWorkflowModerationPanel(Component):
+    name = "user_objects_in_workflow_moderation"
+    template_name = "wagtailadmin/home/user_objects_in_workflow_moderation.html"
     order = 210
 
     def get_context_data(self, parent_context):
         request = parent_context["request"]
         context = super().get_context_data(parent_context)
         if getattr(settings, "WAGTAIL_WORKFLOW_ENABLED", True):
+            # Need to cast the page ids to string because Postgres doesn't support
+            # implicit type casts when querying on GenericRelations. We also need
+            # to cast the object_id to integer when querying the pages for the same reason.
+            # https://code.djangoproject.com/ticket/16055
+            # Once the issue is resolved, this query can be removed and the
+            # filter can be changed to:
+            # Q(page__owner=request.user) | Q(requested_by=request.user)
+            pages_owned_by_user = Q(
+                base_content_type_id=get_default_page_content_type().id
+            ) & Exists(
+                Page.objects.filter(
+                    owner=request.user,
+                    id=Cast(OuterRef("object_id"), output_field=IntegerField()),
+                )
+            )
             # Find in progress workflow states which are either requested by the user or on pages owned by the user
             context["workflow_states"] = (
                 WorkflowState.objects.active()
-                .filter(Q(page__owner=request.user) | Q(requested_by=request.user))
+                .filter(pages_owned_by_user | Q(requested_by=request.user))
+                .prefetch_related(
+                    "content_object",
+                    "content_object__latest_revision",
+                )
                 .select_related(
-                    "page",
                     "current_task_state",
                     "current_task_state__task",
-                    "current_task_state__page_revision",
                 )
                 .order_by("-current_task_state__started_at")
             )
+            # Filter out workflow states where the GenericForeignKey points to
+            # a nonexistent object. This can happen if the model does not define
+            # a GenericRelation to WorkflowState and the instance is deleted.
+            context["workflow_states"] = [
+                state for state in context["workflow_states"] if state.content_object
+            ]
         else:
             context["workflow_states"] = WorkflowState.objects.none()
         context["request"] = request
         return context
 
 
-class WorkflowPagesToModeratePanel(Component):
-    name = "workflow_pages_to_moderate"
-    template_name = "wagtailadmin/home/workflow_pages_to_moderate.html"
+class WorkflowObjectsToModeratePanel(Component):
+    name = "workflow_objects_to_moderate"
+    template_name = "wagtailadmin/home/workflow_objects_to_moderate.html"
     order = 220
 
     def get_context_data(self, parent_context):
         request = parent_context["request"]
         context = super().get_context_data(parent_context)
-        if getattr(settings, "WAGTAIL_WORKFLOW_ENABLED", True):
-            states = (
-                TaskState.objects.reviewable_by(request.user)
-                .select_related(
-                    "page_revision",
-                    "task",
-                    "page_revision__user",
-                )
-                .order_by("-started_at")
-            )
-            context["states"] = [
-                (
-                    state,
-                    state.task.specific.get_actions(
-                        page=state.page_revision.content_object, user=request.user
-                    ),
-                    state.workflow_state.all_tasks_with_status(),
-                )
-                for state in states
-            ]
-        else:
-            context["states"] = []
+        context["states"] = []
         context["request"] = request
         context["csrf_token"] = parent_context["csrf_token"]
+
+        if not getattr(settings, "WAGTAIL_WORKFLOW_ENABLED", True):
+            return context
+
+        states = (
+            TaskState.objects.reviewable_by(request.user)
+            .select_related(
+                "revision",
+                "revision__user",
+                "workflow_state",
+                "workflow_state__workflow",
+            )
+            .prefetch_related(
+                "revision__content_object",
+                "revision__content_object__latest_revision",
+            )
+            .order_by("-started_at")
+            .annotate(
+                previous_revision_id=Revision.objects.previous_revision_id_subquery(),
+            )
+        )
+
+        for state in states:
+            obj = state.revision.content_object
+            # Skip task states where the revision's GenericForeignKey points to
+            # a nonexistent object. This can happen if the model does not define
+            # a GenericRelation to WorkflowState and/or Revision and the instance
+            # is deleted.
+            if not obj:
+                continue
+            actions = state.task.specific.get_actions(obj, request.user)
+            workflow_tasks = state.workflow_state.all_tasks_with_status()
+
+            workflow_action_url_name = "wagtailadmin_pages:workflow_action"
+            workflow_preview_url_name = "wagtailadmin_pages:workflow_preview"
+            revisions_compare_url_name = "wagtailadmin_pages:revisions_compare"
+
+            # Snippets can also have workflows
+            if not isinstance(obj, Page):
+                viewset = obj.snippet_viewset
+                workflow_action_url_name = viewset.get_url_name("workflow_action")
+                workflow_preview_url_name = viewset.get_url_name("workflow_preview")
+                revisions_compare_url_name = viewset.get_url_name("revisions_compare")
+
+            if not getattr(obj, "is_previewable", False):
+                workflow_preview_url_name = None
+
+            context["states"].append(
+                {
+                    "obj": obj,
+                    "revision": state.revision,
+                    "previous_revision_id": state.previous_revision_id,
+                    "live_revision_id": obj.live_revision_id,
+                    "task_state": state,
+                    "actions": actions,
+                    "workflow_tasks": workflow_tasks,
+                    "workflow_action_url_name": workflow_action_url_name,
+                    "workflow_preview_url_name": workflow_preview_url_name,
+                    "revisions_compare_url_name": revisions_compare_url_name,
+                }
+            )
+
         return context
 
 
@@ -153,10 +241,12 @@ class LockedPagesPanel(Component):
                 "locked_pages": Page.objects.filter(
                     locked=True,
                     locked_by=request.user,
+                )
+                .order_by("-locked_at", "-latest_revision_created_at", "-pk")
+                .specific(defer=True),
+                "can_remove_locks": page_permission_policy.user_has_permission(
+                    request.user, "unlock"
                 ),
-                "can_remove_locks": UserPagePermissionsProxy(
-                    request.user
-                ).can_remove_locks(),
                 "request": request,
                 "csrf_token": parent_context["csrf_token"],
             }
@@ -175,57 +265,49 @@ class RecentEditsPanel(Component):
 
         # Last n edited pages
         edit_count = getattr(settings, "WAGTAILADMIN_RECENT_EDITS_LIMIT", 5)
-        if connection.vendor == "mysql":
-            # MySQL can't handle the subselect created by the ORM version -
-            # it fails with "This version of MySQL doesn't yet support 'LIMIT & IN/ALL/ANY/SOME subquery'"
-            last_edits = Revision.objects.raw(
-                """
-                SELECT wr.* FROM
-                    wagtailcore_revision wr JOIN (
-                        SELECT max(created_at) AS max_created_at, object_id FROM
-                            wagtailcore_revision WHERE user_id = %s AND base_content_type_id = %s GROUP BY object_id ORDER BY max_created_at DESC LIMIT %s
-                    ) AS max_rev ON max_rev.max_created_at = wr.created_at ORDER BY wr.created_at DESC
-                 """,
-                [
-                    User._meta.pk.get_db_prep_value(request.user.pk, connection),
-                    get_default_page_content_type().id,
-                    edit_count,
-                ],
-            )
-        else:
-            last_edits_dates = (
-                Revision.page_revisions.filter(user=request.user)
-                .values("object_id")
-                .annotate(latest_date=Max("created_at"))
-                .order_by("-latest_date")
-                .values("latest_date")[:edit_count]
-            )
-            last_edits = Revision.page_revisions.filter(
-                created_at__in=last_edits_dates
-            ).order_by("-created_at")
 
-        # The revision's object_id is a string, so cast it to int first.
-        page_keys = [int(pr.object_id) for pr in last_edits]
-        pages = Page.objects.specific().in_bulk(page_keys)
-        context["last_edits"] = [
-            [revision, pages.get(int(revision.object_id))] for revision in last_edits
-        ]
+        # Query the audit log to get a resultset of (page ID, latest edit timestamp)
+        last_edits_dates = (
+            PageLogEntry.objects.filter(user=request.user, action="wagtail.edit")
+            .values("page_id")
+            .annotate(latest_date=Max("timestamp"))
+            .order_by("-latest_date")[:edit_count]
+        )
+        # Retrieve the page objects for those IDs
+        pages_mapping = (
+            Page.objects.specific()
+            .prefetch_workflow_states()
+            .annotate_approved_schedule()
+            .in_bulk([log["page_id"] for log in last_edits_dates])
+        )
+        # Compile a list of (latest edit timestamp, page object) tuples
+        last_edits = []
+        for log in last_edits_dates:
+            page = pages_mapping.get(log["page_id"])
+            if page:
+                last_edits.append((log["latest_date"], page))
+
+        context["last_edits"] = last_edits
         context["request"] = request
         return context
 
 
 class HomeView(WagtailAdminTemplateMixin, TemplateView):
-
     template_name = "wagtailadmin/home.html"
-    page_title = gettext_lazy("Dashboard")
+    page_title = _("Dashboard")
+    permission_policy = page_permission_policy
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         panels = self.get_panels()
+        site_summary = SiteSummaryPanel(self.request)
         site_details = self.get_site_details()
 
-        context["media"] = self.get_media(panels)
+        context["media"] = self.get_media([*panels, site_summary])
         context["panels"] = sorted(panels, key=lambda p: p.order)
+        context["site_summary"] = site_summary
+        context["upgrade_notification"] = UpgradeNotificationPanel()
+        context["search_form"] = SearchForm(placeholder=_("Search all pages…"))
         context["user"] = self.request.user
 
         return {**context, **site_details}
@@ -241,11 +323,10 @@ class HomeView(WagtailAdminTemplateMixin, TemplateView):
     def get_panels(self):
         request = self.request
         panels = [
-            SiteSummaryPanel(request),
-            UpgradeNotificationPanel(),
-            WorkflowPagesToModeratePanel(),
-            PagesForModerationPanel(),
-            UserPagesInWorkflowModerationPanel(),
+            # Disabled until a release warrants the banner.
+            # WhatsNewInWagtailVersionPanel(),
+            WorkflowObjectsToModeratePanel(),
+            UserObjectsInWorkflowModerationPanel(),
             RecentEditsPanel(),
             LockedPagesPanel(),
         ]
@@ -282,25 +363,5 @@ def default(request):
     raise Http404
 
 
-_icons_html = None
-
-
-def icons():
-    global _icons_html
-    if _icons_html is None:
-        icon_hooks = hooks.get_hooks("register_icons")
-        all_icons = sorted(
-            itertools.chain.from_iterable(hook([]) for hook in icon_hooks)
-        )
-        combined_icon_markup = ""
-        for icon in all_icons:
-            combined_icon_markup += render_to_string(icon).replace("svg", "symbol")
-
-        _full_sprite_html = render_to_string(
-            "wagtailadmin/shared/icons.html", {"icons": combined_icon_markup}
-        )
-    return _full_sprite_html
-
-
 def sprite(request):
-    return HttpResponse(icons())
+    return HttpResponse(get_icons(), content_type="image/svg+xml; charset=utf-8")

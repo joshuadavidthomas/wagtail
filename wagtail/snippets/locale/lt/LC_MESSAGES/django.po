@@ -5,14 +5,15 @@
 # Translators:
 # Matas Dailyda <matas@dailyda.com>, 2017-2018
 # Naglis Jonaitis, 2022
+# Naglis Jonaitis, 2022
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-19 19:01+0000\n"
 "Last-Translator: Naglis Jonaitis, 2022\n"
-"Language-Team: Lithuanian (http://www.transifex.com/torchbox/wagtail/"
+"Language-Team: Lithuanian (http://app.transifex.com/torchbox/wagtail/"
 "language/lt/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -25,6 +26,9 @@ msgstr ""
 msgid "Publish"
 msgstr "Publikuoti"
 
+msgid "Submit for moderation"
+msgstr "Pateikti moderavimui"
+
 msgid "Unpublish"
 msgstr "Nebepublikuoti"
 
@@ -34,12 +38,19 @@ msgstr "Ištrinti"
 msgid "Save"
 msgstr "Išsaugoti"
 
+msgid "Locked"
+msgstr "Užrakinta"
+
+#, python-format
+msgid "%(label)s and Publish"
+msgstr "%(label)s ir publikuoti"
+
 msgid "Wagtail snippets"
 msgstr "Wagtail nuokarpos"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' deleted."
-msgstr "%(snippet_type)s '%(instance)s' ištrinta."
+msgid "%(model_name)s '%(object)s' deleted."
+msgstr "%(model_name)s '%(object)s' ištrinta."
 
 #, python-format
 msgid "Delete %(snippet_type_name)s"
@@ -70,12 +81,6 @@ msgstr "Taip, ištrinti"
 msgid "No, don't delete"
 msgstr "Ne, neištrinti"
 
-msgid "Last updated"
-msgstr "Pask. kartą atnaujinta"
-
-msgid "History"
-msgstr "Istorija"
-
 msgid "Publishing…"
 msgstr "Publikuojama..."
 
@@ -91,130 +96,26 @@ msgstr "Pakeisti dabartinį juodraštį"
 msgid "Save draft"
 msgstr "Išsaugoti juodraštį"
 
-#, python-format
-msgid "New  %(snippet_type_name)s"
-msgstr "Nauja %(snippet_type_name)s"
-
-msgid "New"
-msgstr "Naujas"
-
-msgid "Actions"
-msgstr "Veiksmai"
-
-msgid "Usage"
-msgstr "Panaudojimas"
-
-msgid "Breadcrumb"
-msgstr "Naršymo kelias"
+msgid "Choose"
+msgstr "Pasirinkti"
 
 msgid "Snippets"
 msgstr "Nuokarpos"
 
-#, python-format
-msgid ""
-"No %(snippet_type_name_plural)s have been created. Why not <a href="
-"\"%(wagtailsnippets_create_url)s\">add one</a>?"
-msgstr ""
-"Nebuvo sukurti jokios %(snippet_type_name_plural)s. Kodėl gi <a href="
-"\"%(wagtailsnippets_create_url)s\">nesukūrus vienos</a>?"
-
-msgid "Live version"
-msgstr "Publikuota versija"
-
-msgid "Current draft"
-msgstr "Dabartinis juodraštis"
-
-msgid "Preview"
-msgstr "Peržiūrėti"
-
-msgid "Edit"
-msgstr "Redaguoti"
-
-msgid "Review this version"
-msgstr "Peržiūrėti šią versiją"
-
-msgid "Compare with previous version"
-msgstr "Palyginti su ankstesne versija"
-
-msgid "Compare with current version"
-msgstr "Palyginti su dabartine versija"
-
-msgid "Live"
-msgstr "Veikiantis"
-
-msgid "Draft"
-msgstr "Juodraštis"
-
-msgid "View history"
-msgstr "Peržiūrėti istoriją"
-
-#, python-format
-msgid "Snippets %(snippet_type_name_plural)s"
-msgstr "Nuokarpos %(snippet_type_name_plural)s"
-
-#, python-format
-msgid "Add %(snippet_type_name)s"
-msgstr "Pridėti %(snippet_type_name)s"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "%(title)s naudojimas"
-
-msgid "Usage of"
-msgstr "Naudojimas"
-
-msgid "Title"
-msgstr "Pavadinimas"
-
-msgid "Parent"
-msgstr "Tėvas"
-
-msgid "Type"
-msgstr "Tipas"
-
-msgid "Status"
-msgstr "Statusas"
-
-msgid "Edit this page"
-msgstr "Redaguoti šį puslapį"
-
-msgid "Choose"
-msgstr "Pasirinkti"
-
 msgid "Name"
 msgstr "Vardas"
 
-msgid "The snippet could not be created due to errors."
-msgstr "Nuokarpa negalėjo būti sukurta dėl klaidų."
+msgid "Home"
+msgstr "Namai"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' created."
-msgstr "%(snippet_type)s '%(instance)s' sukurta."
-
-msgid "The snippet could not be saved due to errors."
-msgstr "Nuokarpa negalėjo būti išsaugota dėl klaidų."
+msgid "Choose %(object)s"
+msgstr "Pasirinkti %(object)s"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' updated."
-msgstr "%(snippet_type)s '%(instance)s' atnaujinta."
-
-msgid "Date"
-msgstr "Data"
-
-msgid "Snippet history"
-msgstr "Nuokarpos istorija"
-
-msgid "Action"
-msgstr "Veiksmas"
+msgid "Choose another %(object)s"
+msgstr "Pasirinkti kitą %(object)s"
 
 #, python-format
-msgid "Edit '%(title)s'"
-msgstr "Redaguoti '%(title)s'"
-
-#, python-format
-msgid "Delete '%(title)s'"
-msgstr "Ištrinti '%(title)s'"
-
-#, python-format
-msgid "Choose %s"
-msgstr "Pasirinkti %s"
+msgid "Edit this %(object)s"
+msgstr "Redaguoti šį %(object)s"

@@ -8,6 +8,7 @@ from wagtail.admin.forms.collections import (
     CollectionChoiceField,
     collection_member_permission_formset_factory,
 )
+from wagtail.admin.forms.tags import validate_tag_length
 from wagtail.admin.widgets import AdminTagWidget
 from wagtail.documents.models import Document
 from wagtail.documents.permissions import (
@@ -42,8 +43,6 @@ class BaseDocumentForm(BaseCollectionMemberForm):
         if "file" in self.changed_data:
             self.instance._set_document_file_metadata()
 
-        super().save(commit=commit)
-
         if commit:
             if "file" in self.changed_data and self.original_file:
                 # If providing a new document file, delete the old one.
@@ -52,6 +51,9 @@ class BaseDocumentForm(BaseCollectionMemberForm):
                 self.original_file.storage.delete(self.original_file.name)
                 self.original_file = None
 
+        super().save(commit=commit)
+
+        if commit:
             # Reindex the image to make sure all tags are indexed
             search_index.insert_or_update_object(self.instance)
 
@@ -59,6 +61,11 @@ class BaseDocumentForm(BaseCollectionMemberForm):
 
     class Meta:
         widgets = {"tags": AdminTagWidget, "file": forms.FileInput()}
+
+    def clean_tags(self):
+        tags = self.cleaned_data["tags"]
+        validate_tag_length(tags)
+        return tags
 
 
 def get_document_base_form():

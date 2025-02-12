@@ -3,16 +3,17 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
-# ChihWei Wang <ihcgno@icloud.com>, 2022
-# ChihWei Wang <ihcgno@icloud.com>, 2020
+# Chih Wang <ihcgno@icloud.com>, 2020,2022
+# Chih Wang <ihcgno@icloud.com>, 2022
+# Chih Wang <ihcgno@icloud.com>, 2020
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
-"Last-Translator: ChihWei Wang <ihcgno@icloud.com>, 2022\n"
-"Language-Team: Chinese Traditional (http://www.transifex.com/torchbox/"
+"Last-Translator: Chih Wang <ihcgno@icloud.com>, 2020,2022\n"
+"Language-Team: Chinese Traditional (http://app.transifex.com/torchbox/"
 "wagtail/language/zh-Hant/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -27,18 +28,21 @@ msgid "Add Comment"
 msgstr "新增評論"
 
 #, python-format
-msgid "The minimum number of items is %d"
-msgstr "條目的最小數是%d"
+msgid "The minimum number of items is %(min_num)d"
+msgstr "條目的最小數是%(min_num)d"
 
 #, python-format
-msgid "The maximum number of items is %d"
-msgstr "條目的最大數是%d"
+msgid "The maximum number of items is %(max_num)d"
+msgstr "條目的最大數是%(max_num)d"
 
 msgid "Move up"
 msgstr "上移"
 
 msgid "Move down"
 msgstr "下移"
+
+msgid "Drag"
+msgstr "拖曳"
 
 msgid "Duplicate"
 msgstr "副本"
@@ -68,11 +72,14 @@ msgstr "密碼錯誤，請重新輸入"
 msgid "Comment"
 msgstr "評論"
 
-msgid "This page is currently awaiting moderation."
-msgstr "此頁面目前等待審核中"
+msgid "Locked"
+msgstr "已鎖定"
 
-msgid "Only reviewers for this task can edit the page."
-msgstr "儘此作業之審核者可編輯此頁面"
+msgid "Unlocked"
+msgstr "已解鎖"
+
+msgid "latest revision"
+msgstr "最新版本"
 
 msgid "live"
 msgstr "在用"
@@ -98,8 +105,14 @@ msgstr "過期日期/時間"
 msgid "expired"
 msgstr "已過期"
 
+msgid "scheduled"
+msgstr "已計劃"
+
 msgid "draft"
 msgstr "草稿"
+
+msgid "live + scheduled"
+msgstr "在用 + 已預定"
 
 msgid "live + draft"
 msgstr "發佈+草稿"
@@ -112,6 +125,45 @@ msgstr "已鎖定"
 
 msgid "locked at"
 msgstr "鎖定於"
+
+msgid "in moderation"
+msgstr "審核中"
+
+msgid "live + in moderation"
+msgstr "上線 + 審核中"
+
+msgid "Add/edit pages you own"
+msgstr "新增/編輯所屬的頁面"
+
+msgid "Bulk delete"
+msgstr "批量刪除"
+
+msgid "Delete pages with children"
+msgstr "刪除頁面及其子頁面"
+
+msgid "Edit"
+msgstr "編輯"
+
+msgid "Edit any page"
+msgstr "編輯任意頁面"
+
+msgid "Lock"
+msgstr "鎖定"
+
+msgid "Lock/unlock pages you've locked"
+msgstr "鎖定/解鎖頁面"
+
+msgid "Publish"
+msgstr "發佈"
+
+msgid "Publish any page"
+msgstr "發佈任意頁面"
+
+msgid "Unlock"
+msgstr "解鎖"
+
+msgid "Unlock any page"
+msgstr "解鎖作何頁面"
 
 msgid "title"
 msgstr "標題"
@@ -149,29 +201,11 @@ msgstr "是否需要在自動生成的選單中出現此頁面的Link。"
 msgid "latest revision created at"
 msgstr "最近修訂版本創建於"
 
-msgid "This slug is already in use"
-msgstr "此縮略名已被使用"
-
-msgid "scheduled"
-msgstr "已計劃"
-
-msgid "in moderation"
-msgstr "審核中"
-
-msgid "live + scheduled"
-msgstr "在用 + 已預定"
-
-msgid "live + in moderation"
-msgstr "上線 + 審核中"
-
 msgid "page"
 msgstr "頁面"
 
 msgid "pages"
 msgstr "頁面"
-
-msgid "submitted for moderation"
-msgstr "已提交審核"
 
 msgid "created at"
 msgstr "創建時間"
@@ -185,44 +219,17 @@ msgstr "內容JSON"
 msgid "approved go live at"
 msgstr "批準上線時間"
 
-msgid "Add/edit pages you own"
-msgstr "新增/編輯所屬的頁面"
+msgid "revision"
+msgstr "修訂版本"
 
-msgid "Edit"
-msgstr "編輯"
-
-msgid "Edit any page"
-msgstr "編輯任意頁面"
-
-msgid "Publish"
-msgstr "發佈"
-
-msgid "Publish any page"
-msgstr "發佈任意頁面"
-
-msgid "Bulk delete"
-msgstr "批量刪除"
-
-msgid "Delete pages with children"
-msgstr "刪除頁面及其子頁面"
-
-msgid "Lock"
-msgstr "鎖定"
-
-msgid "Lock/unlock pages you've locked"
-msgstr "鎖定/解鎖頁面"
-
-msgid "Unlock"
-msgstr "解鎖"
-
-msgid "Unlock any page"
-msgstr "解鎖作何頁面"
+msgid "revisions"
+msgstr "修訂版本"
 
 msgid "group"
 msgstr "群組"
 
-msgid "permission type"
-msgstr "權限類型"
+msgid "permission"
+msgstr "權限"
 
 msgid "group page permission"
 msgstr "群組頁面權限"
@@ -271,21 +278,11 @@ msgstr "啟用中的作業可添加至工作流程。停用作業不會將其由
 msgid "tasks"
 msgstr "作業"
 
-msgid ""
-"Active workflows can be added to pages. Deactivating a workflow does not "
-"remove it from existing pages."
-msgstr "啟用中的工作流程可增加至頁面。停用工作流程不會將其由現有的頁面中移除。"
-
 msgid "workflows"
 msgstr "工作流程"
 
 msgid "groups"
 msgstr "組"
-
-msgid ""
-"Pages at this step in a workflow will be moderated or approved by these "
-"groups of users"
-msgstr "於此工作流程階段之頁面將由群組中的使用者進行審核"
 
 msgid "Request changes"
 msgstr "變更請求"
@@ -344,9 +341,6 @@ msgstr "已略過"
 msgid "workflow state"
 msgstr "工作流程狀態"
 
-msgid "page revision"
-msgstr "頁版本"
-
 msgid "started at"
 msgstr "開始於"
 
@@ -396,14 +390,14 @@ msgstr "集合檢視限制"
 msgid "collections"
 msgstr "集合"
 
-msgid "permission"
-msgstr "權限"
-
 msgid "group collection permission"
 msgstr "群組集合權限"
 
 msgid "group collection permissions"
 msgstr "群組集合權限"
+
+msgid "uploaded by user"
+msgstr "使用者上傳"
 
 msgid "hostname"
 msgstr "主機名稱"
@@ -456,17 +450,8 @@ msgstr ""
 msgid "Public"
 msgstr "公開"
 
-msgid "Private, accessible to logged-in users"
-msgstr "私有，登錄用戶可訪問"
-
-msgid "Private, accessible with the following password"
-msgstr "私有，使用下列的密碼訪問："
-
 msgid "Private, accessible to users in specific groups"
 msgstr "私有，特定用戶組中的用戶可訪問"
-
-msgid "password"
-msgstr "密碼"
 
 msgid "view restriction"
 msgstr "查看限制"
@@ -527,12 +512,6 @@ msgstr "取消發佈預定的草稿"
 msgid "Unpublished scheduled draft"
 msgstr "已取消發佈預定的草稿"
 
-msgid "Locked"
-msgstr "已鎖定"
-
-msgid "Unlocked"
-msgstr "已解鎖"
-
 msgid "Reject"
 msgstr "駁回"
 
@@ -567,14 +546,26 @@ msgstr "移動"
 msgid "Moved from '%(old_parent)s' to '%(new_parent)s'"
 msgstr "由 '%(old_parent)s' 移動至 '%(new_parent)s'"
 
+msgid "Moved"
+msgstr "已搬移"
+
+msgid "Reorder"
+msgstr "重新排序"
+
 msgid "Reordered"
 msgstr "已重新排序"
 
 msgid "Schedule publication"
 msgstr "預定發佈"
 
+msgid "Page scheduled for publishing"
+msgstr "頁面已預定發佈排程"
+
 msgid "Unschedule publication"
 msgstr "取消預定發佈"
+
+msgid "Page unscheduled from publishing"
+msgstr "頁面已取消發佈排程"
 
 msgid "Add view restrictions"
 msgstr "新增檢視限制"
@@ -594,10 +585,6 @@ msgstr "已更新檢視限制"
 
 msgid "Remove view restrictions"
 msgstr "移除檢視限制"
-
-#, python-format
-msgid "Removed the '%(restriction)s' view restriction"
-msgstr "移除檢視限制 '%(restriction)s'"
 
 msgid "Removed view restriction"
 msgstr "已移除檢視限制"

@@ -1,14 +1,21 @@
 import csv
 import datetime
 from collections import OrderedDict
+from functools import partial
+from io import BytesIO
 
+from django.contrib.admin.utils import label_for_field
 from django.core.exceptions import FieldDoesNotExist
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import FileResponse, StreamingHttpResponse
+from django.utils import timezone
 from django.utils.dateformat import Formatter
 from django.utils.encoding import force_str
 from django.utils.formats import get_format
-from xlsxwriter.workbook import Workbook
+from django.utils.functional import cached_property
+from django.utils.text import capfirst
+from django.utils.translation import gettext as _
 
+from wagtail.admin.widgets.button import Button
 from wagtail.coreutils import multigetattr
 
 
@@ -136,15 +143,35 @@ class SpreadsheetExportMixin:
     custom_field_preprocess = {}
     # A dictionary of preprocessing functions by value class and format
     custom_value_preprocess = {
+        datetime.datetime: {
+            FORMAT_XLSX: lambda value: (
+                value
+                if timezone.is_naive(value)
+                else timezone.make_naive(value, datetime.timezone.utc)
+            )
+        },
         (datetime.date, datetime.time): {FORMAT_XLSX: None},
         list: {FORMAT_CSV: list_to_str, FORMAT_XLSX: list_to_str},
     }
     # A dictionary of column heading overrides in the format {field: heading}
     export_headings = {}
 
+    export_buttons_template_name = "wagtailadmin/shared/export_buttons.html"
+
+    export_filename = "spreadsheet-export"
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.is_export = request.GET.get("export") in self.FORMATS
+
+    def get_paginate_by(self, queryset):
+        if self.is_export:
+            return None
+        return super().get_paginate_by(queryset)
+
     def get_filename(self):
         """Gets the base filename for the exported spreadsheet, without extensions"""
-        return "spreadsheet-export"
+        return self.export_filename
 
     def to_row_dict(self, item):
         """Returns an OrderedDict (in the order given by list_export) of the exportable information for a model instance"""
@@ -167,29 +194,35 @@ class SpreadsheetExportMixin:
                 return format_dict[export_format]
 
         # Finally resort to force_str to prevent encoding errors
-        return force_str
+        return partial(force_str, strings_only=True)
 
-    def write_xlsx_row(self, worksheet, row_dict, row_number):
-        for col_number, (field, value) in enumerate(row_dict.items()):
-            preprocess_function = self.get_preprocess_function(
-                field, value, self.FORMAT_XLSX
+    def preprocess_field_value(self, field, value, export_format):
+        """Preprocesses a field value before writing it to the spreadsheet"""
+        preprocess_function = self.get_preprocess_function(field, value, export_format)
+        if preprocess_function is not None:
+            return preprocess_function(value)
+        else:
+            return value
+
+    def generate_xlsx_row(self, worksheet, row_dict, date_format=None):
+        """Generate cells to append to the worksheet"""
+        from openpyxl.cell import WriteOnlyCell
+
+        for field, value in row_dict.items():
+            cell = WriteOnlyCell(
+                worksheet, self.preprocess_field_value(field, value, self.FORMAT_XLSX)
             )
-            processed_value = (
-                preprocess_function(value) if preprocess_function else value
-            )
-            worksheet.write(row_number, col_number, processed_value)
+            if date_format and isinstance(value, datetime.datetime):
+                cell.number_format = date_format
+            yield cell
 
     def write_csv_row(self, writer, row_dict):
-        processed_row = {}
-        for field, value in row_dict.items():
-            preprocess_function = self.get_preprocess_function(
-                field, value, self.FORMAT_CSV
-            )
-            processed_value = (
-                preprocess_function(value) if preprocess_function else value
-            )
-            processed_row[field] = processed_value
-        return writer.writerow(processed_row)
+        return writer.writerow(
+            {
+                field: self.preprocess_field_value(field, value, self.FORMAT_CSV)
+                for field, value in row_dict.items()
+            }
+        )
 
     def get_heading(self, queryset, field):
         """Get the heading label for a given field for a spreadsheet generated from queryset"""
@@ -197,7 +230,7 @@ class SpreadsheetExportMixin:
         if heading_override:
             return force_str(heading_override)
         try:
-            return force_str(queryset.model._meta.get_field(field).verbose_name.title())
+            return capfirst(force_str(label_for_field(field, queryset.model)))
         except (AttributeError, FieldDoesNotExist):
             return force_str(field)
 
@@ -213,35 +246,37 @@ class SpreadsheetExportMixin:
 
     def write_xlsx(self, queryset, output):
         """Write an xlsx workbook from a queryset"""
-        workbook = Workbook(
-            output,
-            {
-                "in_memory": True,
-                "constant_memory": True,
-                "remove_timezone": True,
-                "default_date_format": ExcelDateFormatter().get(),
-            },
+        from openpyxl import Workbook
+
+        workbook = Workbook(write_only=True, iso_dates=True)
+
+        worksheet = workbook.create_sheet(title="Sheet1")
+        worksheet.append(
+            self.get_heading(queryset, field) for field in self.list_export
         )
-        worksheet = workbook.add_worksheet()
 
-        for col_number, field in enumerate(self.list_export):
-            worksheet.write(0, col_number, self.get_heading(queryset, field))
+        date_format = ExcelDateFormatter().get()
+        for item in queryset:
+            worksheet.append(
+                self.generate_xlsx_row(
+                    worksheet, self.to_row_dict(item), date_format=date_format
+                )
+            )
 
-        for row_number, item in enumerate(queryset):
-            self.write_xlsx_row(worksheet, self.to_row_dict(item), row_number + 1)
-
-        workbook.close()
+        workbook.save(output)
 
     def write_xlsx_response(self, queryset):
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        response["Content-Disposition"] = 'attachment; filename="{}.xlsx"'.format(
-            self.get_filename()
-        )
-        self.write_xlsx(queryset, response)
+        """Write an xlsx file from a queryset and return a FileResponse"""
+        output = BytesIO()
+        self.write_xlsx(queryset, output)
+        output.seek(0)
 
-        return response
+        return FileResponse(
+            output,
+            as_attachment=True,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=f"{self.get_filename()}.xlsx",
+        )
 
     def write_csv_response(self, queryset):
         stream = self.stream_csv(queryset)
@@ -271,3 +306,30 @@ class SpreadsheetExportMixin:
     @property
     def csv_export_url(self):
         return self.get_export_url("csv")
+
+    @cached_property
+    def show_export_buttons(self):
+        return bool(self.list_export)
+
+    @cached_property
+    def header_more_buttons(self):
+        buttons = super().header_more_buttons.copy()
+        if self.show_export_buttons:
+            buttons.append(
+                Button(
+                    _("Download XLSX"),
+                    url=self.xlsx_export_url,
+                    icon_name="download",
+                    priority=90,
+                )
+            )
+            buttons.append(
+                Button(
+                    _("Download CSV"),
+                    url=self.csv_export_url,
+                    icon_name="download",
+                    priority=100,
+                )
+            )
+
+        return buttons

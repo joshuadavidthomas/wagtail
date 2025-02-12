@@ -8,6 +8,7 @@ import { LinkMenuItemDefinition } from '../menu/LinkMenuItem';
 import { MenuItemDefinition } from '../menu/MenuItem';
 import { SubMenuItemDefinition } from '../menu/SubMenuItem';
 import { ModuleDefinition } from '../Sidebar';
+import { updateDismissibles } from '../../../controllers/DismissibleController';
 
 export function renderMenu(
   path: string,
@@ -32,6 +33,17 @@ export function renderMenu(
   );
 }
 
+export function isDismissed(item: MenuItemDefinition, state: MenuState) {
+  return (
+    // Non-dismissibles are considered as dismissed
+    !item.attrs['data-w-dismissible-id-value'] ||
+    // Dismissed on the server
+    'data-w-dismissible-dismissed-value' in item.attrs ||
+    // Dismissed on the client
+    state.dismissibles[item.name]
+  );
+}
+
 interface SetActivePath {
   type: 'set-active-path';
   path: string;
@@ -42,23 +54,89 @@ interface SetNavigationPath {
   path: string;
 }
 
-export type MenuAction = SetActivePath | SetNavigationPath;
+interface SetDismissibleState {
+  type: 'set-dismissible-state';
+  item: MenuItemDefinition;
+  value?: boolean;
+}
+
+export type MenuAction =
+  | SetActivePath
+  | SetNavigationPath
+  | SetDismissibleState;
 
 export interface MenuState {
   navigationPath: string;
   activePath: string;
+  dismissibles: Record<string, boolean>;
+}
+
+function walkDismissibleMenuItems(
+  menuItems: MenuItemDefinition[],
+  action: (item: MenuItemDefinition) => void,
+) {
+  menuItems.forEach((menuItem) => {
+    const id = menuItem.attrs['data-w-dismissible-id-value'];
+    if (id) {
+      action(menuItem);
+    }
+
+    if (menuItem instanceof SubMenuItemDefinition) {
+      walkDismissibleMenuItems(menuItem.menuItems, action);
+    }
+  });
+}
+
+function computeDismissibleState(
+  state: MenuState,
+  { item, value = true }: SetDismissibleState,
+) {
+  const update: Record<string, boolean> = {};
+
+  // Recursively update all dismissible items
+  walkDismissibleMenuItems([item], (menuItem) => {
+    update[menuItem.attrs['data-w-dismissible-id-value']] = value;
+  });
+
+  // Send the update to the server
+  if (Object.keys(update).length > 0) {
+    updateDismissibles(update);
+  }
+
+  // Only update the top-level item in the client state so that the submenus
+  // are not immediately dismissed until the next page load
+  return { ...state.dismissibles, [item.name]: value };
 }
 
 function menuReducer(state: MenuState, action: MenuAction) {
   const newState = { ...state };
 
-  if (action.type === 'set-active-path') {
-    newState.activePath = action.path;
-  } else if (action.type === 'set-navigation-path') {
-    newState.navigationPath = action.path;
+  switch (action.type) {
+    case 'set-active-path':
+      newState.activePath = action.path;
+      break;
+    case 'set-navigation-path':
+      newState.navigationPath = action.path;
+      break;
+    case 'set-dismissible-state':
+      newState.dismissibles = computeDismissibleState(state, action);
+      break;
+    default:
+      break;
   }
 
   return newState;
+}
+
+function getInitialDismissibleState(menuItems: MenuItemDefinition[]) {
+  const result: Record<string, boolean> = {};
+
+  walkDismissibleMenuItems(menuItems, (menuItem) => {
+    result[menuItem.attrs['data-w-dismissible-id-value']] =
+      'data-w-dismissible-dismissed-value' in menuItem.attrs;
+  });
+
+  return result;
 }
 
 interface MenuProps {
@@ -87,10 +165,11 @@ export const Menu: React.FunctionComponent<MenuProps> = ({
   // They are created by concatenating the name fields of all the menu/sub-menu items leading to the relevant one.
   // For example, the "Users" item in the "Settings" sub-menu would have the path 'settings.users'
   // - navigationPath references the current sub-menu that the user currently has open
-  // - activePath references the menu item for the the page the user is currently on
+  // - activePath references the menu item for the page the user is currently on
   const [state, dispatch] = React.useReducer(menuReducer, {
     navigationPath: '',
     activePath: '',
+    dismissibles: getInitialDismissibleState(menuItems),
   });
   const isVisible = !slim || expandingOrCollapsing;
   const accountSettingsOpen = state.navigationPath.startsWith('.account');
@@ -160,7 +239,7 @@ export const Menu: React.FunctionComponent<MenuProps> = ({
       const sidebar = document.querySelector('[data-wagtail-sidebar]');
 
       const isInside = sidebar && sidebar.contains(e.target as Node);
-      if (!isInside) {
+      if (!isInside && state.navigationPath !== '') {
         dispatch({
           type: 'set-navigation-path',
           path: '',
@@ -177,7 +256,7 @@ export const Menu: React.FunctionComponent<MenuProps> = ({
       document.removeEventListener('mousedown', onClickOutside);
       document.removeEventListener('touchend', onClickOutside);
     };
-  }, []);
+  }, [state.navigationPath]);
 
   const onClickAccountSettings = () => {
     // Pass account expand information to Sidebar component
@@ -218,8 +297,8 @@ export const Menu: React.FunctionComponent<MenuProps> = ({
             className={`
             ${slim ? 'w-px-4' : 'w-px-5'}
             sidebar-footer__account
-            w-bg-primary
-            w-text-white
+            w-bg-surface-menus
+            w-text-text-label-menus-default
             w-flex
             w-items-center
             w-relative
@@ -228,12 +307,10 @@ export const Menu: React.FunctionComponent<MenuProps> = ({
             w-border-0
             w-overflow-hidden
             w-py-3
-            hover:w-bg-primary-200
-            focus:w-bg-primary-200
+            hover:w-bg-surface-menu-item-active
+            focus:w-bg-surface-menu-item-active
             w-transition`}
-            title={gettext('Edit your account')}
             onClick={onClickAccountSettings}
-            aria-label={gettext('Edit your account')}
             aria-haspopup="menu"
             aria-expanded={accountSettingsOpen ? 'true' : 'false'}
             type="button"
@@ -251,7 +328,7 @@ export const Menu: React.FunctionComponent<MenuProps> = ({
                 {user.name}
               </div>
               <Icon
-                className="w-w-4 w-h-4 w-text-white"
+                className="w-w-4 w-h-4 w-text-text-label-menus-default"
                 name={accountSettingsOpen ? 'arrow-down' : 'arrow-up'}
               />
             </div>

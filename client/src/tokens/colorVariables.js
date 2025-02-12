@@ -15,14 +15,14 @@ const calcHSLDifference = (refVariable, refValue, value, unit = '') => {
   }
 
   // Either add or remove the difference based on whether it’s positive or negative.
-  const diff = ref - val;
+  const diff = (ref * 10 - val * 10) / 10;
   const operation = `${diff > 0 ? '-' : '+'} ${Math.abs(diff)}${unit}`;
 
   return `calc(var(${refVariable}) ${operation})`;
 };
 
 /**
- * Generate customisable CSS variables for a color palette, with override-able HSL components.
+ * Generate customizable CSS variables for a color palette, with override-able HSL components.
  *
  * For each shade of a color, we want to generate four variables:
  * - One for each HSL component of the color (Hue, Saturation, Lightness).
@@ -50,7 +50,7 @@ const generateColorVariables = (colors) => {
     // Use the DEFAULT hue as a reference to derive others from, or the darkest if there is no defined default.
     const darkestHue = Object.keys(hues).sort((a, b) => b - a)[0];
     const reference = hues.DEFAULT || hues[darkestHue];
-    const [refH, refS, refL] = reference.hsl.match(/\d+/g);
+    const [refH, refS, refL] = reference.hsl.match(/\d+(\.\d+)?/g);
     const refVar = reference.cssVariable;
 
     // Generate color variables for all individual color shades, based on the reference.
@@ -62,7 +62,7 @@ const generateColorVariables = (colors) => {
         s: `${shade.cssVariable}-saturation`,
         l: `${shade.cssVariable}-lightness`,
       };
-      const [h, s, l] = shade.hsl.match(/\d+/g);
+      const [h, s, l] = shade.hsl.match(/\d+(\.\d+)?/g);
       const isReferenceShade = reference.hex === shade.hex;
 
       if (isReferenceShade) {
@@ -85,6 +85,19 @@ const generateColorVariables = (colors) => {
   return colorVariables;
 };
 
+const generateThemeColorVariables = (themeCategories) => {
+  const colorVariables = {};
+
+  themeCategories.forEach((category) => {
+    Object.values(category.tokens).forEach((token) => {
+      colorVariables[token.cssVariable] = token.value;
+    });
+  });
+
+  return colorVariables;
+};
+
 module.exports = {
   generateColorVariables,
+  generateThemeColorVariables,
 };

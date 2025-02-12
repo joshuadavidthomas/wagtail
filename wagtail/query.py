@@ -1,16 +1,18 @@
 import posixpath
 import warnings
 from collections import defaultdict
-from typing import Any, Dict, Iterable, Tuple
+from collections.abc import Iterable
+from typing import Any
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import CharField, Prefetch, Q
 from django.db.models.expressions import Exists, OuterRef
 from django.db.models.functions import Cast, Length, Substr
-from django.db.models.query import BaseIterable, ModelIterable
+from django.db.models.query import ModelIterable
 from treebeard.mp_tree import MP_NodeQuerySet
 
+from wagtail.models.i18n import Locale
 from wagtail.models.sites import Site
 from wagtail.search.queryset import SearchableQuerySetMixin
 
@@ -139,19 +141,183 @@ class TreeQuerySet(MP_NodeQuerySet):
         return self.exclude(self.sibling_of_q(other, inclusive))
 
 
-class PageQuerySet(SearchableQuerySetMixin, TreeQuerySet):
+class SpecificQuerySetMixin:
     def __init__(self, *args, **kwargs):
         """Set custom instance attributes"""
         super().__init__(*args, **kwargs)
-        # set by defer_streamfields()
+        # set by PageQuerySet.defer_streamfields()
         self._defer_streamfields = False
+        self._specific_select_related_fields = ()
+        self._specific_prefetch_related_lookups = ()
 
     def _clone(self):
         """Ensure clones inherit custom attribute values."""
         clone = super()._clone()
         clone._defer_streamfields = self._defer_streamfields
+        clone._specific_select_related_fields = self._specific_select_related_fields
+        clone._specific_prefetch_related_lookups = (
+            self._specific_prefetch_related_lookups
+        )
         return clone
 
+    def specific(self, defer=False):
+        """
+        This efficiently gets all the specific items for the queryset, using
+        the minimum number of queries.
+
+        When the "defer" keyword argument is set to True, only generic
+        field values will be loaded and all specific fields will be deferred.
+        """
+        clone = self._clone()
+        if defer:
+            clone._iterable_class = DeferredSpecificIterable
+        else:
+            clone._iterable_class = SpecificIterable
+        return clone
+
+    @property
+    def is_specific(self):
+        """
+        Returns True if this queryset is already specific, False otherwise.
+        """
+        return issubclass(
+            self._iterable_class,
+            (SpecificIterable, DeferredSpecificIterable),
+        )
+
+    def select_related(self, *fields, for_specific_subqueries: bool = False):
+        """
+        Overrides Django's native :meth:`~django.db.models.query.QuerySet.select_related`
+        to allow related objects to be fetched by the subqueries made when a specific
+        queryset is evaluated.
+
+        When ``for_specific_subqueries`` is ``False`` (the default), the method functions
+        exactly like the original method. However, when ``True``, ``fields`` are
+        **required**, and must match names of ForeignKey fields on all specific models
+        that might be included in the result (which can include fields inherited from
+        concrete parents). Unlike when ``for_specific_subqueries`` is ``False``, no
+        validation is applied to ``fields`` when the method is called. Rather, that when
+        the method is called. Instead, that validation is applied for each individual
+        subquery when the queryset is evaluated. This difference in behaviour should be
+        taken into account when experimenting with ``for_specific_subqueries=True`` .
+
+        As with Django's native implementation, you chain multiple applications of
+        ``select_related()`` with ``for_specific_subqueries=True`` to progressively add
+        to the list of fields to be fetched. For example:
+
+        .. code-block:: python
+
+            # Fetch 'author' when retrieving specific page data
+            queryset = Page.objects.specific().select_related("author", for_specific_subqueries=True)
+
+            # We're rendering cards with images, so fetch the listing image too
+            queryset = queryset.select_related("listing_image", for_specific_subqueries=True)
+
+            # Fetch some key taxonomy data too
+            queryset = queryset.select_related("topic", "target_audience", for_specific_subqueries=True)
+
+        As with Django's native implementation, ``None`` can be supplied in place of
+        ``fields`` to negate a previous application of ``select_related()``. By default,
+        this will only work for cases where ``select_related()`` was called without
+        ``for_specific_subqueries``, or with ``for_specific_subqueries=False``. However,
+        you can use ``for_specific_subqueries=True`` to negate subquery-specific
+        applications too. For example:
+
+        .. code-block:: python
+
+            # Fetch 'author' and 'listing_image' when retrieving specific page data
+            queryset = Page.objects.specific().select_related(
+                "author",
+                "listing_image",
+                for_specific_subqueries=True
+            )
+
+            # I've changed my mind. Do not fetch any additional data
+            queryset = queryset.select_related(None, for_specific_subqueries=True)
+        """
+
+        if not for_specific_subqueries:
+            return super().select_related(*fields)
+        if not fields:
+            raise ValueError(
+                "'fields' must be specified when calling select_related() with for_specific_subqueries=True"
+            )
+        clone = self._chain()
+        if fields == (None,):
+            clone._specific_select_related_fields = ()
+        else:
+            clone._specific_select_related_fields = (
+                self._specific_select_related_fields + fields
+            )
+        return clone
+
+    def prefetch_related(self, *lookups, for_specific_subqueries: bool = False):
+        """
+        Overrides Django's native :meth:`~django.db.models.query.QuerySet.prefetch_related`
+        implementation to allow related objects to be fetched alongside the subqueries made
+        when a specific queryset is evaluated.
+
+        When ``for_specific_subqueries`` is ``False`` (the default), the method functions
+        exactly like the original method. However, when ``True``, ``lookups`` are
+        **required**, and must match names of related fields on all specific models that
+        might be included in the result (which can include relationships inherited from
+        concrete parents). Unlike when ``for_specific_subqueries`` is ``False``, no
+        validation is applied to ``lookups`` when the method is called. Instead, that
+        validation is applied for each individual subquery when the queryset is
+        evaluated. This difference in behaviour should be taken into account when
+        experimenting with ``for_specific_subqueries=True``.
+
+        As with Django's native implementation, you chain multiple applications of
+        ``prefetch_related()`` with ``for_specific_subqueries=True`` to progressively
+        add to the list of lookups to be made. For example:
+
+        .. code-block:: python
+
+            # Fetch 'contributors' when retrieving specific page data
+            queryset = Page.objects.specific().prefetch_related("contributors", for_specific_subqueries=True)
+
+            # We're rendering cards with images, so prefetch listing image renditions too
+            queryset = queryset.prefetch_related("listing_image__renditions", for_specific_subqueries=True)
+
+            # Fetch some key taxonomy data also
+            queryset = queryset.prefetch_related("tags", for_specific_subqueries=True)
+
+        As with Django's native implementation, ``None`` can be supplied in place of
+        ``lookups`` to negate a previous application of ``prefetch_related()``. By default,
+        this will only work for cases where ``prefetch_related()`` was called without
+        ``for_specific_subqueries``, or with ``for_specific_subqueries=False``. However,
+        you can use ``for_specific_subqueries=True`` to negate subquery-specific
+        applications too. For example:
+
+        .. code-block:: python
+
+            # Fetch 'contributors' and 'listing_image' renditions when retrieving specific page data
+            queryset = Page.objects.specific().prefetch_related(
+                "contributors",
+                "listing_image__renditions",
+                for_specific_subqueries=True
+            )
+
+            # I've changed my mind. Do not make any additional queries
+            queryset = queryset.prefetch_related(None, for_specific_subqueries=True)
+        """
+        if not for_specific_subqueries:
+            return super().prefetch_related(*lookups)
+        if not lookups:
+            raise ValueError(
+                "'lookups' must be provided when calling prefetch_related() with for_specific_subqueries=True"
+            )
+        clone = self._chain()
+        if lookups == (None,):
+            clone._specific_prefetch_related_lookups = ()
+        else:
+            clone._specific_prefetch_related_lookups = (
+                self._specific_prefetch_related_lookups + lookups
+            )
+        return clone
+
+
+class PageQuerySet(SearchableQuerySetMixin, SpecificQuerySetMixin, TreeQuerySet):
     def live_q(self):
         return Q(live=True)
 
@@ -393,21 +559,6 @@ class PageQuerySet(SearchableQuerySetMixin, TreeQuerySet):
             return clone
         return clone.defer(*streamfield_names)
 
-    def specific(self, defer=False):
-        """
-        This efficiently gets all the specific pages for the queryset, using
-        the minimum number of queries.
-
-        When the "defer" keyword argument is set to True, only generic page
-        field values will be loaded and all specific fields will be deferred.
-        """
-        clone = self._clone()
-        if defer:
-            clone._iterable_class = DeferredSpecificIterable
-        else:
-            clone._iterable_class = SpecificIterable
-        return clone
-
     def in_site(self, site):
         """
         This filters the QuerySet to only contain pages within the specified site.
@@ -453,9 +604,13 @@ class PageQuerySet(SearchableQuerySetMixin, TreeQuerySet):
             "current_task_state__task"
         )
 
+        relation = "_workflow_states"
+        if self.is_specific:
+            relation = "_specific_workflow_states"
+
         return self.prefetch_related(
             Prefetch(
-                "workflow_states",
+                relation,
                 queryset=workflow_states,
                 to_attr="_current_workflow_states",
             )
@@ -491,25 +646,33 @@ class PageQuerySet(SearchableQuerySetMixin, TreeQuerySet):
             )
         )
 
+    def annotate_has_untranslated_locale(self):
+        return self.annotate(
+            _has_untranslated_locale=Exists(
+                Locale.objects.exclude(
+                    id__in=self.model.objects.filter(
+                        translation_key=OuterRef(OuterRef("translation_key"))
+                    ).values("locale_id")
+                )
+            )
+        )
 
-class SpecificIterable(BaseIterable):
+
+class SpecificIterable(ModelIterable):
     def __iter__(self):
         """
-        Identify and return all specific pages in a queryset, and return them
+        Identify and return all specific items in a queryset, and return them
         in the same order, with any annotations intact.
         """
-        from wagtail.models import Page
-
         qs = self.queryset
-        annotation_aliases = qs.query.annotations.keys()
+        annotation_aliases = qs.query.annotation_select
         values_qs = qs.values("pk", "content_type", *annotation_aliases)
 
-        # Gather pages in batches to reduce peak memory usage
+        # Gather items in batches to reduce peak memory usage
         for values in self._get_chunks(values_qs):
-
             annotations_by_pk = defaultdict(list)
             if annotation_aliases:
-                # Extract annotation results keyed by pk so we can reapply to fetched pages.
+                # Extract annotation results keyed by pk so we can reapply to fetched items.
                 for data in values:
                     annotations_by_pk[data["pk"]] = {
                         k: v for k, v in data.items() if k in annotation_aliases
@@ -525,64 +688,72 @@ class SpecificIterable(BaseIterable):
                 pk: ContentType.objects.get_for_id(pk) for _, pk in pks_and_types
             }
 
-            # Get the specific instances of all pages, one model class at a time.
-            pages_by_type = {}
+            # Get the specific instances of all items, one model class at a time.
+            items_by_type = {}
             missing_pks = []
 
             for content_type, pks in pks_by_type.items():
                 # look up model class for this content type, falling back on the original
                 # model (i.e. Page) if the more specific one is missing
                 model = content_types[content_type].model_class() or qs.model
-                pages = model.objects.filter(pk__in=pks)
+                items = model.objects.filter(pk__in=pks)
 
-                if qs._defer_streamfields:
-                    pages = pages.defer_streamfields()
+                if qs._specific_select_related_fields:
+                    items = items.select_related(*qs._specific_select_related_fields)
 
-                pages_for_type = {page.pk: page for page in pages}
-                pages_by_type[content_type] = pages_for_type
-                missing_pks.extend(pk for pk in pks if pk not in pages_for_type)
+                if qs._specific_prefetch_related_lookups:
+                    items = items.prefetch_related(
+                        *qs._specific_prefetch_related_lookups
+                    )
 
-            # Fetch generic pages to supplement missing items
+                if qs._defer_streamfields and hasattr(items, "defer_streamfields"):
+                    items = items.defer_streamfields()
+
+                items_for_type = {item.pk: item for item in items}
+                items_by_type[content_type] = items_for_type
+                missing_pks.extend(pk for pk in pks if pk not in items_for_type)
+
+            # Fetch generic items to supplement missing items
             if missing_pks:
-                generic_pages = (
-                    Page.objects.filter(pk__in=missing_pks)
+                generic_items = (
+                    qs.model.objects.filter(pk__in=missing_pks)
                     .select_related("content_type")
                     .in_bulk()
                 )
                 warnings.warn(
-                    "Specific versions of the following pages could not be found. "
+                    "Specific versions of the following items could not be found. "
                     "This is most likely because a database migration has removed "
-                    "the relevant table or record since the page was created:\n{}".format(
+                    "the relevant table or record since the item was created:\n{}".format(
                         [
                             {"id": p.id, "title": p.title, "type": p.content_type}
-                            for p in generic_pages.values()
+                            for p in generic_items.values()
                         ]
                     ),
                     category=RuntimeWarning,
                 )
             else:
-                generic_pages = {}
+                generic_items = {}
 
-            # Yield all pages in the order they occurred in the original query.
+            # Yield all items in the order they occurred in the original query.
             for pk, content_type in pks_and_types:
                 try:
-                    page = pages_by_type[content_type][pk]
+                    item = items_by_type[content_type][pk]
                 except KeyError:
-                    page = generic_pages[pk]
+                    item = generic_items[pk]
                 if annotation_aliases:
                     # Reapply annotations before returning
-                    for annotation, value in annotations_by_pk.get(page.pk, {}).items():
-                        setattr(page, annotation, value)
-                yield page
+                    for annotation, value in annotations_by_pk.get(item.pk, {}).items():
+                        setattr(item, annotation, value)
+                yield item
 
-    def _get_chunks(self, queryset) -> Iterable[Tuple[Dict[str, Any]]]:
+    def _get_chunks(self, queryset) -> Iterable[tuple[dict[str, Any]]]:
         if not self.chunked_fetch:
             # The entire result will be stored in memory, so there is no
             # benefit to splitting the result
             yield tuple(queryset)
         else:
             # Iterate through the queryset, returning the rows in manageable
-            # chunks for self.__iter__() to fetch full pages for
+            # chunks for self.__iter__() to fetch full instances for
             current_chunk = []
             for r in queryset.iterator(self.chunk_size):
                 current_chunk.append(r)
@@ -601,9 +772,9 @@ class DeferredSpecificIterable(ModelIterable):
                 yield obj.specific_deferred
             else:
                 warnings.warn(
-                    "A specific version of the following page could not be returned "
-                    "because the specific page model is not present on the active "
-                    f"branch: <Page id='{obj.id}' title='{obj.title}' "
+                    "A specific version of the following object could not be returned "
+                    "because the specific model is not present on the active "
+                    f"branch: <{obj.__class__.__name__} id='{obj.id}' title='{obj.title}' "
                     f"type='{obj.content_type}'>",
                     category=RuntimeWarning,
                 )

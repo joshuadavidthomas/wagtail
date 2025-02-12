@@ -2,29 +2,28 @@
 
 ## PEP8
 
-We ask that all Python contributions adhere to the [PEP8](https://www.python.org/dev/peps/pep-0008/) style guide.
-All files should be formatted using the [black](https://github.com/psf/black) auto-formatter. This will be
+We ask that all Python contributions adhere to the [PEP8](https://peps.python.org/pep-0008/) style guide.
+All files should be formatted using the [ruff](https://github.com/astral-sh/ruff) auto-formatter. This will be
 run by `pre-commit` if that is configured.
 
 -   The project repository includes an `.editorconfig` file. We recommend using
     a text editor with [EditorConfig](https://editorconfig.org/) support to avoid indentation and
     whitespace issues. Python and HTML files use 4 spaces for indentation.
 
-In addition, import lines should be sorted according to [isort](https://pycqa.github.io/isort/) 5.6.4 rules.
 If you have installed Wagtail's testing dependencies (`pip install -e '.[testing]'`), you can check your code by
 running `make lint`. You can also just check python related linting by running `make lint-server`.
 
-You can run all Python formatting with `make format`. Similar to linting you can format python/template only files
+You can run all Python formatting with `make format`. Similar to linting you can format Python/template-only files
 by running `make format-server`.
 
 ## Django compatibility
 
-Wagtail is written to be compatible with multiple versions of Django. Sometimes, this requires running one piece of code for recent version of Django, and another piece of code for older versions of Django. In these cases, always check which version of Django is being used by inspecting `django.VERSION`:
+Wagtail is written to be compatible with multiple versions of Django. Sometimes, this requires running one piece of code for recent versions of Django, and another piece of code for older versions of Django. In these cases, always check which version of Django is being used by inspecting `django.VERSION`:
 
 ```python
-import django
+from django import VERSION as DJANGO_VERSION
 
-if django.VERSION >= (1, 9):
+if DJANGO_VERSION >= (1, 9):
     # Use new attribute
     related_field = field.rel
 else:
@@ -34,7 +33,7 @@ else:
 
 Always compare against the version using greater-or-equals (`>=`), so that code for newer versions of Django is first.
 
-Do not use a `try ... except` when seeing if an object has an attribute or method introduced in a newer versions of Django, as it does not clearly express why the `try ... except` is used. An explicit check against the Django version makes the intention of the code very clear.
+Do not use a `try ... except` when seeing if an object has an attribute or method introduced in newer versions of Django, as it does not clearly express why the `try ... except` is used. An explicit check against the Django version makes the intention of the code very clear.
 
 ```python
 # Do not do this
@@ -50,7 +49,7 @@ If the code needs to use something that changed in a version of Django many time
 import django
 
 def related_field(field):
-    if django.VERSION >= (1, 9):
+    if DJANGO_VERSION >= (1, 9):
         return field.rel
     else:
         return field.related
@@ -61,13 +60,13 @@ If a new function has been introduced by Django that you think would be very use
 ```python
 import django
 
-if django.VERSION >= (1, 9):
+if DJANGO_VERSION >= (1, 9):
     from django.core.validators import validate_unicode_slug
 else:
     # Taken from https://github.com/django/django/blob/1.9/django/core/validators.py#L230
     def validate_unicode_slug(value):
-            # Code left as an exercise to the reader
-            pass
+        # Code left as an exercise to the reader
+        pass
 ```
 
 ## Tests

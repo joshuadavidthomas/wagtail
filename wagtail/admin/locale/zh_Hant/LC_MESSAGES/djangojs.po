@@ -3,12 +3,13 @@
 # Yu Hsun Lee <andylee0914.tw@gmail.com>, 2022
 # Yeh Yen-Ke <yyken@outlook.com>, 2022
 # Brian Xu, 2022
-# ChihWei Wang <ihcgno@icloud.com>, 2022
+# Loic Teixeira, 2024
+# Chih Wang <ihcgno@icloud.com>, 2025
 #
 msgid ""
 msgstr ""
-"Last-Translator: ChihWei Wang <ihcgno@icloud.com>, 2022\n"
-"Language-Team: Chinese Traditional (https://www.transifex.com/torchbox/"
+"Last-Translator: Chih Wang <ihcgno@icloud.com>, 2025\n"
+"Language-Team: Chinese Traditional (https://app.transifex.com/torchbox/"
 "teams/8009/zh-Hant/)\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: zh-Hant\n"
@@ -47,11 +48,8 @@ msgstr "刪除中"
 msgid "Edit"
 msgstr "編輯"
 
-msgid "Edit '{title}'"
-msgstr "編輯 '{title}'"
-
-msgid "Edit your account"
-msgstr "編輯帳號"
+msgid "Edit '%(title)s'"
+msgstr "編輯 '%(title)s'"
 
 msgid "Horizontal line"
 msgstr "水平線"
@@ -82,6 +80,9 @@ msgstr "頁面瀏覽器"
 
 msgid "Pages"
 msgstr "頁面"
+
+msgid "Preview"
+msgstr "預覽"
 
 msgid "Reload saved content"
 msgstr "重新加載已保存內容"
@@ -123,8 +124,14 @@ msgid ""
 "The editor just crashed. Content has been reset to the last saved version."
 msgstr "編輯器崩潰了，內容被重新設置為最後保存的版本。"
 
+msgid "The maximum number of items is %(max_num)d"
+msgstr "條目的最大數是%(max_num)d"
+
+msgid "The minimum number of items is %(min_num)d"
+msgstr "條目的最小數是%(min_num)d"
+
 msgid "This field is required."
 msgstr "必要欄位"
 
-msgid "View child pages of '{title}'"
-msgstr "檢視 '{title}' 子頁面"
+msgid "View child pages of '%(title)s'"
+msgstr "檢視 '%(title)s' 子頁面"

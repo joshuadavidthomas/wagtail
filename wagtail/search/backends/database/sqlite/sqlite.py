@@ -1,7 +1,12 @@
 from collections import OrderedDict
 from functools import reduce
 
-from django.db import DEFAULT_DB_ALIAS, NotSupportedError, connections, transaction
+from django.db import (
+    NotSupportedError,
+    connections,
+    router,
+    transaction,
+)
 from django.db.models import Avg, Count, F, Manager, Q, TextField
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.functions import Cast, Length
@@ -101,7 +106,7 @@ class ObjectIndexer:
                     isinstance(current_field, SearchField)
                     and current_field.field_name == "title"
                 ):
-                    texts.append((value))
+                    texts.append(value)
 
         return " ".join(texts)
 
@@ -117,7 +122,7 @@ class ObjectIndexer:
                     isinstance(current_field, SearchField)
                     and not current_field.field_name == "title"
                 ):
-                    texts.append((value))
+                    texts.append(value)
 
         return " ".join(texts)
 
@@ -130,7 +135,7 @@ class ObjectIndexer:
         for field in self.search_fields:
             for current_field, value in self.prepare_field(self.obj, field):
                 if isinstance(current_field, AutocompleteField):
-                    texts.append((value))
+                    texts.append(value)
 
         return " ".join(texts)
 
@@ -145,17 +150,22 @@ class ObjectIndexer:
 
 
 class Index:
-    def __init__(self, backend, db_alias=None):
+    def __init__(self, backend):
         self.backend = backend
         self.name = self.backend.index_name
-        self.db_alias = DEFAULT_DB_ALIAS if db_alias is None else db_alias
-        self.connection = connections[self.db_alias]
-        if self.connection.vendor != "sqlite":
+
+        self.read_connection = connections[router.db_for_read(IndexEntry)]
+        self.write_connection = connections[router.db_for_write(IndexEntry)]
+
+        if (
+            self.read_connection.vendor != "sqlite"
+            or self.write_connection.vendor != "sqlite"
+        ):
             raise NotSupportedError(
-                "You must select a SQLite database " "to use the SQLite search backend."
+                "You must select a SQLite database to use the SQLite search backend."
             )
 
-        self.entries = IndexEntry._default_manager.using(self.db_alias)
+        self.entries = IndexEntry._default_manager.all()
 
     def add_model(self, model):
         pass
@@ -195,11 +205,9 @@ class Index:
         ).update(title_norm=lavg / F("title_length"))
 
     def delete_stale_model_entries(self, model):
-        existing_pks = (
-            model._default_manager.using(self.db_alias)
-            .annotate(object_id=Cast("pk", TextField()))
-            .values("object_id")
-        )
+        existing_pks = model._default_manager.annotate(
+            object_id=Cast("pk", TextField())
+        ).values("object_id")
         content_types_pks = get_descendants_content_types_pks(model)
         stale_entries = self.entries.filter(
             content_type_id__in=content_types_pks
@@ -270,7 +278,7 @@ class Index:
             update_method(content_type_pk, indexers)
 
     def delete_item(self, item):
-        item.index_entries.using(self.db_alias).delete()
+        item.index_entries.all()._raw_delete(using=self.write_connection.alias)
 
     def __str__(self):
         return self.name
@@ -291,7 +299,7 @@ class SQLiteSearchRebuilder:
 class SQLiteSearchAtomicRebuilder(SQLiteSearchRebuilder):
     def __init__(self, index):
         super().__init__(index)
-        self.transaction = transaction.atomic(using=index.db_alias)
+        self.transaction = transaction.atomic(using=index.write_connection.alias)
         self.transaction_opened = False
 
     def start(self):
@@ -316,6 +324,7 @@ class SQLiteSearchQueryCompiler(BaseSearchQueryCompiler):
     DEFAULT_OPERATOR = "AND"
     LAST_TERM_IS_PREFIX = False
     TARGET_SEARCH_FIELD_TYPE = SearchField
+    FTS_TABLE_FIELDS = ["title", "body"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -470,7 +479,6 @@ class SQLiteSearchQueryCompiler(BaseSearchQueryCompiler):
         return self.get_index_vectors()
 
     def _build_rank_expression(self, vectors, config):
-
         # TODO: Come up with my own expression class that compiles down to bm25
 
         rank_expressions = [
@@ -507,7 +515,9 @@ class SQLiteSearchQueryCompiler(BaseSearchQueryCompiler):
         vectors = self.get_search_vectors()
         rank_expression = self._build_rank_expression(vectors, config)
 
-        combined_vector = vectors[0][
+        combined_vector = vectors[
+            0
+        ][
             0
         ]  # We create a combined vector for the search results queryset. We start with the first vector and build from there.
         for vector, boost in vectors[1:]:
@@ -515,12 +525,18 @@ class SQLiteSearchQueryCompiler(BaseSearchQueryCompiler):
                 vector, " ", False
             )  # We add the subsequent vectors to the combined vector.
 
-        expr = MatchExpression(
-            self.fields or ["title", "body"], search_query
-        )  # Build the FTS match expression.
-        objs = SQLiteFTSIndexEntry.objects.filter(expr).select_related(
-            "index_entry"
-        )  # Perform the FTS search. We'll get entries in the SQLiteFTSIndexEntry model.
+        # Build the FTS match expression.
+        expr = MatchExpression(self.fields or self.FTS_TABLE_FIELDS, search_query)
+        # Perform the FTS search. We'll get entries in the SQLiteFTSIndexEntry model.
+        objs = (
+            SQLiteFTSIndexEntry.objects.filter(expr)
+            .select_related("index_entry")
+            .filter(
+                index_entry__content_type__in=get_descendants_content_types_pks(
+                    self.queryset.model
+                )
+            )
+        )
 
         if self.order_by_relevance:
             objs = objs.order_by(BM25().desc())
@@ -583,6 +599,7 @@ class SQLiteSearchQueryCompiler(BaseSearchQueryCompiler):
 class SQLiteAutocompleteQueryCompiler(SQLiteSearchQueryCompiler):
     LAST_TERM_IS_PREFIX = True
     TARGET_SEARCH_FIELD_TYPE = AutocompleteField
+    FTS_TABLE_FIELDS = ["autocomplete"]
 
     def get_config(self, backend):
         return backend.autocomplete_config
@@ -590,11 +607,8 @@ class SQLiteAutocompleteQueryCompiler(SQLiteSearchQueryCompiler):
     def get_search_fields_for_model(self):
         return self.queryset.model.get_autocomplete_search_fields()
 
-    def get_index_vectors(self, search_query):
+    def get_index_vectors(self):
         return [(F("index_entries__autocomplete"), 1.0)]
-
-    def get_fields_vectors(self, search_query):
-        raise NotImplementedError()
 
 
 class SQLiteSearchResults(BaseSearchResults):
@@ -651,6 +665,7 @@ class SQLiteSearchResults(BaseSearchResults):
 class SQLiteSearchBackend(BaseSearchBackend):
     query_compiler_class = SQLiteSearchQueryCompiler
     autocomplete_query_compiler_class = SQLiteAutocompleteQueryCompiler
+
     results_class = SQLiteSearchResults
     rebuilder_class = SQLiteSearchRebuilder
     atomic_rebuilder_class = SQLiteSearchAtomicRebuilder
@@ -658,16 +673,19 @@ class SQLiteSearchBackend(BaseSearchBackend):
     def __init__(self, params):
         super().__init__(params)
         self.index_name = params.get("INDEX", "default")
-        self.config = params.get("SEARCH_CONFIG")
+
+        # SQLite backend currently has no config options
+        self.config = None
+        self.autocomplete_config = None
 
         if params.get("ATOMIC_REBUILD", False):
             self.rebuilder_class = self.atomic_rebuilder_class
 
-    def get_index_for_model(self, model, db_alias=None):
-        return Index(self, db_alias)
+    def get_index_for_model(self, model):
+        return Index(self)
 
     def get_index_for_object(self, obj):
-        return self.get_index_for_model(obj._meta.model, obj._state.db)
+        return self.get_index_for_model(obj._meta.model)
 
     def reset_index(self):
         for connection in [
@@ -675,7 +693,7 @@ class SQLiteSearchBackend(BaseSearchBackend):
             for connection in connections.all()
             if connection.vendor == "sqlite"
         ]:
-            IndexEntry._default_manager.using(connection.alias).delete()
+            IndexEntry._default_manager.all()._raw_delete(using=connection.alias)
 
     def add_type(self, model):
         pass  # Not needed.

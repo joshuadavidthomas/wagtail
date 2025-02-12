@@ -1,5 +1,4 @@
-from django.http import HttpRequest
-
+from wagtail.coreutils import get_dummy_request
 from wagtail.models import Page, Site
 from wagtail.test.testapp.models import TestSiteSetting
 
@@ -23,7 +22,11 @@ class SiteSettingsTestMixin:
     def get_request(self, site=None):
         if site is None:
             site = self.default_site
-        request = HttpRequest()
-        request.META["HTTP_HOST"] = site.hostname
-        request.META["SERVER_PORT"] = site.port
+        request = get_dummy_request(site=site)
+
+        # Requests in general can't be pickled, but dummy requests can. Add an
+        # arbitrary lambda function to the request to make it fail loudly if
+        # someone tries to pickle it.
+        request._fn = lambda: None
+
         return request

@@ -1,4 +1,7 @@
+/* global ModalWorkflow */
+
 import $ from 'jquery';
+import { WAGTAIL_CONFIG } from '../../config/wagtailConfig';
 
 function addHiddenInput(form, name, val) {
   const element = document.createElement('input');
@@ -10,11 +13,15 @@ function addHiddenInput(form, name, val) {
 // eslint-disable-next-line no-underscore-dangle
 window._addHiddenInput = addHiddenInput;
 
-/* When a workflow action button is clicked, either show a modal or make a POST request to the workflow action view */
-function ActivateWorkflowActionsForDashboard(csrfToken) {
+/**
+ * When a workflow action button is clicked,
+ * either show a modal or make a POST request to the workflow action view
+ */
+function ActivateWorkflowActionsForDashboard() {
   const workflowActionElements = document.querySelectorAll(
     '[data-workflow-action-url]',
   );
+  const csrfToken = WAGTAIL_CONFIG.CSRF_TOKEN;
 
   workflowActionElements.forEach((buttonElement) => {
     buttonElement.addEventListener(
@@ -22,10 +29,8 @@ function ActivateWorkflowActionsForDashboard(csrfToken) {
       (e) => {
         // Stop the button from submitting the form
         e.preventDefault();
-        e.stopPropagation();
 
         if ('launchModal' in buttonElement.dataset) {
-          // eslint-disable-next-line no-undef
           ModalWorkflow({
             url: buttonElement.dataset.workflowActionUrl,
             onload: {
@@ -60,6 +65,7 @@ function ActivateWorkflowActionsForDashboard(csrfToken) {
     );
   });
 }
+/** @deprecated RemovedInWagtail70 - Remove global.ActivateWorkflowActionsForDashboard usage  */
 window.ActivateWorkflowActionsForDashboard =
   ActivateWorkflowActionsForDashboard;
 
@@ -81,7 +87,6 @@ function ActivateWorkflowActionsForEditView(formSelector) {
           e.stopPropagation();
 
           // open the modal at the given URL
-          // eslint-disable-next-line no-undef
           ModalWorkflow({
             url: buttonElement.dataset.workflowActionModalUrl,
             onload: {
@@ -122,4 +127,53 @@ function ActivateWorkflowActionsForEditView(formSelector) {
     );
   });
 }
+/** @deprecated RemovedInWagtail70 - Remove global.ActivateWorkflowActionsForEditView usage  */
 window.ActivateWorkflowActionsForEditView = ActivateWorkflowActionsForEditView;
+
+const currentScript = document.currentScript;
+const activateTarget = currentScript.dataset.activate;
+const cancellationUrl = currentScript.dataset.confirmCancellationUrl;
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (activateTarget === 'dashboard') {
+    ActivateWorkflowActionsForDashboard();
+  } else if (activateTarget === 'editor') {
+    ActivateWorkflowActionsForEditView('[data-edit-form]');
+  }
+
+  if (cancellationUrl) {
+    /* Make user confirm before publishing the object if it will cancel an ongoing workflow */
+    let cancellationConfirmed = false;
+    $('[name=action-publish]').click((e) => {
+      if (!cancellationConfirmed) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        window.ModalWorkflow({
+          url: cancellationUrl,
+          onload: {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            confirm(modal, jsonData) {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              $('[data-confirm-cancellation]', modal.body).click((event) => {
+                cancellationConfirmed = true;
+                modal.close();
+                e.currentTarget.click();
+              });
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              $('[data-cancel-dialog]', modal.body).click((event) => {
+                modal.close();
+              });
+            },
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            no_confirmation_needed(modal, jsonData) {
+              modal.close();
+              cancellationConfirmed = true;
+              e.currentTarget.click();
+            },
+          },
+          triggerElement: e.currentTarget,
+        });
+      }
+    });
+  }
+});

@@ -1,8 +1,8 @@
 # TableBlock
 
-The TableBlock module provides an HTML table block type for StreamField. This module uses [handsontable 6.2.2](https://handsontable.com/) to provide users with the ability to create and edit HTML tables in Wagtail. Table blocks provides a caption field for accessibility.
+The TableBlock module provides an HTML table block type for StreamField. This module uses [handsontable 6.2.2](https://github.com/handsontable/handsontable/tree/6.2.2) (distributed under the MIT license) to provide users with the ability to create and edit HTML tables in Wagtail. Table blocks provides a caption field for accessibility.
 
-![](../../_static/images/screen40_table_block.png)
+![The TableBlock component in StreamField, with row header, column header, caption fields - and then the editable table](../../_static/images/screen40_table_block.png)
 
 ## Installation
 
@@ -85,14 +85,16 @@ default_table_options = {
 }
 ```
 
+(table_block_options)=
+
 ### Configuration Options
 
-Every key in the `table_options` dictionary maps to a [handsontable](https://handsontable.com/) option. These settings can be changed to alter the behaviour of tables in Wagtail. The following options are available:
+Every key in the `table_options` dictionary maps to a [handsontable](https://handsontable.com/) option. These settings can be changed to alter the behavior of tables in Wagtail. The following options are available:
 
 -   [minSpareRows](https://handsontable.com/docs/6.2.2/Options.html#minSpareRows) - The number of rows to append to the end of an empty grid. The default setting is 0.
 -   [startRows](https://handsontable.com/docs/6.2.2/Options.html#startRows) - The default number of rows for a new table.
 -   [startCols](https://handsontable.com/docs/6.2.2/Options.html#startCols) - The default number of columns for new tables.
--   [colHeaders](https://handsontable.com/docs/6.2.2/Options.html#colHeaders) - Can be set to `True` or `False`. This setting designates if new tables should be created with column headers. **Note:** this only sets the behaviour for newly created tables. Page editors can override this by checking the the “Column header” checkbox in the table editor in the Wagtail admin.
+-   [colHeaders](https://handsontable.com/docs/6.2.2/Options.html#colHeaders) - Can be set to `True` or `False`. This setting designates if new tables should be created with column headers. **Note:** this only sets the behavior for newly created tables. Page editors can override this by checking the “Column header” checkbox in the table editor in the Wagtail admin.
 -   [rowHeaders](https://handsontable.com/docs/6.2.2/Options.html#rowHeaders) - Operates the same as `colHeaders` to designate if new tables should be created with the first column as a row header. Just like `colHeaders` this option can be overridden by the page editor in the Wagtail admin.
 -   [contextMenu](https://handsontable.com/docs/6.2.2/Options.html#contextMenu) - Enables or disables the Handsontable right-click menu. By default this is set to `True`. Alternatively you can provide a list or a dictionary with [specific options](https://handsontable.com/docs/6.2.2/demo-context-menu.html#page-specific).
 -   [editor](https://handsontable.com/docs/6.2.2/Options.html#editor) - Defines the editor used for table cells. The default setting is text.
@@ -101,6 +103,7 @@ Every key in the `table_options` dictionary maps to a [handsontable](https://han
 -   [language](https://handsontable.com/docs/6.2.2/Options.html#language) - The default language setting. By default TableBlock tries to get the language from `django.utils.translation.get_language`. If needed, this setting can be overridden here.
 -   [renderer](https://handsontable.com/docs/6.2.2/Options.html#renderer) - The default setting Handsontable uses to render the content of table cells.
 -   [autoColumnSize](https://handsontable.com/docs/6.2.2/Options.html#autoColumnSize) - Enables or disables the `autoColumnSize` plugin. The TableBlock default setting is `False`.
+-   [mergeCells](https://handsontable.com/docs/6.2.0/Options.html#mergeCells) - Can be set to `True` or `False`, determined if merging cells is allowed. Remember to add `'mergeCells'` to the `'contextMenu'` option also.
 
 A [complete list of handsontable options](https://handsontable.com/docs/6.2.2/Options.html) can be found on the Handsontable website.
 
@@ -153,7 +156,7 @@ new_table_options = {
         'redo',
         '---------',
         'copy',
-        'cut'
+        'cut',
         '---------',
         'alignment',
     ],

@@ -1,13 +1,16 @@
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
 
+from wagtail import hooks
 from wagtail.admin.admin_url_finder import AdminURLFinder
 from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
 
 
-class TestSiteIndexView(TestCase, WagtailTestUtils):
+class TestSiteIndexView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
         self.home_page = Page.objects.get(id=2)
@@ -19,15 +22,28 @@ class TestSiteIndexView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailadmin/generic/index.html")
+        self.assertBreadcrumbsItemsRendered(
+            [{"url": "", "label": "Sites"}],
+            response.content,
+        )
 
-    def test_pagination(self):
-        pages = ["0", "1", "-1", "9999", "Not a page"]
-        for page in pages:
-            response = self.get({"p": page})
-            self.assertEqual(response.status_code, 200)
+    def test_num_queries(self):
+        # Warm up the cache
+        self.get()
+        with self.assertNumQueries(9):
+            self.get()
+
+        sites = [
+            Site(hostname=f"host {i}", port=f"800{i}", root_page_id=2)
+            for i in range(10)
+        ]
+        Site.objects.bulk_create(sites)
+
+        with self.assertNumQueries(9):
+            self.get()
 
 
-class TestSiteCreateView(TestCase, WagtailTestUtils):
+class TestSiteCreateView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
         self.home_page = Page.objects.get(id=2)
@@ -60,7 +76,13 @@ class TestSiteCreateView(TestCase, WagtailTestUtils):
     def test_simple(self):
         response = self.get()
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtailsites/create.html")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"label": "Sites", "url": "/admin/sites/"},
+                {"label": "New: Site", "url": ""},
+            ],
+            response.content,
+        )
 
     def test_create(self):
         response = self.post(
@@ -129,8 +151,47 @@ class TestSiteCreateView(TestCase, WagtailTestUtils):
         # Check that the site was not created, still only one localhost entry
         self.assertEqual(Site.objects.filter(hostname="localhost").count(), 1)
 
+    def test_duplicate_hostnames_case_variant_not_allowed(self):
+        # Confirm there's one localhost already
+        self.assertEqual(Site.objects.filter(hostname="localhost").count(), 1)
 
-class TestSiteEditView(TestCase, WagtailTestUtils):
+        response = self.post(
+            {"hostname": "Localhost", "port": "80", "root_page": str(self.home_page.id)}
+        )
+
+        # Should return the form with errors
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["form"].errors,
+            {"__all__": ["Site with this Hostname and Port already exists."]},
+        )
+
+        # Check that the site was not created, still only one localhost entry
+        self.assertEqual(Site.objects.filter(hostname="localhost").count(), 1)
+
+    def test_non_field_errors_are_displayed(self):
+        self.assertEqual(Site.objects.filter(hostname="localhost").count(), 1)
+
+        response = self.post(
+            {"hostname": "localhost", "port": "80", "root_page": str(self.home_page.id)}
+        )
+        expected_html = """
+            <li class="error">
+                <svg class="class="icon icon-warning messages-icon"" aria-hidden="true">
+                    <use href="#icon-warning"></use>
+                </svg>
+                The site could not be saved due to errors.
+                <ul class="errorlist">
+                <li>
+                Site with this Hostname and Port already exists.
+                </li>
+                </ul>
+            </li>
+        """
+        self.assertTagInHTML(expected_html, response.content.decode())
+
+
+class TestSiteEditView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.user = self.login()
         self.home_page = Page.objects.get(id=2)
@@ -165,13 +226,19 @@ class TestSiteEditView(TestCase, WagtailTestUtils):
     def test_simple(self):
         response = self.get()
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtailsites/edit.html")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"url": "/admin/sites/", "label": "Sites"},
+                {"url": "", "label": str(self.localhost)},
+            ],
+            response.content,
+        )
 
         url_finder = AdminURLFinder(self.user)
-        expected_url = "/admin/sites/%d/" % self.localhost.id
+        expected_url = "/admin/sites/edit/%d/" % self.localhost.id
         self.assertEqual(url_finder.get_edit_url(self.localhost), expected_url)
 
-    def test_nonexistant_redirect(self):
+    def test_nonexistent_redirect(self):
         self.assertEqual(self.get(site_id=100000).status_code, 404)
 
     def test_edit(self):
@@ -247,8 +314,57 @@ class TestSiteEditView(TestCase, WagtailTestUtils):
 
         self.assertIs(Site.objects.get(id=second_site.id).is_default_site, False)
 
+    def test_duplicate_hostnames_case_variant_not_allowed(self):
+        second_site = Site.objects.create(
+            hostname="something_different",
+            port=80,
+            is_default_site=False,
+            root_page=self.home_page,
+        )
+        response = self.post(
+            {
+                "hostname": "Localhost",
+            },
+            site_id=second_site.id,
+        )
 
-class TestSiteDeleteView(TestCase, WagtailTestUtils):
+        # Should return the form with errors
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["form"].errors,
+            {"__all__": ["Site with this Hostname and Port already exists."]},
+        )
+
+    def test_non_field_errors_are_displayed(self):
+        second_site = Site.objects.create(
+            hostname="something_different",
+            port=80,
+            is_default_site=False,
+            root_page=self.home_page,
+        )
+        response = self.post(
+            {
+                "hostname": "Localhost",
+            },
+            site_id=second_site.id,
+        )
+        expected_html = """
+            <li class="error">
+                <svg class="class="icon icon-warning messages-icon"" aria-hidden="true">
+                    <use href="#icon-warning"></use>
+                </svg>
+                The site could not be saved due to errors.
+                <ul class="errorlist">
+                <li>
+                Site with this Hostname and Port already exists.
+                </li>
+                </ul>
+            </li>
+        """
+        self.assertTagInHTML(expected_html, response.content.decode())
+
+
+class TestSiteDeleteView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
         self.home_page = Page.objects.get(id=2)
@@ -269,8 +385,9 @@ class TestSiteDeleteView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailadmin/generic/confirm_delete.html")
+        self.assertBreadcrumbsNotRendered(response.content)
 
-    def test_nonexistant_redirect(self):
+    def test_nonexistent_redirect(self):
         self.assertEqual(self.get(site_id=100000).status_code, 404)
 
     def test_posting_deletes_site(self):
@@ -284,7 +401,7 @@ class TestSiteDeleteView(TestCase, WagtailTestUtils):
             Site.objects.get(id=self.localhost.id)
 
 
-class TestLimitedPermissions(TestCase, WagtailTestUtils):
+class TestLimitedPermissions(WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a user
         user = self.create_user(username="test", password="password")
@@ -309,7 +426,6 @@ class TestLimitedPermissions(TestCase, WagtailTestUtils):
     def test_get_create_view(self):
         response = self.client.get(reverse("wagtailsites:add"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtailsites/create.html")
 
     def test_create(self):
         response = self.client.post(
@@ -331,7 +447,6 @@ class TestLimitedPermissions(TestCase, WagtailTestUtils):
         edit_url = reverse("wagtailsites:edit", args=(self.localhost.id,))
         response = self.client.get(edit_url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtailsites/edit.html")
 
     def test_edit(self):
         edit_url = reverse("wagtailsites:edit", args=(self.localhost.id,))
@@ -369,3 +484,16 @@ class TestLimitedPermissions(TestCase, WagtailTestUtils):
         # Check that the site was edited
         with self.assertRaises(Site.DoesNotExist):
             Site.objects.get(id=self.localhost.id)
+
+
+class TestAdminPermissions(WagtailTestUtils, TestCase):
+    def test_registered_permissions(self):
+        site_ct = ContentType.objects.get_for_model(Site)
+        qs = Permission.objects.none()
+        for fn in hooks.get_hooks("register_permissions"):
+            qs |= fn()
+        registered_permissions = qs.filter(content_type=site_ct)
+        self.assertEqual(
+            set(registered_permissions.values_list("codename", flat=True)),
+            {"add_site", "change_site", "delete_site"},
+        )

@@ -1,4 +1,4 @@
-from typing import Any, List, Tuple
+from typing import Any
 
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.models.expressions import CombinedExpression, Expression, Func, Value
@@ -34,8 +34,7 @@ class LexemeCombinable(Expression):
     def _combine(self, other, connector, reversed, node=None):
         if not isinstance(other, LexemeCombinable):
             raise TypeError(
-                "Lexeme can only be combined with other Lexemes, "
-                "got {}.".format(type(other))
+                f"Lexeme can only be combined with other Lexemes, got {type(other)}."
             )
         if reversed:
             return CombinedLexeme(other, connector, self)
@@ -71,16 +70,12 @@ class Lexeme(LexemeCombinable, Value):
         super().__init__(value, output_field=output_field)
 
     def as_sql(self, compiler, connection):
-        param = "%s" % self.value.replace("'", "''").replace("\\", "\\\\")
+        param = self.value.replace("'", "''").replace("\\", "\\\\")
 
-        template = '"%s"'
-
-        label = ""
         if self.prefix:
-            label += "*"
-
-        if label:
-            param = "{}{}".format(param, label)
+            template = '"%s"*'
+        else:
+            template = '"%s"'
 
         return template, [param]
 
@@ -102,7 +97,7 @@ class CombinedLexeme(LexemeCombinable):
         rsql, params = compiler.compile(self.rhs)
         value_params.extend(params)
 
-        combined_sql = "{} {} {}".format(lsql, self.connector, rsql)
+        combined_sql = f"{lsql} {self.connector} {rsql}"
         combined_value = combined_sql % tuple(value_params)
         return "%s", [combined_value]
 
@@ -154,7 +149,7 @@ class SearchQueryExpression(SearchQueryCombinable, Expression):
         compiler: SQLCompiler,
         connection: BaseDatabaseWrapper,
         **extra_context: Any,
-    ) -> Tuple[str, List[Any]]:
+    ) -> tuple[str, list[Any]]:
         sql, params = compiler.compile(self.value)
         return (sql, params)
 
@@ -177,7 +172,7 @@ class MatchExpression(Expression):
     )
     output_field = BooleanField()
 
-    def __init__(self, columns: List[str], query: SearchQueryCombinable) -> None:
+    def __init__(self, columns: list[str], query: SearchQueryCombinable) -> None:
         super().__init__(output_field=self.output_field)
         self.columns = columns
         self.query = query
@@ -197,6 +192,9 @@ class MatchExpression(Expression):
         ]  # Build the full MATCH search query. It will be a parameter to the template, so no SQL injections are possible here.
         return (self.template, params)
 
+    def __repr__(self):
+        return f"<MatchExpression: {self.columns!r} = {self.query!r}>"
+
 
 class AndNot(SearchQuery):
     """
@@ -210,10 +208,10 @@ class AndNot(SearchQuery):
         self.subquery_b = subquery_b
 
     def __repr__(self):
-        return "<{} AndNot {}>".format(repr(self.subquery_a), repr(self.subquery_b))
+        return f"<{repr(self.subquery_a)} AndNot {repr(self.subquery_b)}>"
 
 
-def normalize(search_query: SearchQuery) -> Tuple[SearchQuery]:
+def normalize(search_query: SearchQuery) -> tuple[SearchQuery]:
     """
     Turns this query into a normalized version.
     For example, And(Not(PlainText("Arepa")), PlainText("Crepe")) would be turned into AndNot(PlainText("Crepe"), PlainText("Arepa")): "Crepe AND NOT Arepa".
@@ -224,7 +222,7 @@ def normalize(search_query: SearchQuery) -> Tuple[SearchQuery]:
     if isinstance(search_query, PlainText):
         return search_query  # We can't normalize a PlainText.
     if isinstance(search_query, And):
-        normalized_subqueries: List[SearchQuery] = [
+        normalized_subqueries: list[SearchQuery] = [
             normalize(subquery) for subquery in search_query.subqueries
         ]  # This builds a list of normalized subqueries.
 
@@ -249,9 +247,7 @@ def normalize(search_query: SearchQuery) -> Tuple[SearchQuery]:
         ):  # If there are no negated subqueries, return an And(), now without the redundant MatchAll subqueries.
             return And(not_negated_subqueries)
 
-        for (
-            subquery
-        ) in (
+        for subquery in (
             negated_subqueries
         ):  # If there's a negated MatchAll subquery, then nothing will get matched.
             if isinstance(subquery, MatchAll):
@@ -259,7 +255,7 @@ def normalize(search_query: SearchQuery) -> Tuple[SearchQuery]:
 
         return AndNot(And(not_negated_subqueries), Or(negated_subqueries))
     if isinstance(search_query, Or):
-        normalized_subqueries: List[SearchQuery] = [
+        normalized_subqueries: list[SearchQuery] = [
             normalize(subquery) for subquery in search_query.subqueries
         ]  # This builds a list of (subquery, negated) tuples.
 
@@ -273,9 +269,7 @@ def normalize(search_query: SearchQuery) -> Tuple[SearchQuery]:
         ):  # If there are no negated subqueries, return an Or().
             return Or(normalized_subqueries)
 
-        for (
-            subquery
-        ) in (
+        for subquery in (
             negated_subqueries
         ):  # If there's a MatchAll subquery, then anything will get matched.
             if isinstance(subquery, MatchAll):

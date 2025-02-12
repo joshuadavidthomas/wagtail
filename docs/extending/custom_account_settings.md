@@ -1,13 +1,13 @@
 (custom_account_settings)=
 
-# Customising the user account settings form
+# Customizing the user account settings form
 
-This document describes how to customise the user account settings form that can be found by clicking "Account settings"
+This document describes how to customize the user account settings form which can be found by clicking "Account settings"
 at the bottom of the main menu.
 
 ## Adding new panels
 
-Each panel on this form is a separate model form which can operate on an instance of either the user model, or the {class}`wagtail.users.models.UserProfile`.
+Each panel on this form is a separate model form that can operate on an instance of either the user model, or the `wagtail.users.models.UserProfile`.
 
 ### Basic example
 
@@ -27,7 +27,7 @@ class CustomSettingsForm(forms.ModelForm):
 ```
 
 ```python
-# hooks.py
+# wagtail_hooks.py
 
 from wagtail.admin.views.account import BaseSettingsPanel
 from wagtail import hooks
@@ -54,7 +54,7 @@ The attributes are as follows:
 
 ## Operating on the `UserProfile` model
 
-To add a panel that alters data on the user's {class}`wagtail.users.models.UserProfile` instance, set `form_object` to `'profile'`:
+To add a panel that alters data on the user's `wagtail.users.models.UserProfile` instance, set `form_object` to `'profile'`:
 
 ```python
 # forms.py
@@ -70,7 +70,7 @@ class CustomProfileSettingsForm(forms.ModelForm):
 ```
 
 ```python
-# hooks.py
+# wagtail_hooks.py
 
 from wagtail.admin.views.account import BaseSettingsPanel
 from wagtail import hooks
@@ -90,7 +90,7 @@ class CustomSettingsPanel(BaseSettingsPanel):
 You can define a new tab using the `SettingsTab` class:
 
 ```python
-# hooks.py
+# wagtail_hooks.py
 
 from wagtail.admin.views.account import BaseSettingsPanel, SettingsTab
 from wagtail import hooks
@@ -113,12 +113,12 @@ class CustomSettingsPanel(BaseSettingsPanel):
 -   `title` - The display name of the title
 -   `order` - The order of the tab. The builtin Wagtail tabs start at `100` and increase by `100` for each tab
 
-## Customising the template
+## Customizing the template
 
 You can provide a custom template for the panel by specifying a template name:
 
 ```python
-# hooks.py
+# wagtail_hooks.py
 
 from wagtail.admin.views.account import BaseSettingsPanel
 from wagtail import hooks

@@ -1,26 +1,23 @@
 from functools import lru_cache
-from typing import Optional
 
-from django.core.exceptions import PermissionDenied
-from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
-from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.utils.text import capfirst
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from wagtail.admin import messages
 from wagtail.admin.panels import (
     ObjectList,
-    TabbedInterface,
     extract_panel_definitions_from_model_class,
 )
-from wagtail.log_actions import log
+from wagtail.admin.views import generic
 from wagtail.models import Site
+from wagtail.permission_policies import ModelPermissionPolicy
 
 from .forms import SiteSwitchForm
 from .models import BaseGenericSetting, BaseSiteSetting
-from .permissions import user_can_edit_setting_type
 from .registry import registry
 
 
@@ -35,7 +32,7 @@ def get_model_from_url_params(app_name, model_name):
     return model
 
 
-@lru_cache()
+@lru_cache(maxsize=None)
 def get_setting_edit_handler(model):
     if hasattr(model, "edit_handler"):
         edit_handler = model.edit_handler
@@ -82,119 +79,62 @@ def redirect_to_relevant_instance(request, app_name, model_name):
         raise NotImplementedError
 
 
-def edit(request, app_name, model_name, pk):
-    model = get_model_from_url_params(app_name, model_name)
+class EditView(generic.EditView):
+    template_name = "wagtailsettings/edit.html"
+    edit_url_name = "wagtailsettings:edit"
+    error_message = gettext_lazy("The setting could not be saved due to errors.")
+    permission_required = "change"
 
-    if not user_can_edit_setting_type(request.user, model):
-        raise PermissionDenied
+    def setup(self, request, app_name, model_name, *args, **kwargs):
+        self.app_name = app_name
+        self.model_name = model_name
+        self.model = get_model_from_url_params(app_name, model_name)
+        self.permission_policy = ModelPermissionPolicy(self.model)
+        self.pk = kwargs.get(self.pk_url_kwarg)
+        super().setup(request, app_name, model_name, *args, **kwargs)
 
-    setting_type_name = model._meta.verbose_name
-    edit_handler = get_setting_edit_handler(model)
-    form_class = edit_handler.get_form_class()
-    site: Optional[Site] = None
-    site_switcher = None
-    form_id: int = None
+    def get_header_icon(self):
+        return registry._model_icons.get(self.model)
 
-    if issubclass(model, BaseSiteSetting):
-        site = get_object_or_404(Site, pk=pk)
-        form_id = site.pk
-        instance = model.for_site(site)
-
-        if request.method == "POST":
-            form = form_class(
-                request.POST, request.FILES, instance=instance, for_user=request.user
-            )
-
-            if form.is_valid():
-                with transaction.atomic():
-                    form.save()
-                    log(instance, "wagtail.edit")
-
-                messages.success(
-                    request,
-                    _("%(setting_type)s updated.")
-                    % {
-                        "setting_type": capfirst(setting_type_name),
-                        "instance": instance,
-                    },
-                )
-                return redirect("wagtailsettings:edit", app_name, model_name, site.pk)
-            else:
-                messages.validation_error(
-                    request, _("The setting could not be saved due to errors."), form
-                )
+    def get_object(self, queryset=None):
+        self.site = None
+        if issubclass(self.model, BaseSiteSetting):
+            self.site = get_object_or_404(Site, pk=self.pk)
+            return self.model.for_site(self.site)
         else:
-            form = form_class(instance=instance, for_user=request.user)
+            return get_object_or_404(self.model, pk=self.pk)
 
-        edit_handler = edit_handler.get_bound_panel(
-            instance=instance, request=request, form=form
+    def get_panel(self):
+        return get_setting_edit_handler(self.model)
+
+    def get_edit_url(self):
+        return reverse(
+            self.edit_url_name,
+            args=(self.app_name, self.model_name, self.pk),
         )
 
-        media = form.media + edit_handler.media
+    def get_success_buttons(self):
+        return None
 
-        # Show a site switcher form if there are multiple sites
-        if Site.objects.count() > 1:
-            site_switcher = SiteSwitchForm(site, model)
-            media += site_switcher.media
+    def get_page_subtitle(self):
+        return capfirst(self.model._meta.verbose_name)
 
-    elif issubclass(model, BaseGenericSetting):
-        queryset = model.base_queryset()
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
-        # Create the instance if we haven't already.
-        if queryset.count() == 0:
-            model.objects.create()
+        site_switcher = None
+        if self.site and Site.objects.count() > 1:
+            site_switcher = SiteSwitchForm(self.site, self.model)
+            context["media"] += site_switcher.media
 
-        instance = get_object_or_404(model, pk=pk)
-        form_id = instance.pk
+        context["site_switcher"] = site_switcher
+        return context
 
-        if request.method == "POST":
-            form = form_class(
-                request.POST, request.FILES, instance=instance, for_user=request.user
-            )
+    def get_success_url(self):
+        return self.get_edit_url()
 
-            if form.is_valid():
-                with transaction.atomic():
-                    form.save()
-                    log(instance, "wagtail.edit")
-
-                messages.success(
-                    request,
-                    _("%(setting_type)s updated.")
-                    % {
-                        "setting_type": capfirst(setting_type_name),
-                        "instance": instance,
-                    },
-                )
-                return redirect("wagtailsettings:edit", app_name, model_name)
-            else:
-                messages.validation_error(
-                    request, _("The setting could not be saved due to errors."), form
-                )
-        else:
-            form = form_class(instance=instance, for_user=request.user)
-
-        edit_handler = edit_handler.get_bound_panel(
-            instance=instance, request=request, form=form
+    def get_success_message(self):
+        return capfirst(
+            _("%(setting_type)s updated.")
+            % {"setting_type": self.model._meta.verbose_name}
         )
-
-        media = form.media + edit_handler.media
-
-    else:
-        raise NotImplementedError
-
-    return TemplateResponse(
-        request,
-        "wagtailsettings/edit.html",
-        {
-            "opts": model._meta,
-            "setting_type_name": setting_type_name,
-            "instance": instance,
-            "edit_handler": edit_handler,
-            "form": form,
-            "site": site,
-            "site_switcher": site_switcher,
-            "tabbed": isinstance(edit_handler.panel, TabbedInterface),
-            "media": media,
-            "form_id": form_id,
-        },
-    )

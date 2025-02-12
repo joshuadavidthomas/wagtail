@@ -1,5 +1,3 @@
-from typing import List
-
 from django.conf import settings
 from django.contrib.admin.utils import quote
 from django.contrib.auth.models import Permission
@@ -48,12 +46,33 @@ def register_submit_translation_permission():
 
 
 @hooks.register("register_page_listing_more_buttons")
-def page_listing_more_buttons(page, page_perms, next_url=None):
-    if (
-        page_perms.user.has_perm("simple_translation.submit_translation")
-        and not page.is_root()
-    ):
-        # If there's at least one locale that we haven't translated into yet, show "Translate this page" button
+def page_listing_more_buttons(page, user, next_url=None):
+    if user.has_perm("simple_translation.submit_translation") and not page.is_root():
+        if hasattr(page, "_has_untranslated_locale"):
+            # `_has_untranslated_locale` may be populated by `annotate_has_untranslated_locale`
+            # on querysets as a performance optimisation
+            has_locale_to_translate_to = page._has_untranslated_locale
+        else:
+            # If there's at least one locale that we haven't translated into yet,
+            # show "Translate this page" button
+            has_locale_to_translate_to = Locale.objects.exclude(
+                id__in=page.get_translations(inclusive=True).values_list(
+                    "locale_id", flat=True
+                )
+            ).exists()
+
+        if has_locale_to_translate_to:
+            url = reverse("simple_translation:submit_page_translation", args=[page.id])
+            yield wagtailadmin_widgets.Button(
+                _("Translate"), url, icon_name="globe", priority=60
+            )
+
+
+@hooks.register("register_page_header_buttons")
+def page_header_buttons(page, user, view_name, next_url=None):
+    if not page.is_root() and user.has_perm("simple_translation.submit_translation"):
+        # If there's at least one locale that we haven't translated into yet,
+        # show "Translate this page" button
         has_locale_to_translate_to = Locale.objects.exclude(
             id__in=page.get_translations(inclusive=True).values_list(
                 "locale_id", flat=True
@@ -62,7 +81,16 @@ def page_listing_more_buttons(page, page_perms, next_url=None):
 
         if has_locale_to_translate_to:
             url = reverse("simple_translation:submit_page_translation", args=[page.id])
-            yield wagtailadmin_widgets.Button(_("Translate"), url, priority=60)
+            yield wagtailadmin_widgets.Button(
+                _("Translate"),
+                url,
+                icon_name="globe",
+                attrs={
+                    "title": _("Translate this page")
+                    % {"title": page.get_admin_display_title()}
+                },
+                priority=80,
+            )
 
 
 @hooks.register("register_snippet_listing_buttons")
@@ -95,7 +123,7 @@ def register_snippet_listing_buttons(snippet, user, next_url=None):
 
 
 @hooks.register("construct_translated_pages_to_cascade_actions")
-def construct_translated_pages_to_cascade_actions(pages: List[Page], action: str):
+def construct_translated_pages_to_cascade_actions(pages: list[Page], action: str):
     if not getattr(settings, "WAGTAILSIMPLETRANSLATION_SYNC_PAGE_TREE", False):
         return
 

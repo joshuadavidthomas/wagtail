@@ -1,3 +1,5 @@
+@use '../../tools' as *;
+
 .w-field-row {
   @include max-form-width();
   gap: theme('spacing.5');
@@ -12,7 +14,6 @@
     grid-auto-columns: minmax(min-content, 1fr);
   }
 
-  + &,
   .w-field__wrapper + &,
   + .w-field__wrapper {
     margin-top: theme('spacing.5');

@@ -1,8 +1,12 @@
+import datetime
+
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
+from freezegun import freeze_time
 
 from wagtail.models import Page, Revision, get_default_page_content_type
 from wagtail.test.testapp.models import (
+    FullFeaturedSnippet,
     RevisableGrandChildModel,
     RevisableModel,
     SimplePage,
@@ -40,7 +44,7 @@ class TestRevisableModel(TestCase):
 
     def test_get_latest_revision_exists(self):
         self.instance.text = "updated"
-        revision = self.instance.save_revision()
+        self.instance.save_revision()
         self.instance.text = "updated twice"
         revision = self.instance.save_revision()
         self.instance.refresh_from_db()
@@ -66,6 +70,9 @@ class TestRevisableModel(TestCase):
         self.assertEqual(self.instance.get_base_content_type(), self.content_type)
         self.assertEqual(self.instance.get_content_type(), self.content_type)
 
+        # The for_instance() method should return the revision
+        self.assertEqual(Revision.objects.for_instance(self.instance).first(), revision)
+
     def test_content_type_with_inheritance(self):
         instance = RevisableGrandChildModel.objects.create(text="test")
         instance.text = "test updated"
@@ -83,6 +90,18 @@ class TestRevisableModel(TestCase):
         self.assertEqual(instance.get_base_content_type(), base_content_type)
         self.assertEqual(instance.get_content_type(), content_type)
 
+        # The for_instance() method should return the revision,
+        # whether we're using the specific instance
+        self.assertIsInstance(instance, RevisableModel)
+        self.assertIsInstance(instance, RevisableGrandChildModel)
+        self.assertEqual(Revision.objects.for_instance(instance).first(), revision)
+
+        # or the base instance
+        base_instance = RevisableModel.objects.get(pk=instance.pk)
+        self.assertIsInstance(base_instance, RevisableModel)
+        self.assertNotIsInstance(base_instance, RevisableGrandChildModel)
+        self.assertEqual(Revision.objects.for_instance(base_instance).first(), revision)
+
     def test_content_type_for_page_model(self):
         hello_page = self.create_page()
         hello_page.content = "Updated world"
@@ -99,6 +118,18 @@ class TestRevisableModel(TestCase):
         self.assertEqual(revision, revision_from_db)
         self.assertEqual(hello_page.get_base_content_type(), base_content_type)
         self.assertEqual(hello_page.get_content_type(), content_type)
+
+        # The for_instance() method should return the revision,
+        # whether we're using the specific instance
+        self.assertIsInstance(hello_page, SimplePage)
+        self.assertIsInstance(hello_page, Page)
+        self.assertEqual(Revision.objects.for_instance(hello_page).first(), revision)
+
+        # or the base instance
+        base_instance = Page.objects.get(pk=hello_page.pk)
+        self.assertIsInstance(base_instance, Page)
+        self.assertNotIsInstance(base_instance, SimplePage)
+        self.assertEqual(Revision.objects.for_instance(base_instance).first(), revision)
 
     def test_as_object(self):
         self.instance.text = "updated"
@@ -125,3 +156,65 @@ class TestRevisableModel(TestCase):
         self.assertIsInstance(instance, SimplePage)
         self.assertEqual(instance.content, "updated")
         self.assertEqual(hello_page.content, "hello")
+
+    def test_is_latest_revision_newer_creation_date_and_id(self):
+        first = self.instance.save_revision()
+        self.assertTrue(first.is_latest_revision())
+
+        second = self.instance.save_revision()
+        self.assertFalse(first.is_latest_revision())
+        self.assertTrue(second.is_latest_revision())
+
+        # Normal case, both creation date and id are newer
+        self.assertLess(first.created_at, second.created_at)
+        self.assertLess(first.id, second.id)
+
+    def test_is_latest_revision_newer_creation_date_older_id(self):
+        first = self.instance.save_revision()
+        self.assertTrue(first.is_latest_revision())
+
+        second = self.instance.save_revision()
+        first.created_at = second.created_at + datetime.timedelta(days=9)
+        first.save()
+
+        self.assertTrue(first.is_latest_revision())
+        self.assertFalse(second.is_latest_revision())
+
+        # The creation date takes precedence over the id
+        self.assertGreater(first.created_at, second.created_at)
+        self.assertLess(first.id, second.id)
+
+    @freeze_time("2023-01-19")
+    def test_is_latest_revision_same_creation_dates(self):
+        first = self.instance.save_revision()
+        self.assertTrue(first.is_latest_revision())
+
+        second = self.instance.save_revision()
+        self.assertFalse(first.is_latest_revision())
+        self.assertTrue(second.is_latest_revision())
+
+        # The id is used as a tie breaker
+        self.assertEqual(first.created_at, second.created_at)
+        self.assertLess(first.id, second.id)
+
+    def test_revision_cascade_on_object_delete(self):
+        page = self.create_page()
+        full_featured_snippet = FullFeaturedSnippet.objects.create(text="foo")
+        cases = [
+            # Tuple of (instance, cascades)
+            # For models that define a GenericRelation to Revision, the revision
+            # should be deleted when the instance is deleted.
+            (page, True),
+            (full_featured_snippet, True),
+            (self.instance, False),  # No GenericRelation to Revision
+        ]
+        for instance, cascades in cases:
+            with self.subTest(instance=instance):
+                revision = instance.save_revision()
+                query = {
+                    "base_content_type": instance.get_base_content_type(),
+                    "object_id": str(instance.pk),
+                }
+                self.assertEqual(Revision.objects.filter(**query).first(), revision)
+                instance.delete()
+                self.assertIs(Revision.objects.filter(**query).exists(), not cascades)

@@ -15,14 +15,13 @@ import wagtail.contrib.table_block.blocks
 import wagtail.fields
 import wagtail.images.blocks
 import wagtail.images.models
-import wagtail.models.collections
+import wagtail.models.media
 import wagtail.search.index
 import wagtail.test.testapp.models
 
 
 class Migration(migrations.Migration):
 
-    # RemovedInWagtail50Warning: Remove the old individual migrations 0001-0073.
     replaces = [
         ("tests", "0001_initial"),
         ("tests", "0002_customimage_collections"),
@@ -1044,7 +1043,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        default=wagtail.models.collections.get_root_collection_id,
+                        default=wagtail.models.media.get_root_collection_id,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="+",
                         to="wagtailcore.collection",
@@ -2245,7 +2244,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        default=wagtail.models.collections.get_root_collection_id,
+                        default=wagtail.models.media.get_root_collection_id,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="+",
                         to="wagtailcore.collection",
@@ -2342,7 +2341,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        default=wagtail.models.collections.get_root_collection_id,
+                        default=wagtail.models.media.get_root_collection_id,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="+",
                         to="wagtailcore.collection",
@@ -2623,7 +2622,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        default=wagtail.models.collections.get_root_collection_id,
+                        default=wagtail.models.media.get_root_collection_id,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="+",
                         to="wagtailcore.collection",
@@ -3892,7 +3891,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        default=wagtail.models.collections.get_root_collection_id,
+                        default=wagtail.models.media.get_root_collection_id,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="+",
                         to="wagtailcore.collection",
@@ -3937,7 +3936,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        default=wagtail.models.collections.get_root_collection_id,
+                        default=wagtail.models.media.get_root_collection_id,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="+",
                         to="wagtailcore.collection",
@@ -4056,7 +4055,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        default=wagtail.models.collections.get_root_collection_id,
+                        default=wagtail.models.media.get_root_collection_id,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="+",
                         to="wagtailcore.collection",

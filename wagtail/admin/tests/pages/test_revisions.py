@@ -6,7 +6,6 @@ from django.urls import reverse
 from freezegun import freeze_time
 
 from wagtail.admin.staticfiles import versioned_static
-from wagtail.admin.tests.pages.timestamps import local_datetime
 from wagtail.models import Page
 from wagtail.test.testapp.models import (
     DefaultStreamPage,
@@ -15,9 +14,11 @@ from wagtail.test.testapp.models import (
     SecretPage,
 )
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
+from wagtail.test.utils.timestamps import local_datetime
 
 
-class TestRevisions(TestCase, WagtailTestUtils):
+class TestRevisions(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
@@ -68,6 +69,14 @@ class TestRevisions(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Last Christmas I gave you my heart")
 
+        # Should show edit link in the userbar
+        # https://github.com/wagtail/wagtail/issues/10002
+        self.assertContains(response, "Edit this page")
+        self.assertContains(
+            response,
+            reverse("wagtailadmin_pages:edit", args=(self.christmas_event.id,)),
+        )
+
     def test_preview_revision_with_no_page_permissions_redirects_to_admin(self):
         admin_only_user = self.create_user(
             username="admin_only", email="admin_only@email.com", password="password"
@@ -111,12 +120,17 @@ class TestRevisions(TestCase, WagtailTestUtils):
         # Form should show the content of the revision, not the current draft
         self.assertContains(response, "Last Christmas I gave you my heart")
 
-        # Form should include a hidden 'revision' field
-        revision_field = (
-            """<input type="hidden" name="revision" value="%d" />"""
-            % self.last_christmas_revision.id
+        # Form should use the revisions revert URL as the action
+        soup = self.get_soup(response.content)
+        form = soup.select_one("form[data-edit-form]")
+        self.assertIsNotNone(form)
+        self.assertEqual(
+            form.get("action"),
+            reverse(
+                "wagtailadmin_pages:revisions_revert",
+                args=(self.christmas_event.id, self.last_christmas_revision.id),
+            ),
         )
-        self.assertContains(response, revision_field)
 
         # Buttons should be relabelled
         self.assertContains(response, "Replace current draft")
@@ -140,11 +154,20 @@ class TestRevisions(TestCase, WagtailTestUtils):
             reverse("wagtailadmin_pages:history", args=(self.christmas_event.id,))
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Page scheduled for publishing at 26 Dec 2014")
+
+        if settings.USE_TZ:
+            # the default timezone is "Asia/Tokyo", so we expect UTC +9
+            expected_date_string = "Dec. 26, 2014, 9 p.m."
+        else:
+            expected_date_string = "Dec. 26, 2014, noon"
+
+        self.assertContains(
+            response, f"Page scheduled for publishing at {expected_date_string}"
+        )
         self.assertContains(response, this_christmas_unschedule_url)
 
 
-class TestStreamRevisions(TestCase, WagtailTestUtils):
+class TestStreamRevisions(WagtailTestUtils, TestCase):
     def setUp(self):
         self.root_page = Page.objects.get(id=2)
 
@@ -182,9 +205,10 @@ class TestStreamRevisions(TestCase, WagtailTestUtils):
         )
 
 
-class TestCompareRevisions(TestCase, WagtailTestUtils):
+class TestCompareRevisions(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     # Actual tests for the comparison classes can be found in test_compare.py
 
+    base_breadcrumb_items = []
     fixtures = ["test.json"]
 
     def setUp(self):
@@ -228,6 +252,33 @@ class TestCompareRevisions(TestCase, WagtailTestUtils):
             '<span class="deletion">Last Christmas I gave you my heart, but the very next day you gave it away</span><span class="addition">This year, to save me from tears, I&#39;ll give it to someone special</span>',
             html=True,
         )
+
+        history_url = reverse(
+            "wagtailadmin_pages:history", args=(self.christmas_event.id,)
+        )
+
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {
+                    "url": reverse("wagtailadmin_explore_root")
+                    if page.is_root()
+                    else reverse("wagtailadmin_explore", args=(page.pk,)),
+                    "label": page.get_admin_display_title(),
+                }
+                for page in self.christmas_event.get_ancestors(inclusive=True)
+            ]
+            + [
+                {"url": history_url, "label": "History"},
+                {"url": "", "label": "Compare", "sublabel": "This Christmas"},
+            ],
+            response.content,
+        )
+
+        soup = self.get_soup(response.content)
+        edit_url = reverse("wagtailadmin_pages:edit", args=(self.christmas_event.id,))
+        edit_button = soup.select_one(f"a.w-header-button[href='{edit_url}']")
+        self.assertIsNotNone(edit_button)
+        self.assertEqual(edit_button.text.strip(), "Edit")
 
     def test_compare_revisions_earliest(self):
         compare_url = reverse(
@@ -278,7 +329,7 @@ class TestCompareRevisions(TestCase, WagtailTestUtils):
         )
 
 
-class TestCompareRevisionsWithPerUserEditHandlers(TestCase, WagtailTestUtils):
+class TestCompareRevisionsWithPerUserEditHandlers(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
@@ -335,7 +386,7 @@ class TestCompareRevisionsWithPerUserEditHandlers(TestCase, WagtailTestUtils):
         )
 
 
-class TestCompareRevisionsWithNonModelField(TestCase, WagtailTestUtils):
+class TestCompareRevisionsWithNonModelField(WagtailTestUtils, TestCase):
     """
     Tests if form fields defined in the base_form_class will not be included.
     in revisions view as they are not actually on the model.
@@ -410,7 +461,7 @@ class TestCompareRevisionsWithNonModelField(TestCase, WagtailTestUtils):
         self.assertNotContains(response, "<h2>Code:</h2>")
 
 
-class TestRevisionsUnschedule(TestCase, WagtailTestUtils):
+class TestRevisionsUnschedule(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
@@ -453,7 +504,7 @@ class TestRevisionsUnschedule(TestCase, WagtailTestUtils):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(
-            response, "wagtailadmin/pages/revisions/confirm_unschedule.html"
+            response, "wagtailadmin/shared/revisions/confirm_unschedule.html"
         )
 
     def test_unschedule_view_invalid_page_id(self):
@@ -538,8 +589,37 @@ class TestRevisionsUnschedule(TestCase, WagtailTestUtils):
             ).approved_go_live_at
         )
 
+    def test_unschedule_view_post_with_next_url(self):
+        """
+        This tests that the redirect response follows the "next" parameter
+        """
 
-class TestRevisionsUnscheduleForUnpublishedPages(TestCase, WagtailTestUtils):
+        unschedule_url = reverse(
+            "wagtailadmin_pages:revisions_unschedule",
+            args=(self.christmas_event.id, self.this_christmas_revision.id),
+        )
+        edit_url = reverse("wagtailadmin_pages:edit", args=(self.christmas_event.id,))
+
+        # Post to the unschedule page
+        response = self.client.post(f"{unschedule_url}?next={edit_url}")
+
+        # Should be redirected to edit page
+        self.assertRedirects(response, edit_url)
+
+        # Check that the page has no approved_schedule
+        self.assertFalse(
+            EventPage.objects.get(id=self.christmas_event.id).approved_schedule
+        )
+
+        # Check that the approved_go_live_at has been cleared from the revision
+        self.assertIsNone(
+            self.christmas_event.revisions.get(
+                id=self.this_christmas_revision.id
+            ).approved_go_live_at
+        )
+
+
+class TestRevisionsUnscheduleForUnpublishedPages(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
@@ -567,7 +647,7 @@ class TestRevisionsUnscheduleForUnpublishedPages(TestCase, WagtailTestUtils):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(
-            response, "wagtailadmin/pages/revisions/confirm_unschedule.html"
+            response, "wagtailadmin/shared/revisions/confirm_unschedule.html"
         )
 
     def test_unschedule_view_post(self):

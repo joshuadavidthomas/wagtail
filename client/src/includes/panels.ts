@@ -1,16 +1,25 @@
+import { getElementByContentPath } from '../utils/contentPath';
+
 /**
  * Switches a collapsible panel from expanded to collapsed, or vice versa.
  * Updates the DOM and fires custom events for other code to hook into.
  */
-const toggleCollapsiblePanel = (
+export const toggleCollapsiblePanel = (
   toggle: HTMLButtonElement,
-  content: HTMLElement,
   // If a specific state isn’t requested, read the DOM and toggle.
-  expanded = !(toggle.getAttribute('aria-expanded') === 'true'),
+  isExpanding = !(toggle.getAttribute('aria-expanded') === 'true'),
 ) => {
-  toggle.setAttribute('aria-expanded', `${expanded}`);
+  const content = document.querySelector<HTMLDivElement>(
+    `#${toggle.getAttribute('aria-controls')}`,
+  );
 
-  if (expanded) {
+  if (!content) {
+    return;
+  }
+
+  toggle.setAttribute('aria-expanded', `${isExpanding}`);
+
+  if (isExpanding) {
     content.removeAttribute('hidden');
   } else if ('onbeforematch' in document.body) {
     // Use experimental `until-found` value, so users can search inside the panels.
@@ -20,14 +29,15 @@ const toggleCollapsiblePanel = (
     content.setAttribute('hidden', '');
   }
 
-  content.dispatchEvent(
+  // Fire events on the toggle so we can retrieve the content with aria-controls.
+  toggle.dispatchEvent(
     new CustomEvent('commentAnchorVisibilityChange', { bubbles: true }),
   );
-  content.dispatchEvent(
+  toggle.dispatchEvent(
     new CustomEvent('wagtail:panel-toggle', {
       bubbles: true,
       cancelable: false,
-      detail: { expanded },
+      detail: { expanded: isExpanding },
     }),
   );
 };
@@ -36,25 +46,33 @@ const toggleCollapsiblePanel = (
  * Initialises event handlers for a collapsible panel,
  * and applies the correct initial state based on classes.
  */
-function initCollapsiblePanel(toggle: HTMLButtonElement) {
+export function initCollapsiblePanel(toggle: HTMLButtonElement) {
   const panel = toggle.closest<HTMLElement>('[data-panel]');
   const content = document.querySelector<HTMLDivElement>(
     `#${toggle.getAttribute('aria-controls')}`,
   );
 
-  if (!content || !panel) {
+  // Avoid initialising the same panel twice.
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  if (!content || !panel || panel.collapsibleInitialised) {
     return;
   }
 
-  const togglePanel = toggleCollapsiblePanel.bind(null, toggle, content);
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  panel.collapsibleInitialised = true;
+
+  const togglePanel = toggleCollapsiblePanel.bind(null, toggle);
 
   // Collapse panels marked as `collapsed`, unless they contain invalid fields.
   const hasCollapsed = panel.classList.contains('collapsed');
   const hasError = content.querySelector(
     '[aria-invalid="true"], .error, .w-field--error',
   );
+  const isCollapsed = hasCollapsed && !hasError;
 
-  if (hasCollapsed && !hasError) {
+  if (isCollapsed) {
     togglePanel(false);
   }
 
@@ -67,6 +85,14 @@ function initCollapsiblePanel(toggle: HTMLButtonElement) {
 
   // Set the toggle back to expanded upon reveal.
   content.addEventListener('beforematch', togglePanel.bind(null, true));
+
+  toggle.dispatchEvent(
+    new CustomEvent('wagtail:panel-init', {
+      bubbles: true,
+      cancelable: false,
+      detail: { expanded: !isCollapsed },
+    }),
+  );
 }
 
 /**
@@ -81,12 +107,18 @@ export function initCollapsiblePanels(
 /**
  * Smooth scroll onto any active panel.
  * Needs to run after the whole page is loaded so the browser can resolve any
- * JS-rendered :target.
+ * JS-rendered elements.
  */
 export function initAnchoredPanels(
-  anchorTarget = document.querySelector<HTMLElement>('[data-panel]:target'),
+  anchorTarget = document.getElementById(window.location.hash.slice(1)),
 ) {
-  if (anchorTarget) {
-    anchorTarget.scrollIntoView({ behavior: 'smooth' });
+  const target = anchorTarget?.matches('[data-panel]')
+    ? anchorTarget
+    : getElementByContentPath();
+
+  if (target) {
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   }
 }

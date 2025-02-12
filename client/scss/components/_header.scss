@@ -1,17 +1,20 @@
 @use 'sass:math';
 @use 'sass:color';
+@use '../tools' as *;
+@use '../settings' as *;
 
 .w-header {
-  @apply w-text-primary;
+  @apply w-text-text-label;
   margin-bottom: theme('spacing.8');
 
   h1,
   h2 {
-    @apply w-text-primary;
+    @apply w-text-text-label;
     margin: 0;
   }
 
-  h1 {
+  h1,
+  .w-header__title {
     @apply w-h1;
     position: relative;
   }
@@ -26,20 +29,10 @@
       max-width: 1em;
       max-height: 1em;
     }
-
-    &.avatar {
-      margin-top: theme('spacing.2');
-      margin-inline-start: calc(0 - theme('spacing.2'));
-    }
   }
 
   .w-header__subtitle {
     margin-inline-start: theme('spacing[1.5]');
-    font-weight: theme('fontWeight.normal');
-  }
-
-  .w-header__description {
-    font-size: theme('fontSize.18');
     font-weight: theme('fontWeight.normal');
   }
 
@@ -48,30 +41,32 @@
   &.w-header--with-padding,
   > .row {
     padding-top: theme('spacing.2');
-    padding-bottom: theme('spacing.6');
+    padding-bottom: theme('spacing.[2.5]');
     padding-inline-start: 110px;
     padding-inline-end: theme('spacing.5');
   }
 
-  &.w-header--merged .w-breadcrumb {
+  &.w-header--merged .w-breadcrumbs {
     padding-inline-start: $mobile-nav-indent;
   }
 
   .col {
-    float: left;
+    float: inline-start;
     margin-inline-end: 2em;
   }
 
   .left {
-    float: left;
+    float: inline-start;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
   }
 
   .right {
+    display: flex;
+    gap: theme('spacing[2.5]');
     text-align: end;
-    float: right;
+    float: inline-end;
   }
 
   // For case where content below header should merge with it
@@ -88,20 +83,6 @@
     padding-bottom: 0;
   }
 
-  .button {
-    background-color: $color-teal-darker;
-
-    &:hover {
-      color: $color-white;
-      background-color: $color-teal-dark;
-    }
-  }
-
-  .button-secondary {
-    color: $color-teal-darker;
-    background-color: transparent;
-  }
-
   .error-message {
     color: inherit;
   }
@@ -116,10 +97,6 @@
       margin-inline-end: 2em;
     }
 
-    .avatar.small {
-      margin-inline-start: 0;
-    }
-
     a {
       font-weight: theme('fontWeight.bold');
     }
@@ -131,26 +108,20 @@
     .row {
       padding-inline-start: $desktop-nice-padding;
       padding-inline-end: $desktop-nice-padding;
-      padding-top: theme('spacing.6');
+      padding-top: theme('spacing.10');
     }
 
-    &.w-header--merged .w-breadcrumb {
+    &.w-header--merged .w-breadcrumbs {
       padding-inline-start: 0;
     }
 
-    .w-header__glyph {
-      &.avatar {
-        margin-inline-start: calc(0 - theme('spacing.5'));
-      }
-    }
-
     .left {
-      float: left;
+      float: inline-start;
       margin-inline-end: 0;
 
       &:first-child {
         padding-bottom: 0;
-        float: left;
+        float: inline-start;
       }
     }
 
@@ -159,7 +130,7 @@
 
       .right,
       .left {
-        float: right;
+        float: inline-end;
       }
     }
 
@@ -177,6 +148,30 @@
 
     .col9 {
       @include column(9);
+    }
+  }
+}
+
+.w-slim-header {
+  @include more-contrast() {
+    border-color: theme('colors.border-furniture-more-contrast');
+  }
+
+  &__search-form {
+    @apply w-mx-2 w-flex w-items-center w-gap-2;
+  }
+
+  .w-field__wrapper:not(.w-drilldown .w-field__wrapper) {
+    @apply w-mb-0;
+
+    .w-field__input {
+      @apply w-mt-0;
+
+      > input,
+      > select {
+        @apply w-text-16;
+        min-height: theme('spacing.10');
+      }
     }
   }
 }

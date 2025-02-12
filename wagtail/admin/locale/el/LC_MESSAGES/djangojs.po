@@ -1,16 +1,17 @@
 #
 # Translators:
-# 79353a696ad19dc202b261b3067b7640_bec941e, 2022
 # serafeim <serafeim@torchbox.com>, 2022
 # Karl Hobley <karl@torchbox.com>, 2022
 # Yiannis Inglessis <negtheone@gmail.com>, 2022
-# Dimitri Fekas, 2022
+# fekioh, 2022
 # Nick Mavrakis <mavrakis.n@gmail.com>, 2022
+# Loic Teixeira, 2024
+# 79353a696ad19dc202b261b3067b7640_bec941e, 2025
 #
 msgid ""
 msgstr ""
-"Last-Translator: Nick Mavrakis <mavrakis.n@gmail.com>, 2022\n"
-"Language-Team: Greek (https://www.transifex.com/torchbox/teams/8009/el/)\n"
+"Last-Translator: 79353a696ad19dc202b261b3067b7640_bec941e, 2025\n"
+"Language-Team: Greek (https://app.transifex.com/torchbox/teams/8009/el/)\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: el\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -45,11 +46,8 @@ msgstr "Διαγραφή λάθους"
 msgid "Edit"
 msgstr "Επεξεργασία"
 
-msgid "Edit '{title}'"
-msgstr "Επεξεργασία '{title}'"
-
-msgid "Edit your account"
-msgstr "Επεξεργαστείτε το λογαριασμό σας"
+msgid "Edit '%(title)s'"
+msgstr "Επεξεργασία '%(title)s'"
 
 msgid "Focus comment"
 msgstr "Εστίαση σχολίου"
@@ -77,6 +75,9 @@ msgstr "Σελίδα"
 
 msgid "Pages"
 msgstr "Σελίδες"
+
+msgid "Preview"
+msgstr "Προεπισκόπηση"
 
 msgid "Reload saved content"
 msgstr "Επαναφόρτωση αποθηκευμένου περιεχόμενου"
@@ -132,11 +133,17 @@ msgstr ""
 "Ο επεξεργαστής κειμένου απέτυχε. Το περιεχόμενο επαναφέρθηκε στην τελευταία "
 "αποθηκευμένη έκδοση."
 
+msgid "The maximum number of items is %(max_num)d"
+msgstr "Ο μέγιστος αριθμός στοιχείων είναι %(max_num)d"
+
+msgid "The minimum number of items is %(min_num)d"
+msgstr "Ο ελάχιστος αριθμός στοιχείων είναι %(min_num)d"
+
 msgid "This field is required."
 msgstr "Το πεδίο αυτό είναι απαραίτητο"
 
 msgid "Unfocus comment"
 msgstr "Αποεστίαση σχολίου"
 
-msgid "View child pages of '{title}'"
-msgstr "Εμφάνιση υποσελίδων της '{title}'"
+msgid "View child pages of '%(title)s'"
+msgstr "Εμφάνιση υποσελίδων της '%(title)s'"

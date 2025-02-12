@@ -1,11 +1,13 @@
-# Wagtail API v2 Usage Guide
+(api_v2_usage)=
 
-The Wagtail API module exposes a public, read only, JSON-formatted API which
+# Wagtail API v2 usage guide
+
+The Wagtail API module exposes a public, read-only, JSON-formatted API which
 can be used by external clients (such as a mobile app) or the site's frontend.
 
 This document is intended for developers using the API exposed by Wagtail. For
 documentation on how to enable the API module in your Wagtail site, see
-[Wagtail API v2 Configuration Guide](/advanced_topics/api/v2/configuration)
+[Wagtail API v2 configuration guide](/advanced_topics/api/v2/configuration)
 
 Contents
 
@@ -162,6 +164,8 @@ either a number (the new maximum value) or `None` (which disables maximum
 value check).
 ```
 
+(api_v2_usage_ordering)=
+
 ### Ordering
 
 The results can be ordered by any field by setting the `?order` parameter to
@@ -205,6 +209,26 @@ Content-Type: application/json
 ```{note}
 Ordering is case-sensitive so lowercase letters are always ordered after
 uppercase letters when in ascending order.
+```
+
+#### Multiple ordering
+
+Multiple fields can be passed into the `?order` for consecutive ordering.
+
+```
+GET /api/v2/pages/?order=title,-slug
+
+HTTP 200 OK
+Content-Type: application/json
+
+{
+    "meta": {
+        "total_count": 50
+    },
+    "items": [
+        pages will be ordered by title and for all matching titles (a-z), then sorted by slug (z-a).
+    ]
+}
 ```
 
 #### Random ordering
@@ -276,7 +300,7 @@ Content-Type: application/json
 Pages can additionally be filtered by their relation to other pages in the tree.
 
 The `?child_of` filter takes the id of a page and filters the list of results
-to contain only direct children of that page.
+to contain only the direct children of that page.
 
 For example, this can be useful for constructing the main menu, by passing the
 id of the homepage to the filter:
@@ -326,19 +350,15 @@ way down to the site's root page.
 
 For example, when combined with the `type` filter it can be used to
 find the particular `blog.BlogIndexPage` a `blog.BlogPage` belongs
-to. By itself, it can be used to to construct a breadcrumb trail from
+to. By itself, it can be used to construct a breadcrumb trail from
 the current page back to the site's root page.
 
-The `?descendant_of` filter takes the id of a page and filter the list
-to only include descendants of that page (children, grandchildren etc.).
+The `?descendant_of` filter takes the id of a page and filters the list
+to only include descendants of that page (children, grandchildren, etc.).
 
 (api_filtering_pages_by_site)=
 
 ### Filtering pages by site
-
-```{versionadded} 4.0
-
-```
 
 By default, the API will look for the site based on the hostname of the request.
 In some cases, you might want to query pages belonging to a different site.
@@ -548,7 +568,7 @@ These fields are returned by every endpoint.
 The unique ID of the object
 
 ```{note}
-Except for page types, every other content type has its own id space
+Except for page types, every other content type has its own ID space
 so you must combine this with the ``type`` field in order to get a
 unique identifier for an object.
 ```
@@ -578,7 +598,7 @@ Nests some information about the parent page (only available on detail
 views)
 
 **`meta.alias_of` (dictionary)**
-If the page marked as an alias return original page id and full url
+If the page marked as an alias return the original page ID and full URL
 
 ### Images
 
@@ -612,13 +632,13 @@ A URL to the document file
 
 ### Major features
 
--   The `fields` parameter has been improved to allow removing fields, adding all fields and customising nested fields
+-   The `fields` parameter has been improved to allow removing fields, adding all fields, and customizing nested fields
 
 ### Minor features
 
--   `html_url`, `slug`, `first_published_at`, `expires_at` and `show_in_menus` fields have been added to the pages endpoint
+-   `html_url`, `slug`, `first_published_at`, `expires_at`, and `show_in_menus` fields have been added to the pages endpoint
 -   `download_url` field has been added to the documents endpoint
--   Multiple page types can be specified in `type` parameter on pages endpoint
+-   Multiple page types can be specified in `type` parameter on page endpoint
 -   `true` and `false` may now be used when filtering boolean fields
 -   `order` can now be used in conjunction with `search`
 -   `search_operator` parameter was added

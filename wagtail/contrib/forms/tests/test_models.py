@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-import unittest
-
-from django import VERSION as DJANGO_VERSION
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
@@ -46,10 +42,6 @@ class TestFormSubmission(TestCase):
         # check that variables defined in get_context are passed through to the template (#1429)
         self.assertContains(response, "<p>hello world</p>")
 
-    @unittest.skipIf(
-        (4, 0) <= DJANGO_VERSION < (4, 0, 2),
-        "help_text is erroneously escaped in Django 4.0 - 4.0.1: https://code.djangoproject.com/ticket/33419",
-    )
     @override_settings(WAGTAILFORMS_HELP_TEXT_ALLOW_HTML=True)
     def test_get_form_without_help_text_escaping(self):
         response = self.client.get("/contact-us/")
@@ -204,7 +196,7 @@ class TestFormSubmission(TestCase):
         self.assertIn("hello world", str(submission))
 
 
-class TestFormWithCustomSubmission(TestCase, WagtailTestUtils):
+class TestFormWithCustomSubmission(WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a form page
         self.form_page = make_form_page_with_custom_submission()
@@ -480,7 +472,7 @@ class TestFormSubmissionWithMultipleRecipients(TestCase):
 
 
 class TestFormSubmissionWithMultipleRecipientsAndWithCustomSubmission(
-    TestCase, WagtailTestUtils
+    WagtailTestUtils, TestCase
 ):
     def setUp(self):
         # Create a form page
@@ -566,9 +558,8 @@ class TestFormWithRedirect(TestCase):
         )
 
 
-class TestFormPageWithCustomFormBuilder(TestCase, WagtailTestUtils):
+class TestFormPageWithCustomFormBuilder(WagtailTestUtils, TestCase):
     def setUp(self):
-
         home_page = Page.objects.get(url_path="/home/")
         form_page = home_page.add_child(
             instance=FormPageWithCustomFormBuilder(
@@ -612,11 +603,13 @@ class TestFormPageWithCustomFormBuilder(TestCase, WagtailTestUtils):
             html=True,
         )
         # check ip address field has rendered
-        self.assertContains(
-            response,
-            '<input type="text" name="device_ip_address" required id="id_device_ip_address" />',
-            html=True,
-        )
+        # (not comparing HTML directly because https://docs.djangoproject.com/en/5.1/releases/5.1.5/
+        # added a maxlength attribute)
+        soup = self.get_soup(response.content)
+        input = soup.find("input", {"name": "device_ip_address"})
+        self.assertEqual(input["type"], "text")
+        self.assertEqual(input["required"], "")
+        self.assertEqual(input["id"], "id_device_ip_address")
 
     def test_post_invalid_form(self):
         response = self.client.post(
@@ -779,8 +772,34 @@ class TestCleanedDataEmails(TestCase):
         self.assertEqual(len(mail.outbox), 3)
         self.assertIn("Datetime: 12/21/1910 9:19 p.m.", mail.outbox[2].body)
 
+    @override_settings(USE_I18N=True, LANGUAGE_CODE="de")
+    def test_date_localization(self):
+        self.client.post(
+            "/contact-us/",
+            {
+                "date": "2017-12-31",
+            },
+        )
 
-class TestIssue798(TestCase, WagtailTestUtils):
+        # Check the email
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Date: 31.12.2017", mail.outbox[0].body)
+
+    @override_settings(USE_I18N=True, LANGUAGE_CODE="de")
+    def test_datetime_localization(self):
+        self.client.post(
+            "/contact-us/",
+            {
+                "datetime": "1910-12-21 21:19:12",
+            },
+        )
+
+        # Check the email
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Datetime: 21.12.1910 21:19", mail.outbox[0].body)
+
+
+class TestIssue798(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
@@ -831,7 +850,7 @@ class TestNonHtmlExtension(TestCase):
         )
 
 
-class TestFormFieldCleanNameCreation(TestCase, WagtailTestUtils):
+class TestFormFieldCleanNameCreation(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
@@ -852,7 +871,7 @@ class TestFormFieldCleanNameCreation(TestCase, WagtailTestUtils):
         self.assertEqual(field.clean_name, "telefon_nummer")
 
 
-class TestFormFieldCleanNameCreationOverride(TestCase, WagtailTestUtils):
+class TestFormFieldCleanNameCreationOverride(WagtailTestUtils, TestCase):
     def setUp(self):
         # Create a form page
         home_page = Page.objects.get(url_path="/home/")

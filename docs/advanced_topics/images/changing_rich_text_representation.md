@@ -2,7 +2,7 @@
 
 # Changing rich text representation
 
-The HTML representation of an image in rich text can be customised - for example, to display captions or custom fields.
+The HTML representation of an image in rich text can be customized - for example, to display captions or custom fields.
 
 To do this requires subclassing `Format` (see [](rich_text_image_formats)), and overriding its `image_to_html` method.
 
@@ -25,7 +25,7 @@ class SubclassedImageFormat(Format):
 
 
 register_image_format(
-    SubclassedImageFormat('subclassed_format', 'Subclassed Format', classnames, filter_spec)
+    SubclassedImageFormat('subclassed_format', 'Subclassed Format', 'image-classes object-contain', filter_spec)
 )
 ```
 

@@ -6,7 +6,7 @@ from wagtail.test.testapp.models import NotYetRegisteredGenericSetting
 from wagtail.test.utils import WagtailTestUtils
 
 
-class GenericSettingRegisterTestCase(TestCase, WagtailTestUtils):
+class GenericSettingRegisterTestCase(WagtailTestUtils, TestCase):
     def setUp(self):
         self.registry = Registry()
         self.login()
@@ -21,4 +21,4 @@ class GenericSettingRegisterTestCase(TestCase, WagtailTestUtils):
 
     def test_icon(self):
         admin = self.client.get(reverse("wagtailadmin_home"))
-        self.assertContains(admin, "icon-setting-tag")
+        self.assertContains(admin, '"tag"')

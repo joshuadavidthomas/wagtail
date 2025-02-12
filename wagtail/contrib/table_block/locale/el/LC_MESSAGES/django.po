@@ -4,16 +4,18 @@
 #
 # Translators:
 # Dimitri Fekas, 2022
+# fekioh, 2022
 # Nick Mavrakis <mavrakis.n@gmail.com>, 2017
+# Yiannis Inglessis <negtheone@gmail.com>, 2016
 # Yiannis Inglessis <negtheone@gmail.com>, 2016
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2016-05-11 20:23+0000\n"
-"Last-Translator: Dimitri Fekas, 2022\n"
-"Language-Team: Greek (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Yiannis Inglessis <negtheone@gmail.com>, 2016\n"
+"Language-Team: Greek (http://app.transifex.com/torchbox/wagtail/language/"
 "el/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -27,24 +29,11 @@ msgstr "Μπλοκ πίνακα Wagtail"
 msgid "Row header"
 msgstr "Επικεφαλίδα γραμμής"
 
-msgid "Display the first row as a header."
-msgstr "Προβολή της πρώτης σειράς ως επικεφαλίδα."
-
 msgid "Column header"
 msgstr "Επικεφαλίδα στήλης"
 
-msgid "Display the first column as a header."
-msgstr "Εμφάνιση της πρώτης στήλης ως επικεφαλίδα."
-
 msgid "Table caption"
 msgstr "Λεζάντα πίνακα"
-
-msgid ""
-"A heading that identifies the overall topic of the table, and is useful for "
-"screen reader users"
-msgstr ""
-"Επικεφαλίδα που αναφέρει το γενικό περιεχόμενο του πίνακα και είναι χρήσιμη "
-"για προγράμματα ανάγνωσης οθόνης"
 
 msgid "Table"
 msgstr "Πίνακας"

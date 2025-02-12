@@ -3,31 +3,37 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# 79353a696ad19dc202b261b3067b7640_bec941e, 2015
 # Benedikt Willi <ben.willi@gmail.com>, 2020
-# oliverengel <codeangel@posteo.de>, 2022
+# Oliver Engel <codeangel@posteo.de>, 2022
 # Ettore Atalan <atalanttore@googlemail.com>, 2019-2020
 # Henrik Kröger <hedwig@riseup.net>, 2016,2018
 # Johannes Spielmann <j@spielmannsolutions.com>, 2014
 # karlsander <karlsander@gmail.com>, 2014
 # karlsander <karlsander@gmail.com>, 2014
+# Krzysztof Jeziorny <github@jeziorny.net>, 2024
+# Matthias Martin, 2019
 # Matthias Martin, 2019
 # Moritz Pfeiffer <moritz@alp-phone.ch>, 2016-2018
-# oliverengel <codeangel@posteo.de>, 2021
+# Oliver Engel <codeangel@posteo.de>, 2021-2022
+# Oliver Engel <codeangel@posteo.de>, 2021
 # pcraston <patrick@craston.com>, 2014
 # pcraston <patrick@craston.com>, 2014
 # Peter Dreuw <archandha@gmx.net>, 2019
-# th3hamm0r <stefan@hammerworxx.com>, 2022
+# Stefan Hammer <stefan@hammerworxx.com>, 2024
+# Stefan Hammer <stefan@hammerworxx.com>, 2022
 # Tammo van Lessen <tvanlessen@gmail.com>, 2015
+# Stefan Hammer <stefan@hammerworxx.com>, 2022
 # Wasilis Mandratzis-Walz, 2015
 # 79353a696ad19dc202b261b3067b7640_bec941e, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:06+0000\n"
-"Last-Translator: th3hamm0r <stefan@hammerworxx.com>, 2022\n"
-"Language-Team: German (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Krzysztof Jeziorny <github@jeziorny.net>, 2024\n"
+"Language-Team: German (http://app.transifex.com/torchbox/wagtail/language/"
 "de/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -198,31 +204,11 @@ msgstr "Dokument ändern:"
 msgid "Add a document"
 msgstr "Ein Dokument hinzufügen"
 
-msgid "Add document"
-msgstr "Dokument hinzufügen"
-
 msgid "Uploading…"
 msgstr "Lade hoch…"
 
 msgid "Upload"
 msgstr "Hochladen"
-
-#, python-format
-msgid "Delete %(title)s"
-msgstr "%(title)s löschen"
-
-msgid "Delete document"
-msgstr "Dokument löschen"
-
-#, python-format
-msgid "Editing %(title)s"
-msgstr "%(title)s bearbeiten"
-
-msgid "Editing"
-msgstr "Bearbeite"
-
-msgid "Save"
-msgstr "Speichern"
 
 msgid "Filesize"
 msgstr "Dateigrösse"
@@ -233,29 +219,8 @@ msgstr "Datei nicht gefunden"
 msgid "Usage"
 msgstr "Benutzung"
 
-msgid "Documents"
-msgstr "Dokumente"
-
 msgid "Select all documents in listing"
 msgstr "Alle Dokumente in der Aufzählung auswählen"
-
-msgid "Title"
-msgstr "Titel"
-
-msgid "File"
-msgstr "Datei"
-
-msgid "Created"
-msgstr "Erstellt"
-
-msgid "Select document"
-msgstr "Dokument auswählen"
-
-#, python-format
-msgid "There is %(counter)s match"
-msgid_plural "There are %(counter)s matches"
-msgstr[0] "Es gibt %(counter)s Ergebnis"
-msgstr[1] "Es gibt %(counter)s Ergebnisse"
 
 #, python-format
 msgid "Sorry, no documents match \"<em>%(query_string)s</em>\""
@@ -264,58 +229,35 @@ msgstr ""
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents in this collection. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents in this collection. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Sie haben noch keine Dokumente in dieser Sammlung hochgeladen. <a href="
-"\"%(wagtaildocs_add_document_url)s\">Laden Sie doch jetzt eines hoch!</a>"
+"Sie haben noch keine Dokumente in dieser Sammlung hochgeladen. <a "
+"href=\"%(wagtaildocs_add_document_url)s\">Laden Sie doch jetzt eines hoch!</"
+"a>"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Sie haben noch keine Dokumente hochgeladen. <a href="
-"\"%(wagtaildocs_add_document_url)s\">Laden Sie doch jetzt eines hoch!</a>"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Benutzung von %(title)s"
-
-msgid "Usage of"
-msgstr "Benutzung von"
-
-msgid "Parent"
-msgstr "Übergeordnet"
-
-msgid "Type"
-msgstr "Typ"
-
-msgid "Status"
-msgstr "Status"
-
-msgid "Edit this page"
-msgstr "Diese Seite bearbeiten"
+"Sie haben noch keine Dokumente hochgeladen. <a "
+"href=\"%(wagtaildocs_add_document_url)s\">Laden Sie doch jetzt eines hoch!</"
+"a>"
 
 #, python-format
 msgid ""
-"<span>%(total)s</span> Document <span class=\"visuallyhidden\">created in "
-"%(site_name)s</span>"
+"%(total)s Document <span class=\"w-sr-only\">created in %(site_name)s</span>"
 msgid_plural ""
-"<span>%(total)s</span> Documents <span class=\"visuallyhidden\">created in "
-"%(site_name)s</span>"
+"%(total)s Documents <span class=\"w-sr-only\">created in %(site_name)s</span>"
 msgstr[0] ""
-"<span>%(total)s</span> Dokument <span class=\"visuallyhidden\">wurde in "
-"%(site_name)s erstellt</span>"
+"%(total)s Dokument <span class=\"w-sr-only\">erstellt in %(site_name)s</span>"
 msgstr[1] ""
-"<span>%(total)s</span> Dokumente <span class=\"visuallyhidden\">wurden in "
-"%(site_name)s erstellt</span>"
+"%(total)s Dokumente <span class=\"w-sr-only\">erstellt in %(site_name)s</"
+"span>"
 
 msgid "Add multiple documents"
 msgstr "Mehrere Dokumente hinzufügen"
-
-msgid "Add documents"
-msgstr "Dokumente hinzufügen"
 
 msgid "Drag and drop documents into this area to upload immediately."
 msgstr "Ziehen Sie Dokumente in diesen Bereich, um sie sofort hochzuladen."
@@ -348,6 +290,9 @@ msgstr "Dokumenten-Berechtigungen"
 
 msgid "Add a document permission"
 msgstr "Einfügen einer Dokumenten-Berechtigung"
+
+msgid "Tags"
+msgstr "Schlagwörter"
 
 msgid "Tag"
 msgstr "Schlagwort"
@@ -388,22 +333,40 @@ msgid_plural "%(num_parent_objects)d documents have been deleted"
 msgstr[0] "%(num_parent_objects)d Dokument wurde gelöscht"
 msgstr[1] "%(num_parent_objects)d Dokumente wurden gelöscht"
 
+msgid "File"
+msgstr "Datei"
+
+msgid "Created"
+msgstr "Erstellt"
+
 msgid "Choose a document"
 msgstr "Dokument auswählen"
 
-msgid "Search documents"
-msgstr "Nach Dokumenten suchen"
+msgid "Choose another document"
+msgstr "Anderes Dokument wählen"
 
-#, python-brace-format
-msgid "Document '{0}' added."
-msgstr "Dokument ‚{0}‘ wurde hinzugefügt."
+msgid "Edit this document"
+msgstr "Dieses Dokument bearbeiten"
+
+msgid "Documents"
+msgstr "Dokumente"
+
+msgid "Title"
+msgstr "Titel"
+
+msgid "The document could not be created due to errors."
+msgstr "Aufgrund eines Fehlers konnte das Dokument nicht erstellt werden."
+
+#, python-format
+msgid "Document '%(document_title)s' added."
+msgstr "Dokument ‚%(document_title)s‘ wurde hinzugefügt."
 
 msgid "The document could not be saved due to errors."
 msgstr "Aufgrund eines Fehlers konnte das Dokument nicht gespeichert werden."
 
-#, python-brace-format
-msgid "Document '{0}' updated"
-msgstr "Dokument ‚{0}‘ aktualisiert"
+#, python-format
+msgid "Document '%(document_title)s' updated"
+msgstr "Dokument ‚%(document_title)s‘ aktualisiert"
 
 msgid ""
 "The file could not be found. Please change the source or delete the document"
@@ -411,9 +374,15 @@ msgstr ""
 "Die Datei konnte nicht gefunden werden. Bitte ändern Sie die Quelle oder "
 "löschen Sie das Dokument "
 
-#, python-brace-format
-msgid "Document '{0}' deleted."
-msgstr "Dokument ‚{0}‘ gelöscht."
+msgid "Delete document"
+msgstr "Dokument löschen"
+
+#, python-format
+msgid "Document '%(document_title)s' deleted."
+msgstr "Dokument ‚%(document_title)s‘ gelöscht."
+
+msgid "Add documents"
+msgstr "Dokumente hinzufügen"
 
 msgid "Document"
 msgstr "Dokument"

@@ -63,16 +63,15 @@ export const Sidebar: React.FunctionComponent<SidebarProps> = ({
       if (checkWindowSizeIsMobile()) {
         setIsMobile(true);
         return null;
-      } else {
-        setIsMobile(false);
-
-        // Close the menu and animate out as this state is not used in desktop
-        setVisibleOnMobile(false);
-        // wait for animation to finish then hide menu from screen readers as well.
-        return setTimeout(() => {
-          setClosedOnMobile(true);
-        }, SIDEBAR_TRANSITION_DURATION);
       }
+      setIsMobile(false);
+
+      // Close the menu and animate out as this state is not used in desktop
+      setVisibleOnMobile(false);
+      // wait for animation to finish then hide menu from screen readers as well.
+      return setTimeout(() => {
+        setClosedOnMobile(true);
+      }, SIDEBAR_TRANSITION_DURATION);
     }
 
     window.addEventListener('resize', handleResize);
@@ -88,7 +87,7 @@ export const Sidebar: React.FunctionComponent<SidebarProps> = ({
   // Whether or not to display the menu with slim layout.
   const slim = collapsed && !isMobile;
 
-  // 'expandingOrCollapsing' is set to true whilst the the menu is transitioning between slim and expanded layouts
+  // 'expandingOrCollapsing' is set to true whilst the menu is transitioning between slim and expanded layouts
   const [expandingOrCollapsing, setExpandingOrCollapsing] =
     React.useState(false);
 
@@ -229,9 +228,11 @@ export const Sidebar: React.FunctionComponent<SidebarProps> = ({
                 w-flex
                 w-justify-center
                 w-items-center
-                hover:w-bg-primary-200
+                hover:w-bg-surface-menu-item-active
                 hover:text-white
-                hover:opacity-100`}
+                hover:opacity-100
+                more-contrast:w-border-border-interactive-more-contrast-dark-bg
+                hover:more-contrast:w-border-border-interactive-more-contrast-dark-bg-hover`}
             >
               <Icon
                 name="expand-right"

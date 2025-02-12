@@ -1,5 +1,4 @@
 import json
-import warnings
 
 from django import forms
 from django.core.exceptions import ImproperlyConfigured
@@ -8,6 +7,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
+from django.utils.text import capfirst
 from django.utils.translation import gettext_lazy as _
 
 from wagtail.admin.admin_url_finder import AdminURLFinder
@@ -15,83 +15,14 @@ from wagtail.admin.staticfiles import versioned_static
 from wagtail.coreutils import resolve_model_string
 from wagtail.models import Page
 from wagtail.telepath import register
-from wagtail.utils.deprecation import RemovedInWagtail50Warning
-from wagtail.utils.widgets import WidgetWithScript
 from wagtail.widget_adapters import WidgetAdapter
-
-
-class AdminChooser(WidgetWithScript, widgets.Input):
-    choose_one_text = _("Choose an item")
-    choose_another_text = _("Change")
-    clear_choice_text = _("Clear")
-    link_to_chosen_text = _("Edit")
-    show_edit_link = True
-    show_clear_link = True
-
-    # when looping over form fields, this one should appear in visible_fields, not hidden_fields
-    # despite the underlying input being type="hidden"
-    input_type = "hidden"
-    is_hidden = False
-
-    def __init__(self, **kwargs):
-        warnings.warn(
-            "wagtail.admin.widgets.chooser.AdminChooser is deprecated. "
-            "Custom chooser subclasses should inherit from wagtail.admin.widgets.chooser.BaseChooser instead",
-            category=RemovedInWagtail50Warning,
-        )
-
-        # allow choose_one_text / choose_another_text to be overridden per-instance
-        if "choose_one_text" in kwargs:
-            self.choose_one_text = kwargs.pop("choose_one_text")
-        if "choose_another_text" in kwargs:
-            self.choose_another_text = kwargs.pop("choose_another_text")
-        if "clear_choice_text" in kwargs:
-            self.clear_choice_text = kwargs.pop("clear_choice_text")
-        if "link_to_chosen_text" in kwargs:
-            self.link_to_chosen_text = kwargs.pop("link_to_chosen_text")
-        if "show_edit_link" in kwargs:
-            self.show_edit_link = kwargs.pop("show_edit_link")
-        if "show_clear_link" in kwargs:
-            self.show_clear_link = kwargs.pop("show_clear_link")
-        super().__init__(**kwargs)
-
-    def get_instance(self, model_class, value):
-        # helper method for cleanly turning 'value' into an instance object.
-        # DEPRECATED - subclasses should override WidgetWithScript.get_value_data instead
-        if value is None:
-            return None
-
-        try:
-            return model_class.objects.get(pk=value)
-        except model_class.DoesNotExist:
-            return None
-
-    def get_instance_and_id(self, model_class, value):
-        # DEPRECATED - subclasses should override WidgetWithScript.get_value_data instead
-        if value is None:
-            return (None, None)
-        elif isinstance(value, model_class):
-            return (value, value.pk)
-        else:
-            try:
-                return (model_class.objects.get(pk=value), value)
-            except model_class.DoesNotExist:
-                return (None, None)
-
-    def value_from_datadict(self, data, files, name):
-        # treat the empty string as None
-        result = super().value_from_datadict(data, files, name)
-        if result == "":
-            return None
-        else:
-            return result
 
 
 class BaseChooser(widgets.Input):
     choose_one_text = _("Choose an item")
-    choose_another_text = _("Change")
-    clear_choice_text = _("Clear")
-    link_to_chosen_text = _("Edit")
+    choose_another_text = _("Choose another item")
+    clear_choice_text = _("Clear choice")
+    link_to_chosen_text = _("Edit this item")
     show_edit_link = True
     show_clear_link = True
     template_name = "wagtailadmin/widgets/chooser.html"
@@ -101,6 +32,8 @@ class BaseChooser(widgets.Input):
     icon = None
     classname = None
     model = None
+    js_constructor = "Chooser"
+    linked_fields = {}
 
     # when looping over form fields, this one should appear in visible_fields, not hidden_fields
     # despite the underlying input being type="hidden"
@@ -108,19 +41,19 @@ class BaseChooser(widgets.Input):
     is_hidden = False
 
     def __init__(self, **kwargs):
-        # allow choose_one_text / choose_another_text to be overridden per-instance
-        if "choose_one_text" in kwargs:
-            self.choose_one_text = kwargs.pop("choose_one_text")
-        if "choose_another_text" in kwargs:
-            self.choose_another_text = kwargs.pop("choose_another_text")
-        if "clear_choice_text" in kwargs:
-            self.clear_choice_text = kwargs.pop("clear_choice_text")
-        if "link_to_chosen_text" in kwargs:
-            self.link_to_chosen_text = kwargs.pop("link_to_chosen_text")
-        if "show_edit_link" in kwargs:
-            self.show_edit_link = kwargs.pop("show_edit_link")
-        if "show_clear_link" in kwargs:
-            self.show_clear_link = kwargs.pop("show_clear_link")
+        # allow attributes to be overridden by kwargs
+        for var in [
+            "choose_one_text",
+            "choose_another_text",
+            "clear_choice_text",
+            "link_to_chosen_text",
+            "show_edit_link",
+            "show_clear_link",
+            "icon",
+            "linked_fields",
+        ]:
+            if var in kwargs:
+                setattr(self, var, kwargs.pop(var))
         super().__init__(**kwargs)
 
     @cached_property
@@ -185,7 +118,10 @@ class BaseChooser(widgets.Input):
         elif isinstance(value, self.model_class):
             return value
         else:  # assume instance ID
-            return self.model_class.objects.get(pk=value)
+            try:
+                return self.model_class.objects.get(pk=value)
+            except self.model_class.DoesNotExist:
+                return None
 
     def get_display_title(self, instance):
         """
@@ -228,11 +164,26 @@ class BaseChooser(widgets.Input):
         widget_html = self.render_html(name, value_data, attrs)
 
         js = self.render_js_init(id_, name, value_data)
-        out = "{0}<script>{1}</script>".format(widget_html, js)
+        out = f"{widget_html}<script>{js}</script>"
         return mark_safe(out)
 
+    @property
+    def base_js_init_options(self):
+        """The set of options to pass to the JS initialiser that are constant every time this widget
+        instance is rendered (i.e. do not vary based on id / name / value)"""
+        opts = {
+            "modalUrl": self.get_chooser_modal_url(),
+        }
+        if self.linked_fields:
+            opts["linkedFields"] = self.linked_fields
+        return opts
+
+    def get_js_init_options(self, id_, name, value_data):
+        return {**self.base_js_init_options}
+
     def render_js_init(self, id_, name, value_data):
-        return "new Chooser({0});".format(json.dumps(id_))
+        opts = self.get_js_init_options(id_, name, value_data)
+        return f"new {self.js_constructor}({json.dumps(id_)}, {json.dumps(opts)});"
 
     @cached_property
     def media(self):
@@ -250,6 +201,7 @@ class BaseChooserAdapter(WidgetAdapter):
         return [
             widget.render_html("__NAME__", None, attrs={"id": "__ID__"}),
             widget.id_for_label("__ID__"),
+            widget.base_js_init_options,
         ]
 
     @cached_property
@@ -266,10 +218,13 @@ register(BaseChooserAdapter(), BaseChooser)
 
 class AdminPageChooser(BaseChooser):
     choose_one_text = _("Choose a page")
+    choose_another_text = _("Choose another page")
+    link_to_chosen_text = _("Edit this page")
     display_title_key = "display_title"
     chooser_modal_url_name = "wagtailadmin_choose_page"
     icon = "doc-empty-inverse"
     classname = "page-chooser"
+    js_constructor = "PageChooser"
 
     def __init__(
         self, target_models=None, can_choose_root=False, user_perms=None, **kwargs
@@ -296,7 +251,7 @@ class AdminPageChooser(BaseChooser):
             cleaned_target_models = [Page]
 
         if len(cleaned_target_models) == 1 and cleaned_target_models[0] is not Page:
-            model_name = cleaned_target_models[0]._meta.verbose_name.title()
+            model_name = capfirst(cleaned_target_models[0]._meta.verbose_name)
             self.choose_one_text += " (" + model_name + ")"
 
         self.user_perms = user_perms
@@ -317,13 +272,14 @@ class AdminPageChooser(BaseChooser):
         ]
 
     @property
-    def client_options(self):
+    def base_js_init_options(self):
         # a JSON-serializable representation of the configuration options needed for the
         # client-side behaviour of this widget
         return {
-            "model_names": self.model_names,
-            "can_choose_root": self.can_choose_root,
-            "user_perms": self.user_perms,
+            "modelNames": self.model_names,
+            "canChooseRoot": self.can_choose_root,
+            "userPerms": self.user_perms,
+            **super().base_js_init_options,
         }
 
     def get_instance(self, value):
@@ -340,13 +296,13 @@ class AdminPageChooser(BaseChooser):
         data["parent_id"] = parent_page.pk if parent_page else None
         return data
 
-    def render_js_init(self, id_, name, value_data):
+    def get_js_init_options(self, id_, name, value_data):
+        opts = super().get_js_init_options(id_, name, value_data)
         value_data = value_data or {}
-        return "new PageChooser({id}, {parent}, {options});".format(
-            id=json.dumps(id_),
-            parent=json.dumps(value_data.get("parent_id")),
-            options=json.dumps(self.client_options),
-        )
+        parent_id = value_data.get("parent_id")
+        if parent_id is not None:
+            opts["parentId"] = parent_id
+        return opts
 
     @property
     def media(self):
@@ -358,15 +314,17 @@ class AdminPageChooser(BaseChooser):
         )
 
 
-class PageChooserAdapter(WidgetAdapter):
+class PageChooserAdapter(BaseChooserAdapter):
     js_constructor = "wagtail.widgets.PageChooser"
 
-    def js_args(self, widget):
-        return [
-            widget.render_html("__NAME__", None, attrs={"id": "__ID__"}),
-            widget.id_for_label("__ID__"),
-            widget.client_options,
-        ]
+    @cached_property
+    def media(self):
+        return forms.Media(
+            js=[
+                versioned_static("wagtailadmin/js/page-chooser-modal.js"),
+                versioned_static("wagtailadmin/js/page-chooser-telepath.js"),
+            ]
+        )
 
 
 class AdminPageMoveChooser(AdminPageChooser):
@@ -382,13 +340,11 @@ class AdminPageMoveChooser(AdminPageChooser):
         )
 
     @property
-    def client_options(self):
+    def base_js_init_options(self):
         return {
-            "model_names": self.model_names,
-            "can_choose_root": self.can_choose_root,
-            "user_perms": self.user_perms,
-            "target_pages": self.pages_to_move,
-            "match_subclass": False,
+            "targetPages": self.pages_to_move,
+            "matchSubclass": False,
+            **super().base_js_init_options,
         }
 
 

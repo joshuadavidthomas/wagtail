@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from wagtail.models import GroupPagePermission, Page
 from wagtail.test.testapp.models import (
+    CustomCopyFormPage,
     EventPage,
     EventPageSpeaker,
     PageWithExcludedCopyField,
@@ -13,7 +14,7 @@ from wagtail.test.testapp.models import (
 from wagtail.test.utils import WagtailTestUtils
 
 
-class TestPageCopy(TestCase, WagtailTestUtils):
+class TestPageCopy(WagtailTestUtils, TestCase):
     def setUp(self):
         # Find root page
         self.root_page = Page.objects.get(id=2)
@@ -222,7 +223,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
         # Check that the children were copied
         self.assertEqual(page_copy.get_children().count(), 2)
 
-        # Check the the child pages
+        # Check the child pages
         # Neither of them should be live
         child_copy = page_copy.get_children().filter(slug="child-page").first()
         self.assertIsNotNone(child_copy)
@@ -275,7 +276,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
         # Check that the children were copied
         self.assertEqual(page_copy.get_children().count(), 2)
 
-        # Check the the child pages
+        # Check the child pages
         # The child_copy should be live but the unpublished_child_copy shouldn't
         child_copy = page_copy.get_children().filter(slug="child-page").first()
         self.assertIsNotNone(child_copy)
@@ -343,8 +344,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
 
         # Check that a form error was raised
         self.assertFormError(
-            response,
-            "form",
+            response.context["form"],
             "new_slug",
             'This slug is already in use within the context of its parent page "Welcome to your new Wagtail site!"',
         )
@@ -367,8 +367,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
 
         # Check that a form error was raised
         self.assertFormError(
-            response,
-            "form",
+            response.context["form"],
             "new_parent_page",
             "You cannot copy a page into itself when copying subpages",
         )
@@ -411,8 +410,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
 
         # Check that a form error was raised
         self.assertFormError(
-            response,
-            "form",
+            response.context["form"],
             "new_slug",
             "Enter a valid “slug” consisting of Unicode letters, numbers, underscores, or hyphens.",
         )
@@ -506,7 +504,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
         # Check that the children were copied
         self.assertEqual(page_copy.get_children().count(), 2)
 
-        # Check the the child pages
+        # Check the child pages
         # Neither of them should be live
         child_copy = page_copy.get_children().filter(slug="child-page").first()
         self.assertIsNotNone(child_copy)
@@ -666,7 +664,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
         # Check that the children were copied
         self.assertEqual(page_copy.get_children().count(), 2)
 
-        # Check the the child pages
+        # Check the child pages
         # Neither of them should be live
         child_copy = page_copy.get_children().filter(slug="child-page").first()
         self.assertIsNotNone(child_copy)
@@ -708,7 +706,7 @@ class TestPageCopy(TestCase, WagtailTestUtils):
         self.user.is_superuser = False
         self.user.groups.add(Group.objects.get(name="Moderators"))
         self.user.save()
-        GroupPagePermission.objects.filter(permission_type="publish").update(
+        GroupPagePermission.objects.filter(permission__codename="publish_page").update(
             page=self.destination_page
         )
 
@@ -781,3 +779,22 @@ class TestPageCopy(TestCase, WagtailTestUtils):
             event_page.speakers.first().translation_key,
             new_page.speakers.first().translation_key,
         )
+
+    def test_page_copy_with_custom_copy_form(self):
+        custom_copy_form_page = self.root_page.add_child(
+            instance=CustomCopyFormPage(
+                title="Hello world!",
+                slug="copy-form",
+                live=True,
+                has_unpublished_changes=False,
+            )
+        )
+
+        response = self.client.get(
+            reverse("wagtailadmin_pages:copy", args=(custom_copy_form_page.id,))
+        )
+        # Check response
+        self.assertEqual(response.status_code, 200)
+
+        # Check if slug is hello-world-2
+        self.assertContains(response, "copy-form-2")

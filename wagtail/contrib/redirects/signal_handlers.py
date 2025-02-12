@@ -1,9 +1,11 @@
 import logging
-from typing import Iterable, Set, Tuple
+from collections.abc import Iterable
 
+from django.apps import apps
 from django.conf import settings
 from django.db.models import Q
 
+from wagtail.contrib.frontend_cache.utils import PurgeBatch
 from wagtail.coreutils import BatchCreator, get_dummy_request
 from wagtail.models import Page, Site
 
@@ -26,6 +28,19 @@ class BatchRedirectCreator(BatchCreator):
         for item in self.items:
             clashes_q |= Q(old_path=item.old_path, site_id=item.site_id)
         Redirect.objects.filter(automatically_created=True).filter(clashes_q).delete()
+
+    def post_process(self):
+        if not apps.is_installed("wagtail.contrib.frontend_cache"):
+            return
+
+        batch = PurgeBatch()
+
+        site_root_paths = Site.get_site_root_paths()
+
+        for redirect in self.items:
+            batch.add_urls(redirect.old_links(site_root_paths))
+
+        batch.purge()
 
 
 def autocreate_redirects_on_slug_change(
@@ -89,11 +104,10 @@ def autocreate_redirects_on_page_move(
 
 
 def _page_urls_for_sites(
-    page: Page, sites: Tuple[Site], cache_target: Page
-) -> Set[Tuple[Site, str, str]]:
+    page: Page, sites: tuple[Site], cache_target: Page
+) -> set[tuple[Site, str, str]]:
     urls = set()
     for site in sites:
-
         # use a `HttpRequest` to influence the return value
         request = get_dummy_request(site=site)
         # reuse cached site root paths if available
@@ -135,7 +149,7 @@ def create_redirects(page: Page, page_old: Page, sites: Iterable[Site]) -> None:
     # For bulk-creating redirects in batches
     batch = BatchRedirectCreator(max_size=2000, ignore_conflicts=True)
 
-    # Treat the page that was updated / moved separately to it's decendants,
+    # Treat the page that was updated / moved separately to it's descendants,
     # because there may be changes to fields other than `slug` or `url_path`
     # that impact the URL.
     old_urls = _page_urls_for_sites(page_old, sites, cache_target=page)

@@ -1,10 +1,11 @@
+from warnings import warn
+
 from django.conf import settings
 from django.template.response import TemplateResponse
-from django.urls import include, path, reverse
-from django.utils.html import format_html
-from django.utils.translation import gettext
+from django.urls import include, path, reverse, reverse_lazy
+from django.utils.cache import add_never_cache_headers
+from django.utils.translation import gettext, ngettext
 from django.utils.translation import gettext_lazy as _
-from django.utils.translation import ngettext
 
 import wagtail.admin.rich_text.editors.draftail.features as draftail_features
 from wagtail import hooks
@@ -32,6 +33,7 @@ from wagtail.documents.views.bulk_actions import (
 )
 from wagtail.documents.views.chooser import viewset as chooser_viewset
 from wagtail.models import BaseViewRestriction
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
 from wagtail.wagtail_hooks import require_wagtail_login
 
 
@@ -65,18 +67,6 @@ def register_documents_menu_item():
     )
 
 
-@hooks.register("insert_editor_js")
-def editor_js():
-    return format_html(
-        """
-        <script>
-            window.chooserUrls.documentChooser = '{0}';
-        </script>
-        """,
-        reverse("wagtaildocs_chooser:choose"),
-    )
-
-
 @hooks.register("register_rich_text_features")
 def register_document_feature(features):
     features.register_link_type(DocumentLinkHandler)
@@ -89,6 +79,9 @@ def register_document_feature(features):
                 "type": "DOCUMENT",
                 "icon": "doc-full-inverse",
                 "description": gettext("Document"),
+                "chooserUrls": {
+                    "documentChooser": reverse_lazy("wagtaildocs_chooser:choose")
+                },
             },
             js=["wagtaildocs/js/document-chooser-modal.js"],
         ),
@@ -112,7 +105,9 @@ class DocumentsSummaryItem(SummaryItem):
         site_name = get_site_for_user(self.request.user)["site_name"]
 
         return {
-            "total_docs": get_document_model().objects.count(),
+            "total_docs": permission_policy.instances_user_has_any_permission_for(
+                self.request.user, {"add", "change", "delete", "choose"}
+            ).count(),
             "site_name": site_name,
         }
 
@@ -189,12 +184,28 @@ def check_view_restrictions(document, request):
 
                 password_required_template = getattr(
                     settings,
-                    "DOCUMENT_PASSWORD_REQUIRED_TEMPLATE",
+                    "WAGTAILDOCS_PASSWORD_REQUIRED_TEMPLATE",
                     "wagtaildocs/password_required.html",
                 )
 
+                if hasattr(settings, "DOCUMENT_PASSWORD_REQUIRED_TEMPLATE"):
+                    warn(
+                        "The `DOCUMENT_PASSWORD_REQUIRED_TEMPLATE` setting is deprecated - use `WAGTAILDOCS_PASSWORD_REQUIRED_TEMPLATE` instead.",
+                        category=RemovedInWagtail70Warning,
+                    )
+
+                    password_required_template = getattr(
+                        settings,
+                        "DOCUMENT_PASSWORD_REQUIRED_TEMPLATE",
+                        password_required_template,
+                    )
+
                 context = {"form": form, "action_url": action_url}
-                return TemplateResponse(request, password_required_template, context)
+                response = TemplateResponse(
+                    request, password_required_template, context
+                )
+                add_never_cache_headers(response)
+                return response
 
             elif restriction.restriction_type in [
                 BaseViewRestriction.LOGIN,

@@ -1,6 +1,7 @@
 from itertools import groupby
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -9,6 +10,7 @@ from django.template.loader import render_to_string
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from wagtail.admin.forms.formsets import BaseFormSetMixin
 from wagtail.models import (
     Collection,
     CollectionViewRestriction,
@@ -19,6 +21,20 @@ from .view_restrictions import BaseViewRestrictionForm
 
 
 class CollectionViewRestrictionForm(BaseViewRestrictionForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if not getattr(settings, "WAGTAILDOCS_PRIVATE_COLLECTION_OPTIONS", {}).get(
+            "SHARED_PASSWORD",
+            True,
+        ):
+            self.fields["restriction_type"].choices = [
+                choice
+                for choice in CollectionViewRestriction.RESTRICTION_CHOICES
+                if choice[0] != CollectionViewRestriction.PASSWORD
+            ]
+            del self.fields["password"]
+
     class Meta:
         model = CollectionViewRestriction
         fields = ("restriction_type", "password", "groups")
@@ -163,7 +179,7 @@ class BaseCollectionMemberForm(forms.ModelForm):
         return super().save(commit=commit)
 
 
-class BaseGroupCollectionMemberPermissionFormSet(forms.BaseFormSet):
+class BaseGroupCollectionMemberPermissionFormSet(BaseFormSetMixin, forms.BaseFormSet):
     """
     A base formset class for managing GroupCollectionPermissions for a
     model with CollectionMember behaviour. Subclasses should provide attributes:
@@ -208,14 +224,6 @@ class BaseGroupCollectionMemberPermissionFormSet(forms.BaseFormSet):
             )
 
         super().__init__(data, files, initial=initial_data, prefix=prefix)
-        for form in self.forms:
-            form.fields["DELETE"].widget = forms.HiddenInput()
-
-    @property
-    def empty_form(self):
-        empty_form = super().empty_form
-        empty_form.fields["DELETE"].widget = forms.HiddenInput()
-        return empty_form
 
     def clean(self):
         """Checks that no two forms refer to the same collection object"""
@@ -297,7 +305,6 @@ class BaseGroupCollectionMemberPermissionFormSet(forms.BaseFormSet):
 def collection_member_permission_formset_factory(
     model, permission_types, template, default_prefix=None
 ):
-
     permission_queryset = Permission.objects.filter(
         content_type__app_label=model._meta.app_label,
         codename__in=[
@@ -339,7 +346,7 @@ def collection_member_permission_formset_factory(
         )
 
     GroupCollectionMemberPermissionFormSet = type(
-        str("GroupCollectionMemberPermissionFormSet"),
+        "GroupCollectionMemberPermissionFormSet",
         (BaseGroupCollectionMemberPermissionFormSet,),
         {
             "permission_types": permission_types,

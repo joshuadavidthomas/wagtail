@@ -153,13 +153,13 @@ class TestRichTextFieldComparison(TestFieldComparison):
             SimplePage._meta.get_field("content"),
             SimplePage(content="Original content"),
             SimplePage(
-                content='<script type="text/javascript">doSomethingBad();</script>'
+                content='Do something good. <script type="text/javascript">doSomethingBad();</script>'
             ),
         )
 
         self.assertEqual(
             comparison.htmldiff(),
-            '<span class="deletion">Original content</span><span class="addition">doSomethingBad();</span>',
+            '<span class="deletion">Original content</span><span class="addition">Do something good.</span>',
         )
         self.assertIsInstance(comparison.htmldiff(), SafeString)
 
@@ -491,7 +491,7 @@ class TestStreamFieldComparison(TestCase):
 
         self.assertEqual(
             comparison.htmldiff(),
-            '<div class="comparison__child-object">I really like <span class="deletion">Wagtail &lt;3</span><span class="addition">evil code &gt;_&lt; doSomethingBad();</span></div>',
+            '<div class="comparison__child-object">I really like <span class="deletion">Wagtail &lt;3</span><span class="addition">evil code &gt;_&lt;</span></div>',
         )
         self.assertIsInstance(comparison.htmldiff(), SafeString)
 
@@ -525,7 +525,7 @@ class TestStreamFieldComparison(TestCase):
 
         self.assertEqual(
             comparison.htmldiff(),
-            '<div class="comparison__child-object">Original and unchanged content</div>\n<div class="comparison__child-object addition">I really like evil code &gt;_&lt; doSomethingBad();</div>',
+            '<div class="comparison__child-object">Original and unchanged content</div>\n<div class="comparison__child-object addition">I really like evil code &gt;_&lt;</div>',
         )
         self.assertIsInstance(comparison.htmldiff(), SafeString)
 
@@ -559,7 +559,7 @@ class TestStreamFieldComparison(TestCase):
 
         self.assertEqual(
             comparison.htmldiff(),
-            '<div class="comparison__child-object">Original and unchanged content</div>\n<div class="comparison__child-object deletion">I really like evil code &gt;_&lt; doSomethingBad();</div>',
+            '<div class="comparison__child-object">Original and unchanged content</div>\n<div class="comparison__child-object deletion">I really like evil code &gt;_&lt;</div>',
         )
         self.assertIsInstance(comparison.htmldiff(), SafeString)
 
@@ -695,6 +695,143 @@ class TestStreamFieldComparison(TestCase):
         self.assertHTMLEqual(comparison.htmldiff(), expected)
         self.assertIsInstance(comparison.htmldiff(), SafeString)
         self.assertTrue(comparison.has_changed())
+
+    def test_compare_listblock(self):
+        field = StreamPage._meta.get_field("body")
+        block = field.stream_block.child_blocks["title_list"]
+        block_val = block.to_python(
+            [
+                {
+                    "type": "item",
+                    "value": "foo",
+                    "id": "11111111-1111-1111-1111-111111111111",
+                },
+                {
+                    "type": "item",
+                    "value": "bar",
+                    "id": "22222222-2222-2222-2222-222222222222",
+                },
+            ]
+        )
+        block_val_2 = block.to_python(
+            [
+                {
+                    "type": "item",
+                    "value": "bard",
+                    "id": "22222222-2222-2222-2222-222222222222",
+                },
+                {
+                    "type": "item",
+                    "value": "food",
+                    "id": "11111111-1111-1111-1111-111111111111",
+                },
+            ]
+        )
+
+        comparison = self.comparison_class(
+            field,
+            StreamPage(
+                body=StreamValue(
+                    field.stream_block,
+                    [
+                        ("title_list", block_val, "1"),
+                    ],
+                )
+            ),
+            StreamPage(
+                body=StreamValue(
+                    field.stream_block,
+                    [
+                        ("title_list", block_val_2, "1"),
+                    ],
+                )
+            ),
+        )
+
+        htmldiff = comparison.htmldiff()
+        expected = """
+            <div class="comparison__child-object">
+                <div class="comparison__child-object">
+                    <span class="deletion">bar</span>
+                    <span class="addition">bard</span>
+                </div>\n
+                <div class="comparison__child-object">
+                    <span class="deletion">foo</span>
+                    <span class="addition">food</span>
+                </div>
+            </div>
+        """
+
+        self.assertHTMLEqual(htmldiff, expected)
+        self.assertIsInstance(htmldiff, SafeString)
+        self.assertTrue(comparison.has_changed())
+
+    def test_compare_listblock_old_format(self):
+        field = StreamPage._meta.get_field("body")
+        block = field.stream_block.child_blocks["title_list"]
+
+        no_diff = """
+            <div class="comparison__child-object">
+                <div class="comparison__child-object">foo</div>\n
+                <div class="comparison__child-object">bar</div>
+            </div>
+        """
+        edit_and_add_diff = """
+            <div class="comparison__child-object">
+                <div class="comparison__child-object">
+                    foo
+                </div>\n
+                <div class="comparison__child-object">
+                    <span class="deletion">bar</span>
+                    <span class="addition">bap</span>
+                </div>\n
+                <div class="comparison__child-object addition">baz</div>
+            </div>
+        """
+        edit_and_add_diff_reversed = """
+            <div class="comparison__child-object">
+                <div class="comparison__child-object">
+                    <span class="deletion">foo</span>
+                    <span class="addition">fo</span>
+                </div>\n
+                <div class="comparison__child-object">bar</div>\n
+                <div class="comparison__child-object deletion">baz</div>
+            </div>
+        """
+        old_format_listblock_fixtures = [
+            (["foo", "bar"], ["foo", "bar"], no_diff),
+            (["foo", "bar"], ["foo", "bap", "baz"], edit_and_add_diff),
+            (["foo", "bar", "baz"], ["fo", "bar"], edit_and_add_diff_reversed),
+        ]
+        for list_1, list_2, expected_diff in old_format_listblock_fixtures:
+            with self.subTest(list_1=list_1, list_2=list_2):
+                block_val = block.to_python(list_1)
+                block_val_2 = block.to_python(list_2)
+
+                comparison = self.comparison_class(
+                    field,
+                    StreamPage(
+                        body=StreamValue(
+                            field.stream_block,
+                            [
+                                ("title_list", block_val, "1"),
+                            ],
+                        )
+                    ),
+                    StreamPage(
+                        body=StreamValue(
+                            field.stream_block,
+                            [
+                                ("title_list", block_val_2, "1"),
+                            ],
+                        )
+                    ),
+                )
+
+                htmldiff = comparison.htmldiff()
+                self.assertHTMLEqual(htmldiff, expected_diff)
+                self.assertIsInstance(htmldiff, SafeString)
+                self.assertTrue(comparison.has_changed())
 
     def test_compare_nested_streamblock_uses_comparison_class(self):
         field = StreamPage._meta.get_field("body")
@@ -1091,7 +1228,7 @@ class TestChildRelationComparison(TestCase):
     def test_has_changed(self):
         # Father Christmas renamed to Santa Claus. And Father Ted added.
         # Father Christmas should be mapped to Father Ted because they
-        # are most alike. Santa claus should be displayed as "new"
+        # are most alike. Santa Claus should be displayed as "new"
         event_page = EventPage(title="Event page", slug="event")
         event_page.speakers.add(
             EventPageSpeaker(

@@ -1,11 +1,13 @@
 class VersionNumberFormatError extends Error {
   constructor(versionString) {
+    super(versionString);
     this.message = `Version number '${versionString}' is not formatted correctly.`;
   }
 }
 
 class CanOnlyComparePreReleaseVersionsError extends Error {
   constructor() {
+    super();
     this.message = 'Can only compare prerelease versions';
   }
 }
@@ -25,7 +27,7 @@ class VersionDeltaType {
 class VersionNumber {
   constructor(versionString) {
     const versionRegex =
-      /^(?<major>\d+)\.{1}(?<minor>\d+)((\.{1}(?<patch>\d+))|(?<preReleaseStep>a|b|rc){1}(?<preReleaseVersion>\d+)){0,1}$/;
+      /^(?<major>\d+)\.{1}(?<minor>\d+)((\.{1}(?<patch>\d+))|(?<preReleaseStep>a|b|rc|\.dev){1}(?<preReleaseVersion>\d+)){0,1}$/;
     const matches = versionString.match(versionRegex);
     if (matches === null) {
       throw new VersionNumberFormatError(versionString);
@@ -59,7 +61,8 @@ class VersionNumber {
       (that.preReleaseStep === 'b' || that.preReleaseStep === 'rc')
     ) {
       return true;
-    } else if (this.preReleaseStep === 'b' && that.preReleaseStep === 'rc') {
+    }
+    if (this.preReleaseStep === 'b' && that.preReleaseStep === 'rc') {
       return true;
     }
     return false;
@@ -71,9 +74,11 @@ class VersionNumber {
   howMuchBehind(that) {
     if (this.major < that.major) {
       return VersionDeltaType.MAJOR;
-    } else if (this.major === that.major && this.minor < that.minor) {
+    }
+    if (this.major === that.major && this.minor < that.minor) {
       return VersionDeltaType.MINOR;
-    } else if (
+    }
+    if (
       this.major === that.major &&
       this.minor === that.minor &&
       !this.isPreRelease() &&
@@ -81,16 +86,19 @@ class VersionNumber {
       this.patch < that.patch
     ) {
       return VersionDeltaType.PATCH;
-    } else if (
+    }
+    if (
       this.major === that.major &&
       this.minor === that.minor &&
       this.isPreRelease()
     ) {
       if (!that.isPreRelease()) {
         return VersionDeltaType.MINOR;
-      } else if (this.isPreReleaseStepBehind(that)) {
+      }
+      if (this.isPreReleaseStepBehind(that)) {
         return VersionDeltaType.PRE_RELEASE_STEP;
-      } else if (
+      }
+      if (
         this.preReleaseStep === that.preReleaseStep &&
         this.preReleaseVersion < that.preReleaseVersion
       ) {

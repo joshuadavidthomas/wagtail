@@ -10,13 +10,15 @@ from wagtail.models import Task
 
 class AdminTaskChooser(BaseChooser):
     choose_one_text = _("Choose a task")
+    choose_another_text = _("Choose another task")
+    link_to_chosen_text = _("Edit this task")
     model = Task
     icon = "thumbtack"
     chooser_modal_url_name = "wagtailadmin_workflows:task_chooser"
     classname = "task-chooser"
 
     def render_js_init(self, id_, name, value_data):
-        return "createTaskChooser({0});".format(json.dumps(id_))
+        return f"createTaskChooser({json.dumps(id_)});"
 
     @property
     def media(self):

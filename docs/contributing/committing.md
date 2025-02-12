@@ -9,8 +9,8 @@ If additional code changes are made after the review, it is OK to commit them
 without further review if they are uncontroversial and small enough that
 there is minimal chance of introducing new bugs.
 
-Most code contributions will be in the form of pull requests from Github.
-Pull requests should not be merged from Github, apart from small documentation fixes,
+Most code contributions will be in the form of pull requests from GitHub.
+Pull requests should not be merged from GitHub, apart from small documentation fixes,
 which can be merged with the 'Squash and merge' option. Instead, the code should
 be checked out by a committer locally, the changes examined and rebased,
 the `CHANGELOG.txt` and release notes updated,
@@ -46,7 +46,7 @@ If this is not possible because of the nature of the changes, it's acceptable
 to either squash into a commit or leave all commits unsquashed,
 depending on which will be more readable in the commit history.
 
-```console
+```sh
 # Get the latest commits from Wagtail
 git fetch upstream
 git checkout main
@@ -70,8 +70,14 @@ and the release notes for the current version.
 
 The `CHANGELOG.txt` contains a short summary of each new feature, refactoring, or bug fix in each release.
 Each summary should be a single line.
-Bug fixes should be grouped together at the end of the list for each release,
-and be prefixed with "Fix:".
+To easily identify the most relevant changes to users, items are grouped together in the following order:
+
+-   Major features (no prefix) - things that will inspire users to upgrade to a new release
+-   Minor enhancements (no prefix) - other improvements to the developer or end user experience
+-   Bug fixes (prefixed with "Fix:") - things that address broken behavior from previous releases
+-   Documentation (prefixed with "Docs:") - changes to documentation that do not accompany a specific code change; reorganizations, tutorials, recipes and so on
+-   Maintenance (prefixed with "Maintenance:") - cleanup, refactoring and other changes to code or tooling that are not intended to have a visible effect to developers or end users
+
 The name of the contributor should be added at the end of the summary, in brackets.
 For example:
 
@@ -79,26 +85,24 @@ For example:
 * Fix: Tags added on the multiple image uploader are now saved correctly (Alex Smith)
 ```
 
-The release notes for each version contain a more detailed description of each change.
-Backwards compatibility notes should also be included.
-Large new features or changes should get their own section,
-while smaller changes and bug fixes should be grouped together in their own section.
-See previous release notes for examples.
+The release notes for each version contain a more detailed description for each major feature, under its own heading.
+Minor enhancements ("Other features"), bug fixes, documentation and maintenance are listed as bullet points under the appropriate heading - these can be copied from the changelog, with the prefix ("Fix:", "Docs:" or "Maintenance:") removed.
+Backwards compatibility notes should also be included. See previous release notes for examples.
 The release notes for each version are found in `docs/releases/x.x.x.md`.
 
 If the contributor is a new person, and this is their first contribution to Wagtail,
-they should be added to the `CONTRIBUTORS.rst` list.
+they should be added to the `CONTRIBUTORS.md` list.
 Contributors are added in chronological order,
 with new contributors added to the bottom of the list.
 Use their preferred name.
-You can usually find the name of a contributor on their Github profile.
+You can usually find the name of a contributor on their GitHub profile.
 If in doubt, or if their name is not on their profile, ask them how they want to be named.
 
 If the changes to be merged are small enough to be a single commit,
 amend this single commit with the additions to
 the `CHANGELOG.txt`, release notes, and contributors:
 
-```console
+```sh
 git add CHANGELOG.txt docs/releases/x.x.x.md CONTRIBUTORS.md
 git commit --amend --no-edit
 ```
@@ -107,7 +111,7 @@ If the changes do not fit in a single commit, make a new commit with the updates
 the `CHANGELOG.txt`, release notes, and contributors.
 The commit message should say `Release notes for #xxxx`:
 
-```console
+```sh
 git add CHANGELOG.txt docs/releases/x.x.x.md CONTRIBUTORS.md
 git commit -m 'Release notes for #xxxx'
 ```
@@ -116,7 +120,7 @@ git commit -m 'Release notes for #xxxx'
 
 The changes are ready to be pushed to `main` now.
 
-```console
+```sh
 # Check that everything looks OK
 git log upstream/main..main --oneline
 git push --dry-run upstream main
@@ -127,19 +131,19 @@ git branch -d pr/xxxx
 
 ## When you have made a mistake
 
-It's ok! Everyone makes mistakes. If you realise that recent merged changes
+It's ok! Everyone makes mistakes. If you realize that recently merged changes
 have a negative impact, create a new pull request with a revert of the changes
 and merge it without waiting for a review. The PR will serve as additional
-documentation for the changes, and will run through the CI tests.
+documentation for the changes and will run through the CI tests.
 
 ## Add commits to someone else's pull request
 
-Github users with write access to wagtail/wagtail (core members) can add
+GitHub users with write access to wagtail/wagtail (core members) can add
 commits to the pull request branch of the contributor.
 
 Given that the contributor username is johndoe and his pull request branch is called foo:
 
-```console
+```sh
 git clone git@github.com:wagtail/wagtail.git
 cd wagtail
 git remote add johndoe git@github.com:johndoe/wagtail.git

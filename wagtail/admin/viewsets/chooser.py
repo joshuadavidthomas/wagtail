@@ -25,11 +25,19 @@ class ChooserViewSet(ViewSet):
     )  #: Label for the 'choose' button in the chooser widget when choosing an initial item
     page_title = None  #: Title text for the chooser modal (defaults to the same as ``choose_one_text``)`
     choose_another_text = _(
-        "Change"
+        "Choose another"
     )  #: Label for the 'choose' button in the chooser widget, when an item has already been chosen
     edit_item_text = _("Edit")  #: Label for the 'edit' button in the chooser widget
 
-    per_page = 10  #: Number of results to show per page
+    per_page = ViewSet.UNDEFINED  #: Number of results to show per page
+
+    #: A list of URL query parameters that should be passed on unmodified as part of any links or
+    #: form submissions within the chooser modal workflow.
+    preserve_url_parameters = ["multiple"]
+
+    #: A list of URL query parameters that, if present in the url, should be applied as filters to the queryset.
+    #: (These should also be listed in `preserve_url_parameters`.)
+    url_filter_parameters = []
 
     #: The view class to use for the overall chooser modal; must be a subclass of ``wagtail.admin.views.generic.chooser.ChooseView``.
     choose_view_class = chooser_views.ChooseView
@@ -39,6 +47,9 @@ class ChooserViewSet(ViewSet):
 
     #: The view class used after an item has been chosen; must be a subclass of ``wagtail.admin.views.generic.chooser.ChosenView``.
     chosen_view_class = chooser_views.ChosenView
+
+    #: The view class used after multiple items have been chosen; must be a subclass of ``wagtail.admin.views.generic.chooser.ChosenMultipleView``.
+    chosen_multiple_view_class = chooser_views.ChosenMultipleView
 
     #: The view class used to handle submissions of the 'create' form; must be a subclass of ``wagtail.admin.views.generic.chooser.CreateView``.
     create_view_class = chooser_views.CreateView
@@ -80,59 +91,59 @@ class ChooserViewSet(ViewSet):
         if self.page_title is None:
             self.page_title = self.choose_one_text
 
+    def get_common_view_kwargs(self, **kwargs):
+        return super().get_common_view_kwargs(
+            **{
+                "model": self.model,
+                "permission_policy": self.permission_policy,
+                "preserve_url_parameters": self.preserve_url_parameters,
+                "url_filter_parameters": self.url_filter_parameters,
+                "create_action_label": self.create_action_label,
+                "create_action_clicked_label": self.create_action_clicked_label,
+                "creation_form_class": self.creation_form_class,
+                "form_fields": self.form_fields,
+                "exclude_form_fields": self.exclude_form_fields,
+                "chosen_url_name": self.get_url_name("chosen"),
+                "chosen_multiple_url_name": self.get_url_name("chosen_multiple"),
+                "results_url_name": self.get_url_name("choose_results"),
+                "create_url_name": self.get_url_name("create"),
+                "per_page": self.per_page,
+                **kwargs,
+            }
+        )
+
     @property
     def choose_view(self):
-        return self.choose_view_class.as_view(
-            model=self.model,
-            chosen_url_name=self.get_url_name("chosen"),
-            results_url_name=self.get_url_name("choose_results"),
-            create_url_name=self.get_url_name("create"),
+        view_class = self.inject_view_methods(
+            self.choose_view_class, ["get_object_list"]
+        )
+
+        return self.construct_view(
+            view_class,
             icon=self.icon,
             page_title=self.page_title,
-            per_page=self.per_page,
-            creation_form_class=self.creation_form_class,
-            form_fields=self.form_fields,
-            exclude_form_fields=self.exclude_form_fields,
             search_tab_label=self.search_tab_label,
             creation_tab_label=self.creation_tab_label,
-            create_action_label=self.create_action_label,
-            create_action_clicked_label=self.create_action_clicked_label,
-            permission_policy=self.permission_policy,
         )
 
     @property
     def choose_results_view(self):
-        return self.choose_results_view_class.as_view(
-            model=self.model,
-            chosen_url_name=self.get_url_name("chosen"),
-            results_url_name=self.get_url_name("choose_results"),
-            per_page=self.per_page,
-            creation_form_class=self.creation_form_class,
-            form_fields=self.form_fields,
-            exclude_form_fields=self.exclude_form_fields,
-            create_action_label=self.create_action_label,
-            create_action_clicked_label=self.create_action_clicked_label,
-            permission_policy=self.permission_policy,
+        view_class = self.inject_view_methods(
+            self.choose_results_view_class, ["get_object_list"]
         )
+        return self.construct_view(view_class)
 
     @property
     def chosen_view(self):
-        return self.chosen_view_class.as_view(
-            model=self.model,
-        )
+        return self.construct_view(self.chosen_view_class)
+
+    @property
+    def chosen_multiple_view(self):
+        return self.construct_view(self.chosen_multiple_view_class)
 
     @property
     def create_view(self):
-        return self.create_view_class.as_view(
-            model=self.model,
-            create_url_name=self.get_url_name("create"),
-            creation_form_class=self.creation_form_class,
-            form_fields=self.form_fields,
-            exclude_form_fields=self.exclude_form_fields,
-            create_action_label=self.create_action_label,
-            create_action_clicked_label=self.create_action_clicked_label,
-            permission_policy=self.permission_policy,
-        )
+        return self.construct_view(self.create_view_class)
 
     @cached_property
     def model_name(self):
@@ -201,6 +212,7 @@ class ChooserViewSet(ViewSet):
             path("", self.choose_view, name="choose"),
             path("results/", self.choose_results_view, name="choose_results"),
             path("chosen/<str:pk>/", self.chosen_view, name="chosen"),
+            path("chosen-multiple/", self.chosen_multiple_view, name="chosen_multiple"),
             path("create/", self.create_view, name="create"),
         ]
 

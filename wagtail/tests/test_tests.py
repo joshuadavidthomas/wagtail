@@ -1,9 +1,15 @@
 import json
+import unittest
 
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.template import Context, Template
 from django.test import TestCase
 
 from wagtail.admin.tests.test_contentstate import content_state_equal
 from wagtail.models import PAGE_MODEL_CLASSES, Page, Site
+from wagtail.test.dummy_external_storage import DummyExternalStorage
 from wagtail.test.testapp.models import (
     BusinessChild,
     BusinessIndex,
@@ -11,6 +17,8 @@ from wagtail.test.testapp.models import (
     BusinessSubIndex,
     EventIndex,
     EventPage,
+    NoCreatableSubpageTypesPage,
+    NoSubpageTypesPage,
     SectionedRichTextPage,
     SimpleChildPage,
     SimplePage,
@@ -125,6 +133,7 @@ class TestWagtailPageTests(WagtailPageTests):
             },
         )
         self.assertTrue(EventIndex.objects.exists())
+        self.assertTrue(EventIndex.objects.get().live)
 
         self.assertCanCreate(
             self.root,
@@ -171,6 +180,16 @@ class TestWagtailPageTests(WagtailPageTests):
                 "sections-1-DELETE": "",
             },
         )
+
+    def test_assert_can_create_for_page_without_publish(self):
+        self.assertCanCreate(
+            self.root,
+            SimplePage,
+            {"title": "Simple Lorem Page", "content": "Lorem ipsum dolor sit amet"},
+            publish=False,
+        )
+        created_page = Page.objects.get(title="Simple Lorem Page")
+        self.assertFalse(created_page.live)
 
     def test_assert_can_create_with_form_helpers(self):
         # same as test_assert_can_create, but using the helpers from wagtail.test.utils.form_data
@@ -274,6 +293,8 @@ class TestWagtailPageTests(WagtailPageTests):
             BusinessSubIndex,
             BusinessChild,
             BusinessIndex,
+            NoCreatableSubpageTypesPage,
+            NoSubpageTypesPage,
             SimpleParentPage,
         }
         self.assertAllowedParentPageTypes(BusinessIndex, all_but_business)
@@ -418,3 +439,50 @@ class TestFormDataHelpers(TestCase):
     def test_rich_text_with_alternative_editor(self):
         result = rich_text("<h2>title</h2><p>para</p>", editor="custom")
         self.assertEqual(result, "<h2>title</h2><p>para</p>")
+
+
+class TestDummyExternalStorage(WagtailTestUtils, TestCase):
+    def test_save_with_incorrect_file_object_position(self):
+        """
+        Test that DummyExternalStorage correctly warns about attempts
+        to write files that are not rewound to the start
+        """
+        # This is a 1x1 black png
+        png = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00"
+            b"\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+            b"\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc````"
+            b"\x00\x00\x00\x05\x00\x01\xa5\xf6E@\x00\x00"
+            b"\x00\x00IEND\xaeB`\x82"
+        )
+        simple_png = SimpleUploadedFile(
+            name="test.png", content=png, content_type="image/png"
+        )
+        simple_png.read()
+        with self.assertRaisesMessage(
+            ValueError,
+            "Content file pointer should be at 0 - got 70 instead",
+        ):
+            DummyExternalStorage().save("test.png", simple_png)
+
+
+@unittest.skipUnless(
+    settings.WAGTAIL_CHECK_TEMPLATE_NUMBER_FORMAT,
+    "Number formatting functions have not been patched",
+)
+class TestPatchedNumberFormat(TestCase):
+    def test_outputting_number_directly_is_disallowed(self):
+        context = Context({"num": 42})
+        template = Template("the answer is {{ num }}")
+        with self.assertRaises(ImproperlyConfigured):
+            template.render(context)
+
+    def test_outputting_number_via_intcomma(self):
+        context = Context({"num": 9000})
+        template = Template("{% load wagtailadmin_tags %}It's over {{ num|intcomma }}!")
+        self.assertEqual(template.render(context), "It's over 9,000!")
+
+    def test_outputting_number_via_unlocalize(self):
+        context = Context({"num": 9000})
+        template = Template("{% load l10n %}It's over {{ num|unlocalize }}!")
+        self.assertEqual(template.render(context), "It's over 9000!")

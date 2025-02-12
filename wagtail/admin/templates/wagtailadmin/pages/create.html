@@ -1,19 +1,28 @@
-{% extends "wagtailadmin/base.html" %}
+{% extends "wagtailadmin/generic/form.html" %}
 {% load wagtailadmin_tags %}
 {% load i18n %}
 
-{% block titletag %}{% blocktrans trimmed with page_type=content_type.model_class.get_verbose_name %}New {{ page_type }}{% endblocktrans %}{% endblock %}
-
 {% block content %}
-    <div id="comments"></div>
+    {% get_comments_enabled as comments_enabled %}
 
-    <div class="w-sticky w-top-0 w-z-header">
-        {% include 'wagtailadmin/shared/headers/page_create_header.html' %}
-        {% include "wagtailadmin/shared/side_panels.html" %}
-    </div>
+    {% include 'wagtailadmin/shared/headers/page_create_header.html' with title=header_title %}
 
-    <form id="page-edit-form" action="{% url 'wagtailadmin_pages:add' content_type.app_label content_type.model parent_page.id %}" method="POST" novalidate{% if form.is_multipart %} enctype="multipart/form-data"{% endif %} data-edit-form>
+    <form
+        id="page-edit-form"
+        action="{% url 'wagtailadmin_pages:add' content_type.app_label content_type.model parent_page.id %}"
+        method="POST"
+        novalidate
+        {% if form.is_multipart %}enctype="multipart/form-data"{% endif %}
+        data-edit-form
+        data-controller="w-init w-unsaved"
+        data-action="w-unsaved#submit beforeunload@window->w-unsaved#confirm change->w-unsaved#check keyup->w-unsaved#check"
+        data-w-init-event-value="{% if comments_enabled %}w-comments:init{% endif %}"
+        data-w-unsaved-confirmation-value="true"
+        data-w-unsaved-force-value="{% if has_unsaved_changes %}true{% else %}false{% endif %}"
+        data-w-unsaved-watch-value="edits{% if comments_enabled %} comments{% endif %}"
+    >
         {% csrf_token %}
+
         <input type="hidden" name="next" value="{{ next }}">
 
         {% if parent_page.is_root %}
@@ -24,74 +33,20 @@
 
         {{ edit_handler.render_form_content }}
 
-        <footer class="footer">
-            <ul>
-                <li class="footer__container">
-                    <nav aria-label="{% trans 'Actions' %}">
-                        <ul>
-                            <li class="actions actions--primary">
-                                <div class="dropdown dropup dropdown-button dropdown-button--white match-width {% if is_revision %}warning{% endif %}">
-                                    {{ action_menu.render_html }}
-                                </div>
-                            </li>
-
-                            {% block extra_footer_actions %}
-                            {% endblock %}
-                        </ul>
-                    </nav>
-                </li>
-                {% include "wagtailadmin/pages/_unsaved_changes_warning.html" %}
-            </ul>
-        </footer>
+        {% block footer %}
+            {{ block.super }}
+            {# Reuse the footer container, but redefine the actions content down below to use component classes #}
+        {% endblock %}
     </form>
 
 {% endblock %}
 
-{% block extra_css %}
-    {{ block.super }}
-    {{ media.css }}
-{% endblock %}
-
-{% block extra_js %}
-    {{ block.super }}
-    {% include "wagtailadmin/pages/_editor_js.html" %}
-
-    {% comment %}
-        Additional js from widgets media. Allows for custom widgets in admin panel.
-    {% endcomment %}
-    {{ media.js }}
-
-    <script>
-        // Set wagtailConfig.ACTIVE_CONTENT_LOCALE if this is a translated page
-        // This value may be used by JS widgets on the form
-        {% if locale %}
-            window.wagtailConfig = window.wagtailConfig || {};
-            window.wagtailConfig.ACTIVE_CONTENT_LOCALE = '{{ locale.language_code|escapejs }}';
-        {% endif %}
-
-        $(function(){
-            $('#page-edit-form .tab-content section.active input').first().trigger('focus');
-
-            /* Make user confirm before leaving the editor if there are unsaved changes */
-            {% trans "This page has unsaved changes." as confirmation_message %}
-            enableDirtyFormCheck(
-                '#page-edit-form',
-                {
-                    confirmationMessage: '{{ confirmation_message|escapejs }}',
-
-                    {% if has_unsaved_changes %}
-                        alwaysDirty: true,
-                    {% endif %}
-                    commentApp: window.comments.commentApp,
-                    callback: window.updateFooterSaveWarning
-                }
-            );
-
-            {% get_comments_enabled as comments_enabled %}
-            {% if comments_enabled %}
-                // Initialise comments UI
-                window.comments.initCommentsInterface(document.getElementById('page-edit-form'));
-            {% endif %}
-        });
-    </script>
-{% endblock %}
+{% block actions %}
+    {{ action_menu.render_html }}
+    {% block extra_footer_actions %}
+        {% comment %}
+            While undocumented, this block is used by some packages to add
+            additional actions *outside* of the dropdown menu.
+        {% endcomment %}
+    {% endblock %}
+{% endblock%}

@@ -3,9 +3,11 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# 425fe09b3064b9f906f637fff94056ae_a00ea56 <0fa3588fa89906bfcb3a354600956e0e_308047>, 2015
 # Jose Lourenco <jose@lourenco.ws>, 2015
 # Luís Tiago Favas <traducoes@favas.eu>, 2020
 # Luís Tiago Favas <traducoes@favas.eu>, 2021
+# Luís Tiago Favas <traducoes@favas.eu>, 2020-2021
 # 425fe09b3064b9f906f637fff94056ae_a00ea56 <0fa3588fa89906bfcb3a354600956e0e_308047>, 2015
 # 425fe09b3064b9f906f637fff94056ae_a00ea56 <0fa3588fa89906bfcb3a354600956e0e_308047>, 2015
 # Thiago Cangussu <cangussu.thg@gmail.com>, 2014
@@ -14,10 +16,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:06+0000\n"
-"Last-Translator: Tiago Henriques <trinosauro@gmail.com>, 2015-2016,2022\n"
-"Language-Team: Portuguese (Portugal) (http://www.transifex.com/torchbox/"
+"Last-Translator: Thiago Cangussu <cangussu.thg@gmail.com>, 2014\n"
+"Language-Team: Portuguese (Portugal) (http://app.transifex.com/torchbox/"
 "wagtail/language/pt_PT/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -159,31 +161,11 @@ msgstr "Alterar documento:"
 msgid "Add a document"
 msgstr "Adicionar um documento"
 
-msgid "Add document"
-msgstr "Adicionar documento"
-
 msgid "Uploading…"
 msgstr "A carregar…"
 
 msgid "Upload"
 msgstr "Carregar"
-
-#, python-format
-msgid "Delete %(title)s"
-msgstr "Apagar %(title)s"
-
-msgid "Delete document"
-msgstr "Apagar documento"
-
-#, python-format
-msgid "Editing %(title)s"
-msgstr "A alterar %(title)s"
-
-msgid "Editing"
-msgstr "A alterar"
-
-msgid "Save"
-msgstr "Gravar"
 
 msgid "Filesize"
 msgstr "Tamanho do ficheiro"
@@ -194,23 +176,8 @@ msgstr "Ficheiro não encontrado"
 msgid "Usage"
 msgstr "Utilização"
 
-msgid "Documents"
-msgstr "Documentos"
-
 msgid "Select all documents in listing"
 msgstr "Selecionar todos os documentos da listagem"
-
-msgid "Title"
-msgstr "Título"
-
-msgid "File"
-msgstr "Ficheiro"
-
-msgid "Created"
-msgstr "Criado"
-
-msgid "Select document"
-msgstr "Selecionar documento"
 
 #, python-format
 msgid "Sorry, no documents match \"<em>%(query_string)s</em>\""
@@ -218,44 +185,22 @@ msgstr "Desculpe, nenhum documento corresponde a \"<em>%(query_string)s</em>\""
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents in this collection. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents in this collection. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Ainda não carregou nenhum documento nesta coleção. Que tal <a href="
-"\"%(wagtaildocs_add_document_url)s\">carregar um agora</a>?"
+"Ainda não carregou nenhum documento nesta coleção. Que tal <a "
+"href=\"%(wagtaildocs_add_document_url)s\">carregar um agora</a>?"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Ainda não carregou nenhum documento. Que tal <a href="
-"\"%(wagtaildocs_add_document_url)s\">carregar um agora</a>?"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Utilização de %(title)s"
-
-msgid "Usage of"
-msgstr "Utilização de"
-
-msgid "Parent"
-msgstr "Mãe"
-
-msgid "Type"
-msgstr "Tipo"
-
-msgid "Status"
-msgstr "Estado"
-
-msgid "Edit this page"
-msgstr "Alterar esta página"
+"Ainda não carregou nenhum documento. Que tal <a "
+"href=\"%(wagtaildocs_add_document_url)s\">carregar um agora</a>?"
 
 msgid "Add multiple documents"
 msgstr "Adicionar múltiplos documentos"
-
-msgid "Add documents"
-msgstr "Adicionar documentos"
 
 msgid "Drag and drop documents into this area to upload immediately."
 msgstr "Arraste e largue documentos nesta área para carregar imediatamente."
@@ -333,31 +278,52 @@ msgstr[0] "%(num_parent_objects)ddocumento foi apagado"
 msgstr[1] "%(num_parent_objects)ddocumentos foram apagados"
 msgstr[2] "%(num_parent_objects)ddocumentos foram apagados"
 
+msgid "File"
+msgstr "Ficheiro"
+
+msgid "Created"
+msgstr "Criado"
+
 msgid "Choose a document"
 msgstr "Escolher um documento"
 
-msgid "Search documents"
-msgstr "Pesquisar documentos"
+msgid "Choose another document"
+msgstr "Escolher outro documento"
 
-#, python-brace-format
-msgid "Document '{0}' added."
-msgstr "Documento '{0}' adicionado."
+msgid "Edit this document"
+msgstr "Alterar este documento"
+
+msgid "Documents"
+msgstr "Documentos"
+
+msgid "Title"
+msgstr "Título"
+
+#, python-format
+msgid "Document '%(document_title)s' added."
+msgstr "Documento '%(document_title)s' adicionado."
 
 msgid "The document could not be saved due to errors."
 msgstr "O documento não pôde ser guardado devido a erros."
 
-#, python-brace-format
-msgid "Document '{0}' updated"
-msgstr "Documento '{0}' atualizado"
+#, python-format
+msgid "Document '%(document_title)s' updated"
+msgstr "Documento '%(document_title)s' atualizado"
 
 msgid ""
 "The file could not be found. Please change the source or delete the document"
 msgstr ""
 "O ficheiro não foi encontrado. Por favor mude a origem ou apague o documento"
 
-#, python-brace-format
-msgid "Document '{0}' deleted."
-msgstr "Documento '{0}' apagado."
+msgid "Delete document"
+msgstr "Apagar documento"
+
+#, python-format
+msgid "Document '%(document_title)s' deleted."
+msgstr "Documento '%(document_title)s' apagado."
+
+msgid "Add documents"
+msgstr "Adicionar documentos"
 
 msgid "Document"
 msgstr "Documento"

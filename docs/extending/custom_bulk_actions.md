@@ -30,13 +30,13 @@ The attributes are as follows:
 
 -   `display_name` - The label that will be displayed on the button in the user interface
 -   `aria_label` - The `aria-label` attribute that will be applied to the button in the user interface
--   `action_type` - A unique identifier for the action. Will be required in the url for bulk actions
+-   `action_type` - A unique identifier for the action (required in the URL for bulk actions)
 -   `template_name` - The path to the confirmation template
 -   `models` - A list of models on which the bulk action can act
 -   `action_priority` (optional) - A number that is used to determine the placement of the button in the list of buttons
--   `classes` (optional) - A set of CSS classnames that will be used on the button in the user interface
+-   `classes` (optional) - A set of CSS class names that will be used on the button in the user interface
 
-An example for a confirmation template is as follows:
+An example of a confirmation template is as follows:
 
 ```html+django
 <!-- /path/to/confirm_bulk_delete.html -->
@@ -44,7 +44,7 @@ An example for a confirmation template is as follows:
 {% extends 'wagtailadmin/bulk_actions/confirmation/base.html' %}
 {% load i18n wagtailadmin_tags %}
 
-{% block titletag %}{% blocktrans trimmed count counter=items|length %}Delete 1 item{% plural %}Delete {{ counter }} items{% endblocktrans %}{% endblock %}
+{% block titletag %}{% blocktranslate trimmed count counter=items|length %}Delete 1 item{% plural %}Delete {{ counter }} items{% endblocktranslate %}{% endblock %}
 
 {% block header %}
     {% trans "Delete" as del_str %}
@@ -66,7 +66,7 @@ An example for a confirmation template is as follows:
 
 {% block items_with_no_access %}
 
-{% blocktrans trimmed asvar no_access_msg count counter=items_with_no_access|length %}You don't have permission to delete this item{% plural %}You don't have permission to delete these items{% endblocktrans %}
+{% blocktranslate trimmed asvar no_access_msg count counter=items_with_no_access|length %}You don't have permission to delete this item{% plural %}You don't have permission to delete these items{% endblocktranslate %}
 {% include './list_items_with_no_access.html' with items=items_with_no_access no_access_msg=no_access_msg %}
 
 {% endblock items_with_no_access %}
@@ -129,14 +129,14 @@ def get_context_data(self, **kwargs):
     return context
 ```
 
-Thes `check_perm` method can be overridden to check if an object has some permission or not. objects for which the `check_perm` returns `False` will be available in the context under the key `'items_with_no_access'`.
+The `check_perm` method can be overridden to check if an object has some permission or not. Objects for which the `check_perm` returns `False` will be available in the context under the key `'items_with_no_access'`.
 
 ```python
 def check_perm(self, obj):
     return obj.has_perm('some_perm')  # returns True or False
 ```
 
-The success message shown on the admin can be customised by overriding the `get_success_message` method.
+The success message shown on the admin can be customized by overriding the `get_success_message` method.
 
 ```python
 def get_success_message(self, num_parent_objects, num_child_objects):
@@ -206,6 +206,8 @@ from wagtail import hooks
 class CustomUserBulkAction(UserBulkAction):
     ...
 ```
+
+(wagtailsnippets_custom_bulk_actions)=
 
 ## Adding bulk actions to the snippets listing
 

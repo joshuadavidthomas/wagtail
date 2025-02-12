@@ -12,7 +12,9 @@
             {% if messages or form.errors %}
                 <ul>
                     {% if form.errors %}
-                        <li class="error">{% blocktrans trimmed %}Your {{ username_field }} and password didn't match. Please try again.{% endblocktrans %}</li>
+                        {% for error in form.non_field_errors %}
+                            <li class="error">{{ error }}</li>
+                        {% endfor %}
                     {% endif %}
                     {% for message in messages %}
                         <li class="{{ message.tags }}">{{ message }}</li>
@@ -31,26 +33,34 @@
                 <input type="hidden" name="next" value="{{ next|default:home_url }}" />
 
                 {% block fields %}
-                    {% field field=form.username %}{% endfield %}
-                    {% field field=form.password %}{% endfield %}
+                    {% formattedfield form.username %}
+                    {% formattedfield form.password %}
 
                     {% if show_password_reset %}
-                        <a class="reset-password" href="{% url 'wagtailadmin_password_reset' %}" aria-label="{% trans 'Reset your password' %}">{% trans "Forgotten password?" %}</a>
+                        <a class="reset-password" href="{% url 'wagtailadmin_password_reset' %}">{% trans "Forgotten password?" %}</a>
                     {% endif %}
 
                     {% block extra_fields %}
                         {% for field_name, field in form.extra_fields %}
-                            {% field field=field %}{% endfield %}
+                            {% formattedfield field %}
                         {% endfor %}
                     {% endblock extra_fields %}
 
-                    {% trans "Remember me" as checkbox_text %}
-                    {% include "wagtailadmin/shared/forms/single_checkbox.html" with label_classname="remember-me" name="remember" text=checkbox_text %}
+                    {% include "wagtailadmin/shared/forms/single_checkbox.html" with label_classname="remember-me" name="remember" text=_("Remember me") %}
                 {% endblock %}
             {% endblock %}
             <footer class="form-actions">
                 {% block submit_buttons %}
-                    <button type="submit" class="button button-longrunning" data-clicked-text="{% trans 'Signing in…' %}">{% icon name="spinner" %}<em>{% trans 'Sign in' %}</em></button>
+                    <button
+                        type="submit"
+                        class="button button-longrunning"
+                        data-controller="w-progress"
+                        data-action="w-progress#activate"
+                        data-w-progress-active-value="{% trans 'Signing in…' %}"
+                    >
+                        {% icon name="spinner" %}
+                        <em data-w-progress-target="label">{% trans 'Sign in' %}</em>
+                    </button>
                 {% endblock %}
             </footer>
         </form>
@@ -59,7 +69,7 @@
 
         {% block branding_logo %}
             <div class="login-logo">
-                <img src="{% versioned_static 'wagtailadmin/images/wagtail-logo.svg' %}" alt=""/>
+                {% include "wagtailadmin/logo.html" with wordmark="True" %}
             </div>
         {% endblock %}
     </main>

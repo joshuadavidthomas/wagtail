@@ -14,10 +14,12 @@ from wagtail.admin.views.generic.chooser import (
     BaseChooseView,
     ChooseResultsViewMixin,
     ChooseViewMixin,
+    ChosenMultipleViewMixin,
     ChosenResponseMixin,
     ChosenViewMixin,
     CreateViewMixin,
     CreationFormMixin,
+    PreserveURLParametersMixin,
 )
 from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.images import get_image_model
@@ -41,6 +43,7 @@ class ImageChosenResponseMixin(ChosenResponseMixin):
             "width": preview_image.width,
             "height": preview_image.height,
         }
+        response_data["default_alt_text"] = image.default_alt_text
         return response_data
 
 
@@ -52,12 +55,6 @@ class ImageCreationFormMixin(CreationFormMixin):
 
     def get_creation_form_class(self):
         return get_image_form(self.model)
-
-    def get_create_url(self):
-        url = super().get_create_url()
-        if self.request.GET.get("select_format"):
-            url += "?select_format=true"
-        return url
 
     def get_creation_form_kwargs(self):
         kwargs = super().get_creation_form_kwargs()
@@ -76,9 +73,14 @@ class ImageCreationFormMixin(CreationFormMixin):
 class BaseImageChooseView(BaseChooseView):
     template_name = "wagtailimages/chooser/chooser.html"
     results_template_name = "wagtailimages/chooser/results.html"
-    per_page = getattr(settings, "WAGTAILIMAGES_CHOOSER_PAGE_SIZE", 12)
     ordering = "-created_at"
     construct_queryset_hook_name = "construct_image_chooser_queryset"
+
+    @property
+    def per_page(self):
+        # Make per_page into a property so that we can read back WAGTAILIMAGES_CHOOSER_PAGE_SIZE
+        # at runtime.
+        return getattr(settings, "WAGTAILIMAGES_CHOOSER_PAGE_SIZE", 20)
 
     def get_object_list(self):
         return (
@@ -116,12 +118,18 @@ class BaseImageChooseView(BaseChooseView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update(
-            {
-                "will_select_format": self.request.GET.get("select_format"),
-                "collections": self.collections,
-            }
+        chosen_url_name = (
+            "wagtailimages_chooser:select_format"
+            if self.request.GET.get("select_format")
+            else "wagtailimages_chooser:chosen"
         )
+
+        for image in context["results"]:
+            image.chosen_url = self.append_preserved_url_parameters(
+                reverse(chosen_url_name, args=(image.id,))
+            )
+
+        context["collections"] = self.collections
         return context
 
 
@@ -130,11 +138,6 @@ class ImageChooseViewMixin(ChooseViewMixin):
         context = super().get_context_data(**kwargs)
         context["popular_tags"] = popular_tags_for_model(self.model)
         return context
-
-    def get_response_json_data(self):
-        json_data = super().get_response_json_data()
-        json_data["tag_autocomplete_url"] = reverse("wagtailadmin_tag_autocomplete")
-        return json_data
 
 
 class ImageChooseView(
@@ -155,13 +158,22 @@ class ImageChosenView(ChosenViewMixin, ImageChosenResponseMixin, View):
         return super().get(request, *args, pk, **kwargs)
 
 
-class SelectFormatResponseMixin:
+class ImageChosenMultipleView(ChosenMultipleViewMixin, ImageChosenResponseMixin, View):
+    def get(self, request, *args, **kwargs):
+        self.model = get_image_model()
+        return super().get(request, *args, **kwargs)
+
+
+class SelectFormatResponseMixin(PreserveURLParametersMixin):
     def render_select_format_response(self, image, form):
+        action_url = self.append_preserved_url_parameters(
+            reverse("wagtailimages_chooser:select_format", args=(image.id,))
+        )
         return render_modal_workflow(
             self.request,
             "wagtailimages/chooser/select_format.html",
             None,
-            {"image": image, "form": form},
+            {"image": image, "form": form, "select_format_action_url": action_url},
             json_data={"step": "select_format"},
         )
 
@@ -208,8 +220,12 @@ class ImageUploadViewMixin(SelectFormatResponseMixin, CreateViewMixin):
             if request.GET.get("select_format")
             else "wagtailimages_chooser:chosen"
         )
-        choose_new_image_url = reverse(next_step_url, args=(new_image.id,))
-        choose_existing_image_url = reverse(next_step_url, args=(existing_image.id,))
+        choose_new_image_url = self.append_preserved_url_parameters(
+            reverse(next_step_url, args=(new_image.id,))
+        )
+        choose_existing_image_url = self.append_preserved_url_parameters(
+            reverse(next_step_url, args=(existing_image.id,))
+        )
 
         cancel_duplicate_upload_action = (
             f"{reverse('wagtailimages:delete', args=(new_image.id,))}?"
@@ -267,7 +283,7 @@ class ImageSelectFormatView(SelectFormatResponseMixin, ImageChosenResponseMixin,
             {
                 "format": format.name,
                 "alt": alt_text,
-                "class": format.classnames,
+                "class": format.classname,
                 "html": format.image_to_editor_html(image, alt_text),
             }
         )
@@ -291,20 +307,25 @@ class ImageChooserViewSet(ChooserViewSet):
     choose_view_class = ImageChooseView
     choose_results_view_class = ImageChooseResultsView
     chosen_view_class = ImageChosenView
+    chosen_multiple_view_class = ImageChosenMultipleView
     create_view_class = ImageUploadView
     select_format_view_class = ImageSelectFormatView
     permission_policy = permission_policy
     register_widget = False
+    preserve_url_parameters = ChooserViewSet.preserve_url_parameters + ["select_format"]
 
     icon = "image"
     choose_one_text = _("Choose an image")
     create_action_label = _("Upload")
     create_action_clicked_label = _("Uploading…")
+    choose_another_text = _("Choose another image")
+    edit_item_text = _("Edit this image")
 
     @property
     def select_format_view(self):
         return self.select_format_view_class.as_view(
             model=self.model,
+            preserve_url_parameters=self.preserve_url_parameters,
         )
 
     def get_urlpatterns(self):

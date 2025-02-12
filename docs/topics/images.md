@@ -2,7 +2,7 @@
 
 # How to use images in templates
 
-The `image` tag inserts an XHTML-compatible `img` element into the page, setting its `src`, `width`, `height` and `alt`. See also [](image_tag_alt).
+The `image` tag inserts an XHTML-compatible `img` element into the page, setting its `src`, `width`, `height`, and `alt`. See also [](image_tag_alt).
 
 The syntax for the tag is thus:
 
@@ -28,6 +28,75 @@ For example:
 In the above syntax example `[image]` is the Django object referring to the image. If your page model defined a field called "photo" then `[image]` would probably be `page.photo`. The `[resize-rule]` defines how the image is to be resized when inserted into the page. Various resizing methods are supported, to cater to different use cases (for example lead images that span the whole width of the page, or thumbnails to be cropped to a fixed size).
 
 Note that a space separates `[image]` and `[resize-rule]`, but the resize rule must not contain spaces. The width is always specified before the height. Resized images will maintain their original aspect ratio unless the `fill` rule is used, which may result in some pixels being cropped.
+
+(multiple_formats)=
+
+## Multiple formats
+
+To render an image in multiple formats, you can use the `picture` tag:
+
+```html+django
+{% picture page.photo format-{avif,webp,jpeg} width-400 %}
+```
+
+Compared to `image`, this will render a `<picture>` element with a fallback `<img>` within and one `<source>` element per extra format. The browser [picks the first format it supports](https://web.dev/learn/design/picture-element/#source), or defaults to the fallback `<img>` element. For example, the above will render HTML similar to:
+
+```html
+<picture>
+    <source srcset="/media/images/pied-wagtail.width-400.avif" type="image/avif">
+    <source srcset="/media/images/pied-wagtail.width-400.webp" type="image/webp">
+    <img src="/media/images/pied-wagtail.width-400.jpg" alt="A pied Wagtail" width="400" height="300">
+</picture>
+```
+
+In this case, if the browser supports the [AVIF](https://en.wikipedia.org/wiki/AVIF) format it will load the AVIF file. Otherwise, if the browser supports the [WebP](https://en.wikipedia.org/wiki/WebP) format, it will try to load the WebP file. If none of those formats are supported, the browser will load the JPEG image. The order of the provided formats isn’t configurable – Wagtail will always output source elements in the following order: AVIF, WebP, JPEG, PNG, and GIF. This ensures the most optimized format is provided whenever possible.
+
+The `picture` tag can also be used with multiple image resize rules to generate responsive images.
+
+(responsive_images)=
+
+## Responsive images
+
+Wagtail provides `picture` and `srcset_image` template tags which can generate image elements with `srcset` attributes. This allows browsers to select the most appropriate image file to load based on [responsive image rules](https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Responsive_images).
+
+The syntax for `srcset_image` is the same as `image`, with two exceptions:
+
+```html+django
+{% srcset_image [image] [resize-rule-with-brace-expansion] sizes="[my source sizes]" %}
+```
+
+-   The resize rule should be provided with multiple sizes in a brace-expansion pattern, like `width-{200,400}`. This will generate the `srcset` attribute, with as many URLs as there are sizes defined in the resize rule, and one width descriptor per URL. The first provided size will always be used as the `src` attribute, and define the image’s width and height attributes, as a fallback.
+-   The [`sizes`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#sizes) attribute is essential. This tells the browser how large the image will be displayed on the page, so that it can select the most appropriate image to load.
+
+Here is an example of `srcset_image` in action, generating a `srcset` attribute:
+
+```html+django
+{% srcset_image page.photo width-{400,800} sizes="(max-width: 600px) 400px, 80vw" %}
+```
+
+This outputs:
+
+```html
+<img srcset="/media/images/pied-wagtail.width-400.jpg 400w, /media/images/pied-wagtail.width-800.jpg 800w" src="/media/images/pied-wagtail.width-400.jpg" alt="A pied Wagtail" sizes="(max-width: 600px) 400px, 80vw" width="400" height="300">
+```
+
+Here is an example with the `picture` tag:
+
+```html+django
+{% picture page.photo format-{avif,webp,jpeg} width-{400,800} sizes="80vw" %}
+```
+
+This outputs:
+
+```html
+<picture>
+    <source sizes="80vw" srcset="/media/images/pied-wagtail.width-400.avif 400w, /media/images/pied-wagtail.width-800.avif 800w" type="image/avif">
+    <source sizes="80vw" srcset="/media/images/pied-wagtail.width-400.webp 400w, /media/images/pied-wagtail.width-800.webp 800w" type="image/webp">
+    <img sizes="80vw" srcset="/media/images/pied-wagtail.width-400.jpg 400w, /media/images/pied-wagtail.width-800.jpg 800w" src="/media/images/pied-wagtail.width-400.jpg" alt="A pied Wagtail" width="400" height="300">
+</picture>
+```
+
+(available_resizing_methods)=
 
 ## Available resizing methods
 
@@ -87,7 +156,7 @@ Reduces the height of the image to the dimension specified.
 
 ### `scale`
 
-(takes percentage)
+(takes a percentage)
 
 ```html+django
 {% image page.photo scale-50 %}
@@ -107,7 +176,7 @@ Resize and **crop** to fill the **exact** dimensions specified.
 
 This can be particularly useful for websites requiring square thumbnails of arbitrary images. For example, a landscape image of width 2000 and height 1000 treated with the `fill-200x200` rule would have its height reduced to 200, then its width (ordinarily 400) cropped to 200.
 
-This resize-rule will crop to the image's focal point if it has been set. If not, it will crop to the centre of the image.
+This resize-rule will crop to the image's focal point if it has been set. If not, it will crop to the center of the image.
 
 ![Example of fill filter on an image](../_static/images/image_filter_fill.png)
 
@@ -135,11 +204,11 @@ If you find that `-c100` is too close, you can try `-c75` or `-c50`. Any whole n
 
 ![Example of fill filter on an image with a focal point set](../_static/images/image_filter_fill_focal.png)
 
-Example: The focal point is set off centre so the image is scaled and also cropped like fill, however the center point of the crop is positioned closer the focal point.
+Example: The focal point is set off center so the image is scaled and also cropped like fill, however the center point of the crop is positioned closer to the focal point.
 
 ![Example of fill and closeness filter on an image with a focal point set](../_static/images/image_filter_fill_focal_close.png)
 
-Example: With `-c75` set, the final crop will be closer to the focal point.
+Example: With the `-c75` set, the final crop will be closer to the focal point.
 
 ### `original`
 
@@ -161,7 +230,7 @@ Wagtail does not allow deforming or stretching images. Image dimension ratios wi
 
 Wagtail provides two shortcuts to give greater control over the `img` element:
 
-### 1. Adding attributes to the {% image %} tag
+### 1. Adding attributes to the `{% image %}` tag
 
 Extra attributes can be specified with the syntax `attribute="value"`:
 
@@ -175,7 +244,7 @@ You can also add default attributes to all images (a default class or data attri
 
 ### 2. Generating the image "as foo" to access individual properties
 
-Wagtail can assign the image data to another variable using Django's `as` syntax:
+Wagtail can assign the image data to another variable using Django's `as` syntax, to access the underlying image Rendition (`tmp_photo`):
 
 ```html+django
 {% image page.photo width-400 as tmp_photo %}
@@ -184,11 +253,36 @@ Wagtail can assign the image data to another variable using Django's `as` syntax
     height="{{ tmp_photo.height }}" alt="{{ tmp_photo.alt }}" class="my-custom-class" />
 ```
 
+This is also possible with the `srcset_image` tag, to retrieve multiple size renditions:
+
+```html+django
+{% srcset_image page.photo width-{200,400} as tmp_photo %}
+
+<img
+    src="{{ tmp_photo.renditions.0.url }}"
+    width="{{ tmp_photo.renditions.0.width }}"
+    height="{{ tmp_photo.renditions.0.height }}"
+    alt="{{ tmp_photo.renditions.0.alt }}"
+    srcset="{{ tmp_photo.renditions.0.url }} 200w, {{ tmp_photo.renditions.1.url }} 400w"
+    sizes="100vw"
+    class="my-custom-class"
+/>
+```
+
+And with the picture tag, to retrieve multiple formats:
+
+```html+django
+{% picture page.photo format-{avif,jpeg} as tmp_photo %}
+
+{{ tmp_photo.formats.avif.0.url }}
+{{ tmp_photo.formats.jpeg.0.url }}
+```
+
 ```{note}
 The image property used for the `src` attribute is `image.url`, not `image.src`.
 ```
 
-This syntax exposes the underlying image Rendition (`tmp_photo`) to the developer. A "Rendition" contains the information specific to the way you've requested to format the image using the resize-rule, dimensions and source URL. The following properties are available:
+Renditions contain the information specific to the way you've requested to format the image using the resize-rule, dimensions, and source URL. The following properties are available:
 
 ### `url`
 
@@ -204,11 +298,11 @@ Image height after resizing.
 
 ### `alt`
 
-Alternative text for the image, typically taken from the image title.
+Alternative text for the image, contextual alt text or `default_alt_text` if not.
 
 ### `attrs`
 
-A shorthand for outputting the attributes `src`, `width`, `height` and `alt` in one go:
+A shorthand for outputting the attributes `src`, `width`, `height`, and `alt` in one go:
 
 ```html+django
 <img {{ tmp_photo.attrs }} class="my-custom-class" />
@@ -221,10 +315,10 @@ Same as `url`, but always returns a full absolute URL. This requires `WAGTAILADM
 This is useful for images that will be re-used outside of the current site, such as social share images:
 
 ```html+django
-<meta name="twitter:image" content="{{ tmp_photo.full_url }}">
+<meta name="og:image" content="{{ tmp_photo.full_url }}">
 ```
 
-If your site defines a custom image model using `AbstractImage`, any additional fields you add to an image (such as a copyright holder) are **not** included in the rendition.
+If your site defines a custom image model using `AbstractImage`, any additional fields you add to an image (such as a copyright holder) is **not** included in the rendition.
 
 Therefore, if you'd added the field `author` to your AbstractImage in the above example, you'd access it using `{{ page.photo.author }}` rather than `{{ tmp_photo.author }}`.
 
@@ -272,7 +366,7 @@ For example, to use the `<picture>` tag:
 </picture>
 ```
 
-And to use the `<amp-img>` tag (based on the [Mountains example](https://amp.dev/documentation/components/amp-img/#example:-specifying-a-fallback-image) from the AMP docs):
+And to use the `<amp-img>` tag (based on the [Mountains example](https://amp.dev/documentation/components/amp-img#specify-a-fallback-image) from the AMP docs):
 
 ```html+django
 {% image image width-550 format-webp as webp_image %}
@@ -292,26 +386,26 @@ And to use the `<amp-img>` tag (based on the [Mountains example](https://amp.dev
 
 ## Images embedded in rich text
 
-The information above relates to images defined via image-specific fields in your model. However, images can also be embedded arbitrarily in Rich Text fields by the page editor (see [](rich-text)).
+The information above relates to images defined via image-specific fields in your model. However, images can also be embedded arbitrarily in Rich Text fields by the page editor (see [](rich_text_field).
 
-Images embedded in Rich Text fields can't be controlled by the template developer as easily. There are no image objects to work with, so the `{% image %}` template tag can't be used. Instead, editors can choose from one of a number of image "Formats" at the point of inserting images into their text.
+Images embedded in Rich Text fields can't be controlled by the template developer as easily. There are no image objects to work with, so the `{% image %}` template tag can't be used. Instead, editors can choose from one of several image "Formats" at the point of inserting images into their text.
 
 Wagtail comes with three pre-defined image formats, but more can be defined in Python by the developer. These formats are:
 
 ### `Full width`
 
-Creates an image rendition using `width-800`, giving the <img> tag the CSS class `full-width`.
+Creates an image rendition using `width-800`, giving the `<img>` tag the CSS class `full-width`.
 
 ### `Left-aligned`
 
-Creates an image rendition using `width-500`, giving the <img> tag the CSS class `left`.
+Creates an image rendition using `width-500`, giving the `<img>` tag the CSS class `left`.
 
 ### `Right-aligned`
 
-Creates an image rendition using `width-500`, giving the <img> tag the CSS class `right`.
+Creates an image rendition using `width-500`, giving the `<img>` tag the CSS class `right`.
 
 ```{note}
-The CSS classes added to images do **not** come with any accompanying stylesheets, or inline styles. For example the `left` class will do nothing, by default. The developer is expected to add these classes to their front end CSS files, to define exactly what they want `left`, `right` or `full-width` to mean.
+The CSS classes added to images do **not** come with any accompanying stylesheets or inline styles. For example, the `left` class will do nothing, by default. The developer is expected to add these classes to their front-end CSS files, to define exactly what they want `left`, `right` or `full-width` to mean.
 ```
 
 For more information about image formats, including creating your own, see [](rich_text_image_formats).
@@ -322,8 +416,9 @@ For more information about image formats, including creating your own, see [](ri
 
 Wagtail may automatically change the format of some images when they are resized:
 
--   PNG and JPEG images don't change format
+-   PNG and JPEG images don't change the format
 -   GIF images without animation are converted to PNGs
+-   AVIF images are converted to PNGs
 -   BMP images are converted to PNGs
 -   WebP images are converted to PNGs
 
@@ -336,27 +431,39 @@ For example, to make the tag always convert the image to a JPEG, use `format-jpe
 {% image page.photo width-400 format-jpeg %}
 ```
 
-You may also use `format-png` or `format-gif`.
+You may also use `format-png`, `format-gif` or `format-ico`.
 
-### Lossless WebP
+### Lossless AVIF and WebP
 
-You can encode the image into lossless WebP format by using the `format-webp-lossless` filter:
+You can encode the image into lossless AVIF or WebP format by using `format-avif-lossless` or `format-webp-lossless` filter respectively:
 
 ```html+django
+{% image page.photo width-400 format-avif-lossless %}
 {% image page.photo width-400 format-webp-lossless %}
+```
+
+(favicon_generation)=
+
+### Favicon generation
+
+You can save images as a `.ico` file using `format-ico`, which is especially useful when managing a site's favicon through the Admin.
+
+```html+django
+{% image favicon_image format-ico as favicon_image_formatted %}
+<link rel="icon" type="image/x-icon" href="{{ favicon_image_formatted.url }}"/>
 ```
 
 (image_background_colour)=
 
-## Background colour
+## Background color
 
 The PNG and GIF image formats both support transparency, but if you want to
-convert images to JPEG format, the transparency will need to be replaced with a solid background colour.
+convert images to JPEG format, the transparency will need to be replaced with a solid background color.
 
-By default, Wagtail will set the background to white. But if a white background doesn't fit your design, you can specify a colour using the `bgcolor` filter.
+By default, Wagtail will set the background to white. But if a white background doesn't fit your design, you can specify a color using the `bgcolor` filter.
 
-This filter takes a single argument, which is a CSS 3 or 6 digit hex code
-representing the colour you would like to use:
+This filter takes a single argument, which is a CSS 3 or 6-digit hex code
+representing the color you would like to use:
 
 ```html+django
 {# Sets the image background to black #}
@@ -367,17 +474,19 @@ representing the colour you would like to use:
 
 ## Image quality
 
-Wagtail's JPEG and WebP image quality settings default to 85 (which is quite high).
+Wagtail's JPEG image quality settings default to 85 (which is quite high). AVIF and WebP default to 80.
 This can be changed either globally or on a per-tag basis.
 
 ### Changing globally
 
-Use the `WAGTAILIMAGES_JPEG_QUALITY` and `WAGTAILIMAGES_WEBP_QUALITY` settings to change the global defaults of JPEG and WebP quality:
+Use the `WAGTAILIMAGES_AVIF_QUALITY`, `WAGTAILIMAGES_JPEG_QUALITY` and `WAGTAILIMAGES_WEBP_QUALITY` settings to change
+the global defaults of AVIF, JPEG, and WebP quality:
 
 ```python
 # settings.py
 
 # Make low-quality but small images
+WAGTAILIMAGES_AVIF_QUALITY = 50
 WAGTAILIMAGES_JPEG_QUALITY = 40
 WAGTAILIMAGES_WEBP_QUALITY = 45
 ```
@@ -392,29 +501,82 @@ Note that this won't affect any previously generated images so you may want to d
 
 You can also directly use the image management command from the console for regenerating the renditions:
 
-```console
-$ ./manage.py wagtail_update_image_renditions --purge
+```sh
+./manage.py wagtail_update_image_renditions --purge
 ```
 
 You can read more about this command from [](wagtail_update_image_renditions)
 
 ### Changing per-tag
 
-It's also possible to have different JPEG and WebP qualities on individual tags by using `jpegquality` and `webpquality` filters. This will always override the default setting:
+It's also possible to have different AVIF, JPEG, and WebP qualities on individual tags by using `avifquality`, `jpegquality`, and `webpquality` filters. This will always override the default setting:
 
 ```html+django
+{% image page.photo_avif width-400 avifquality-40 %}
 {% image page.photo_jpeg width-400 jpegquality-40 %}
 {% image page.photo_webp width-400 webpquality-50 %}
 ```
 
-Note that this will have no effect on PNG or GIF files. If you want all images to be low quality, you can use this filter with `format-jpeg` or `format-webp` (which forces all images to output in JPEG or WebP format):
+Note that this will not affect PNG or GIF files. If you want all images to be low quality, you can use this filter with `format-avif`, `format-jpeg`, or `format-webp` (which forces all images to output in AVIF, JPEG, or WebP format):
 
 ```html+Django
+{% image page.photo width-400 format-avif avifquality-40 %}
 {% image page.photo width-400 format-jpeg jpegquality-40 %}
 {% image page.photo width-400 format-webp webpquality-50 %}
 ```
 
-### Generating image renditions in Python
+## Generating image renditions in Python
 
 All of the image transformations mentioned above can also be used directly in Python code.
 See [](image_renditions).
+
+(svg_images)=
+
+## SVG images
+
+Wagtail supports the use of Scalable Vector Graphics alongside raster images. To allow Wagtail users to upload and use SVG images, add "svg" to the list of allowed image extensions by configuring `WAGTAILIMAGES_EXTENSIONS`:
+
+```python
+WAGTAILIMAGES_EXTENSIONS = ["gif", "jpg", "jpeg", "png", "webp", "svg"]
+```
+
+SVG images can be included in templates via the `image` template tag, as with raster images. However, operations that require SVG images to be rasterized are not currently supported. This includes direct format conversion, e.g. `format-webp`, and `bgcolor` directives. Crop and resize operations do not require rasterization, so may be used freely (see [](available_resizing_methods)).
+
+The `image` tag's `preserve-svg` positional argument may be used to restrict the operations applied to an SVG image to only those that do not require rasterization. This may be useful in situations where a single `image` tag declaration is applied to multiple source images, for example:
+
+```html+django
+{% for picture in pictures %}
+    {% image picture fill-400x400 format-webp preserve-svg %}
+{% endfor %}
+```
+
+In this example, any of the image objects that are SVGs will only have the `fill-400x400` operation applied to them, while raster images will have both the `fill-400x400` and `format-webp` operations applied. If the `preserve-svg` argument is not used in this example, an error will be raised when attempting to convert SVG images to webp, as this is not possible without a rasterization library.
+
+(svg_security_considerations)=
+
+### Security considerations
+
+Wagtail's underlying image library, Willow, is configured to mitigate known XML parser exploits (e.g. billion laughs, quadratic blowup) by rejecting suspicious files.
+
+When including SVG images in templates via the `image` tag, they will be rendered as HTML `img` elements. In this case, `script` elements in SVGs will not be executed, mitigating XSS attacks.
+
+If a user navigates directly to the URL of the SVG file embedded scripts may be executed, depending on server/storage configuration. This can be mitigated by setting appropriate Content-Security-Policy or Content-Disposition headers for SVG responses:
+
+-   setting `Content-Security-Policy: default-src 'none'` will prevent scripts from being loaded or executed (as well as other resources - a more relaxed policy of `script-src 'none'` may also be suitable); and
+-   setting `Content-Disposition: attachment` will cause the file to be downloaded rather than being immediately rendered in the browser, meaning scripts will not be executed (note: this will not prevent scripts from running if a user downloads and subsequently opens the SVG file in their browser).
+
+The steps required to set headers for specific responses will vary, depending on how your Wagtail application is deployed. For the built-in [](using_images_outside_wagtail), a Content-Security-Policy header is automatically set for you.
+
+(heic_heif_images)=
+
+## HEIC / HEIF images
+
+HEIC / HEIF images are not widely supported on the web, but may be encountered when exporting images from Apple devices. Wagtail does not allow upload of these by default, but this can be enabled by adding `"heic"` to `WAGTAILIMAGES_EXTENSIONS`:
+
+```python
+WAGTAILIMAGES_EXTENSIONS = ["gif", "jpg", "jpeg", "png", "webp", "heic"]
+```
+
+Note that to upload HEIC / HEIF images, the file extension must be `.heic` and not `.heif` or other extensions.
+
+These images will be automatically converted to JPEG format when rendered (see [](customizing_output_formats)).

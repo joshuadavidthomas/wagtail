@@ -1,100 +1,78 @@
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect
 from django.template.loader import render_to_string
-from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
-from django.utils.translation import gettext_lazy
 
 from wagtail.admin import messages
 from wagtail.admin.action_menu import PageActionMenu
 from wagtail.admin.auth import user_has_any_page_permission, user_passes_test
-from wagtail.admin.ui.side_panels import PageSidePanels
-from wagtail.admin.views.generic.models import RevisionsCompareView
+from wagtail.admin.views.generic.models import (
+    RevisionsCompareView,
+    RevisionsUnscheduleView,
+)
 from wagtail.admin.views.generic.preview import PreviewRevision
-from wagtail.admin.views.pages.utils import get_valid_next_url_from_request
-from wagtail.models import Page, UserPagePermissionsProxy
+from wagtail.admin.views.pages.edit import EditView
+from wagtail.admin.views.pages.utils import GenericPageBreadcrumbsMixin
+from wagtail.models import Page
+from wagtail.utils.timestamps import render_timestamp
 
 
 def revisions_index(request, page_id):
     return redirect("wagtailadmin_pages:history", page_id)
 
 
-def revisions_revert(request, page_id, revision_id):
-    page = get_object_or_404(Page, id=page_id).specific
-    page_perms = page.permissions_for_user(request.user)
-    if not page_perms.can_edit():
-        raise PermissionDenied
+class RevisionsRevertView(EditView):
+    revisions_revert_url_name = "wagtailadmin_pages:revisions_revert"
 
-    revision = get_object_or_404(page.revisions, id=revision_id)
-    revision_page = revision.as_object()
+    def get_action_menu(self):
+        return PageActionMenu(
+            self.request,
+            view="revisions_revert",
+            is_revision=True,
+            page=self.page,
+            lock=self.lock,
+            locked_for_user=self.locked_for_user,
+        )
 
-    content_type = ContentType.objects.get_for_model(page)
-    page_class = content_type.model_class()
+    def get(self, request, *args, **kwargs):
+        self._add_warning_message()
+        return super().get(request, *args, **kwargs)
 
-    edit_handler = page_class.get_edit_handler()
-    form_class = edit_handler.get_form_class()
+    def _add_warning_message(self):
+        messages.warning(self.request, self.get_warning_message())
 
-    form = form_class(instance=revision_page)
-    edit_handler = edit_handler.get_bound_panel(
-        instance=revision_page, request=request, form=form
-    )
+    def get_object(self):
+        return self.previous_revision.as_object()
 
-    lock = page.get_lock()
+    def get_revisions_revert_url(self):
+        return reverse(
+            self.revisions_revert_url_name,
+            args=[self.page.pk, self.revision_id],
+        )
 
-    action_menu = PageActionMenu(
-        request,
-        view="revisions_revert",
-        page=page,
-        lock=lock,
-        locked_for_user=lock is not None and lock.for_user(request.user),
-    )
-    side_panels = PageSidePanels(
-        request,
-        page,
-        preview_enabled=True,
-        comments_enabled=form.show_comments_toggle,
-    )
+    def get_warning_message(self):
+        user_avatar = render_to_string(
+            "wagtailadmin/shared/user_avatar.html",
+            {"user": self.previous_revision.user},
+        )
 
-    user_avatar = render_to_string(
-        "wagtailadmin/shared/user_avatar.html", {"user": revision.user}
-    )
-
-    messages.warning(
-        request,
-        mark_safe(
+        return mark_safe(
             _(
                 "You are viewing a previous version of this page from <b>%(created_at)s</b> by %(user)s"
             )
             % {
-                "created_at": revision.created_at.strftime("%d %b %Y %H:%M"),
+                "created_at": render_timestamp(self.previous_revision.created_at),
                 "user": user_avatar,
             }
-        ),
-    )
+        )
 
-    return TemplateResponse(
-        request,
-        "wagtailadmin/pages/edit.html",
-        {
-            "page": page,
-            "revision": revision,
-            "is_revision": True,
-            "content_type": content_type,
-            "edit_handler": edit_handler,
-            "errors_debug": None,
-            "action_menu": action_menu,
-            "side_panels": side_panels,
-            "form": form,  # Used in unit tests
-            "media": edit_handler.media
-            + form.media
-            + action_menu.media
-            + side_panels.media,
-        },
-    )
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["action_url"] = self.get_revisions_revert_url()
+        return context
 
 
 @method_decorator(user_passes_test(user_has_any_page_permission), name="dispatch")
@@ -115,12 +93,11 @@ class RevisionsView(PreviewRevision):
         return page
 
 
-class RevisionsCompare(RevisionsCompareView):
-    history_label = gettext_lazy("Page history")
-    edit_label = gettext_lazy("Edit this page")
+class RevisionsCompare(GenericPageBreadcrumbsMixin, RevisionsCompareView):
     history_url_name = "wagtailadmin_pages:history"
     edit_url_name = "wagtailadmin_pages:edit"
     header_icon = "doc-empty-inverse"
+    breadcrumbs_items_to_take = 2
 
     @method_decorator(user_passes_test(user_has_any_page_permission))
     def dispatch(self, request, *args, **kwargs):
@@ -136,43 +113,23 @@ class RevisionsCompare(RevisionsCompareView):
         return self.object.get_admin_display_title()
 
 
-def revisions_unschedule(request, page_id, revision_id):
-    page = get_object_or_404(Page, id=page_id).specific
+class RevisionsUnschedule(RevisionsUnscheduleView):
+    model = Page
+    edit_url_name = "wagtailadmin_pages:edit"
+    history_url_name = "wagtailadmin_pages:history"
+    revisions_unschedule_url_name = "wagtailadmin_pages:revisions_unschedule"
+    header_icon = "doc-empty-inverse"
 
-    user_perms = UserPagePermissionsProxy(request.user)
-    if not user_perms.for_page(page).can_unschedule():
-        raise PermissionDenied
+    def setup(self, request, page_id, revision_id, *args, **kwargs):
+        # Rename path kwargs from pk to page_id
+        return super().setup(request, page_id, revision_id, *args, **kwargs)
 
-    revision = get_object_or_404(page.revisions, id=revision_id)
+    def get_object(self, queryset=None):
+        page = get_object_or_404(Page, id=self.pk).specific
 
-    next_url = get_valid_next_url_from_request(request)
+        if not page.permissions_for_user(self.request.user).can_unschedule():
+            raise PermissionDenied
+        return page
 
-    subtitle = _('revision {0} of "{1}"').format(
-        revision.id, page.get_admin_display_title()
-    )
-
-    if request.method == "POST":
-        revision.approved_go_live_at = None
-        revision.save(user=request.user, update_fields=["approved_go_live_at"])
-
-        messages.success(
-            request,
-            _('Version {0} of "{1}" unscheduled.').format(
-                revision.id, page.get_admin_display_title()
-            ),
-            buttons=[
-                messages.button(
-                    reverse("wagtailadmin_pages:edit", args=(page.id,)), _("Edit")
-                )
-            ],
-        )
-
-        if next_url:
-            return redirect(next_url)
-        return redirect("wagtailadmin_pages:history", page.id)
-
-    return TemplateResponse(
-        request,
-        "wagtailadmin/pages/revisions/confirm_unschedule.html",
-        {"page": page, "revision": revision, "next": next_url, "subtitle": subtitle},
-    )
+    def get_object_display_title(self):
+        return self.object.get_admin_display_title()

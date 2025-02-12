@@ -16,17 +16,17 @@ export class FieldBlock {
     this.blockDef = blockDef;
     this.type = blockDef.name;
 
-    // See field.html for the reference implementation of this markup.
+    // See wagtailadmin/shared/formatted_field.html for the reference implementation of this markup.
     const dom = $(`
       <div class="w-field__wrapper" data-field-wrapper>
         <div class="${h(this.blockDef.meta.classname)}" data-field>
           <div class="w-field__errors" id="${prefix}-errors" data-field-errors>
             <svg class="icon icon-warning w-field__errors-icon" aria-hidden="true" hidden><use href="#icon-warning"></use></svg>
           </div>
+          <div class="w-field__help" id="${prefix}-helptext" data-field-help></div>
           <div class="w-field__input" data-field-input>
             <div data-streamfield-widget></div>
           </div>
-          <div id="${prefix}-helptext" data-field-help></div>
         </div>
       </div>
     `);
@@ -39,6 +39,8 @@ export class FieldBlock {
 
     this.prefix = prefix;
 
+    const options = { attributes: this.getAttributes() };
+
     try {
       this.widget = this.blockDef.widget.render(
         widgetElement,
@@ -46,17 +48,16 @@ export class FieldBlock {
         prefix,
         initialState,
         this.parentCapabilities,
+        options,
       );
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
-      this.setError([
-        {
-          messages: [
-            'This widget failed to render, please check the console for details',
-          ],
-        },
-      ]);
+      this.setError({
+        messages: [
+          'This widget failed to render, please check the console for details.',
+        ],
+      });
       return;
     }
 
@@ -80,7 +81,6 @@ export class FieldBlock {
       addCommentButtonElement.classList.add(
         'w-field__comment-button',
         'w-field__comment-button--add',
-        'u-hidden',
       );
 
       ReactDOM.render(
@@ -115,27 +115,50 @@ export class FieldBlock {
     }
   }
 
-  setError(errorList) {
-    const errors = this.field.querySelector('[data-field-errors]');
+  setError(error) {
+    const errorContainer = this.field.querySelector('[data-field-errors]');
 
-    errors
+    errorContainer
       .querySelectorAll('.error-message')
       .forEach((element) => element.remove());
 
-    if (errorList) {
+    if (error) {
       this.field.classList.add('w-field--error');
-      errors.querySelector('.icon').removeAttribute('hidden');
+      errorContainer.querySelector('.icon').removeAttribute('hidden');
 
       const errorElement = document.createElement('p');
       errorElement.classList.add('error-message');
-      errorElement.innerHTML = errorList
-        .map((error) => `<span>${h(error.messages[0])}</span>`)
-        .join('');
-      errors.appendChild(errorElement);
+
+      const errorText = document.createTextNode(error.messages.join(' '));
+
+      errorElement.appendChild(errorText);
+      errorContainer.appendChild(errorElement);
     } else {
       this.field.classList.remove('w-field--error');
-      errors.querySelector('.icon').setAttribute('hidden', 'true');
+      errorContainer.querySelector('.icon').setAttribute('hidden', 'true');
     }
+  }
+
+  getAttributes() {
+    const prefix = this.prefix;
+    const attributes = {};
+
+    // If the block has help text, we should associate this with the input rendered by the widget.
+    // To accomplish this, we must tell the widget to render an aria-describedby attribute referring
+    // to the help text id in its HTML.
+    if (this.blockDef.meta.helpText) {
+      attributes['aria-describedby'] = `${prefix}-helptext`;
+    }
+    // If the block is required, we must tell the widget to render a required attribute in its HTML.
+    if (this.blockDef.meta.required) {
+      attributes.required = '';
+    }
+
+    if (this.blockDef.meta.maxLength) {
+      attributes.maxLength = this.blockDef.meta.maxLength;
+    }
+
+    return attributes;
   }
 
   getState() {

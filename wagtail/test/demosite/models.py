@@ -9,6 +9,7 @@ from taggit.models import TaggedItemBase
 
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
 from wagtail.api import APIField
+from wagtail.contrib.forms.models import AbstractForm, AbstractFormField
 from wagtail.fields import RichTextField
 from wagtail.images.api.fields import ImageRenditionField
 from wagtail.models import Orderable, Page
@@ -470,7 +471,7 @@ class EventPage(Page):
 
     def get_event_index(self):
         # Find closest ancestor which is an event index
-        return EventIndexPage.objects.ancester_of(self).last()
+        return EventIndexPage.objects.ancestor_of(self).last()
 
 
 class EventPageCarouselItem(Orderable, AbstractCarouselItem):
@@ -677,3 +678,17 @@ ContactPage.promote_panels = [
     MultiFieldPanel(Page.promote_panels, "Common page configuration"),
     FieldPanel("feed_image"),
 ]
+
+
+class FormField(AbstractFormField):
+    page = ParentalKey("FormPage", related_name="form_fields", on_delete=models.CASCADE)
+
+
+class FormPage(AbstractForm):
+    page_ptr = models.OneToOneField(
+        Page, parent_link=True, related_name="+", on_delete=models.CASCADE
+    )
+    api_fields = [APIField("form_fields")]
+    content_panels = AbstractForm.content_panels + [
+        InlinePanel("form_fields", label="Form fields")
+    ]

@@ -1,7 +1,7 @@
 import $ from 'jquery';
 import * as uuid from 'uuid';
 import { FieldBlock, FieldBlockDefinition } from './FieldBlock';
-import { ListBlockDefinition, ListBlockValidationError } from './ListBlock';
+import { ListBlockDefinition } from './ListBlock';
 import { StreamBlockDefinition } from './StreamBlock';
 
 // Mock uuid for consistent snapshot results
@@ -51,12 +51,6 @@ class DummyWidgetDefinition {
       },
       idForLabel: id,
     };
-  }
-}
-
-class ValidationError {
-  constructor(messages) {
-    this.messages = messages;
   }
 }
 
@@ -119,10 +113,11 @@ describe('telepath: wagtail.blocks.ListBlock', () => {
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>a few</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -304,22 +299,16 @@ describe('telepath: wagtail.blocks.ListBlock', () => {
   });
 
   test('setError passes error messages to children', () => {
-    boundBlock.setError([
-      new ListBlockValidationError(
-        [null, [new ValidationError(['Not as good as the first one'])]],
-        [],
-      ),
-    ]);
+    boundBlock.setError({
+      blockErrors: { 1: { messages: ['Not as good as the first one.'] } },
+    });
     expect(document.body.innerHTML).toMatchSnapshot();
   });
 
   test('setError renders non-block errors', () => {
-    boundBlock.setError([
-      new ListBlockValidationError(
-        [null, null],
-        [new ValidationError(['At least three blocks are required'])],
-      ),
-    ]);
+    boundBlock.setError({
+      messages: ['At least three blocks are required'],
+    });
     expect(document.body.innerHTML).toMatchSnapshot();
   });
 });
@@ -345,11 +334,12 @@ describe('telepath: wagtail.blocks.ListBlock with maxNum set', () => {
       icon: 'placeholder',
       classname: null,
       helpText: 'use <strong>a few</strong> of these',
-      helpIcon: '<div class="icon-help">?</div>',
+      helpIcon: '<svg></svg>',
       maxNum: 3,
       strings: {
         MOVE_UP: 'Move up',
         MOVE_DOWN: 'Move down',
+        DRAG: 'Drag',
         DELETE: 'Delete',
         DUPLICATE: 'Duplicate',
         ADD: 'Add',
@@ -374,34 +364,17 @@ describe('telepath: wagtail.blocks.ListBlock with maxNum set', () => {
     ).toBe(null);
   };
 
-  const assertCannotAddBlock = () => {
-    // Test duplicate button is always enabled
-    // querySelector always returns the first element it sees so this only checks the first block
-    expect(
-      document
-        .querySelector('button[title="Duplicate"]')
-        .getAttribute('disabled'),
-    ).toBe(null);
-
-    // Test menu
-    expect(
-      document
-        .querySelector('button[data-streamfield-list-add]')
-        .getAttribute('disabled'),
-    ).toEqual('disabled');
+  const assertShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical').innerHTML).toBe(
+      'The maximum number of items is 3',
+    );
   };
 
-  test('test can add block when under limit', () => {
-    document.body.innerHTML = '<div id="placeholder"></div>';
-    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
-      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
-      { value: 'Second value', id: '22222222-2222-2222-2222-222222222222' },
-    ]);
+  const assertNotShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical')).toBe(null);
+  };
 
-    assertCanAddBlock();
-  });
-
-  test('initialising at maxNum disables adding new block and duplication', () => {
+  test('test error message not show when at limit', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
@@ -409,7 +382,21 @@ describe('telepath: wagtail.blocks.ListBlock with maxNum set', () => {
       { value: 'Third value', id: '33333333-3333-3333-3333-333333333333' },
     ]);
 
-    assertCannotAddBlock();
+    assertCanAddBlock();
+    assertNotShowingErrorMessage();
+  });
+
+  test('initialising at over maxNum shows error message', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
+      { value: 'Second value', id: '22222222-2222-2222-2222-222222222222' },
+      { value: 'Third value', id: '33333333-3333-3333-3333-333333333333' },
+      { value: 'Fourth value', id: '44444444-4444-4444-4444-444444444444' },
+    ]);
+
+    assertCanAddBlock();
+    assertShowingErrorMessage();
   });
 
   test('addSibling capability works', () => {
@@ -427,21 +414,7 @@ describe('telepath: wagtail.blocks.ListBlock with maxNum set', () => {
     expect(boundBlock.children.length).toEqual(4);
   });
 
-  test('insert disables new block', () => {
-    document.body.innerHTML = '<div id="placeholder"></div>';
-    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
-      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
-      { value: 'Second value', id: '22222222-2222-2222-2222-222222222222' },
-    ]);
-
-    assertCanAddBlock();
-
-    boundBlock.insert('Third value', 2);
-
-    assertCannotAddBlock();
-  });
-
-  test('delete enables new block', () => {
+  test('insert adds error message', () => {
     document.body.innerHTML = '<div id="placeholder"></div>';
     const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
       { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
@@ -449,11 +422,122 @@ describe('telepath: wagtail.blocks.ListBlock with maxNum set', () => {
       { value: 'Third value', id: '33333333-3333-3333-3333-333333333333' },
     ]);
 
-    assertCannotAddBlock();
+    assertCanAddBlock();
+    assertNotShowingErrorMessage();
+
+    boundBlock.insert('Fourth value', 2);
+
+    assertCanAddBlock();
+    assertShowingErrorMessage();
+  });
+
+  test('delete removes error message', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
+      { value: 'Second value', id: '22222222-2222-2222-2222-222222222222' },
+      { value: 'Third value', id: '33333333-3333-3333-3333-333333333333' },
+      { value: 'Fourth value', id: '44444444-4444-4444-4444-444444444444' },
+    ]);
+
+    assertCanAddBlock();
+    assertShowingErrorMessage();
 
     boundBlock.deleteBlock(2);
 
     assertCanAddBlock();
+    assertNotShowingErrorMessage();
+  });
+});
+
+describe('telepath: wagtail.blocks.ListBlock with minNum set', () => {
+  // Define a test block
+  const blockDef = new ListBlockDefinition(
+    'test_listblock',
+    new ParanoidFieldBlockDefinition(
+      '',
+      new DummyWidgetDefinition('The widget'),
+      {
+        label: '',
+        required: true,
+        icon: 'pilcrow',
+        classname:
+          'w-field w-field--char_field w-field--admin_auto_height_text_input',
+      },
+    ),
+    null,
+    {
+      label: 'Test listblock',
+      icon: 'placeholder',
+      classname: null,
+      helpText: 'use <strong>a few</strong> of these',
+      helpIcon: '<svg></svg>',
+      minNum: 2,
+      strings: {
+        MOVE_UP: 'Move up',
+        MOVE_DOWN: 'Move down',
+        DRAG: 'Drag',
+        DELETE: 'Delete',
+        DUPLICATE: 'Duplicate',
+        ADD: 'Add',
+      },
+    },
+  );
+
+  const assertShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical').innerHTML).toBe(
+      'The minimum number of items is 2',
+    );
+  };
+
+  const assertNotShowingErrorMessage = () => {
+    expect(document.querySelector('p.help-block.help-critical')).toBe(null);
+  };
+
+  test('test error message not shown when at limit', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
+      { value: 'Second value', id: '22222222-2222-2222-2222-222222222222' },
+    ]);
+
+    assertNotShowingErrorMessage();
+  });
+
+  test('initialising at under minNum shows error message', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
+    ]);
+
+    assertShowingErrorMessage();
+  });
+
+  test('insert removes error message', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
+    ]);
+
+    assertShowingErrorMessage();
+
+    boundBlock.insert('Second value', 1);
+
+    assertNotShowingErrorMessage();
+  });
+
+  test('delete below limit adds error message', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    const boundBlock = blockDef.render($('#placeholder'), 'the-prefix', [
+      { value: 'First value', id: '11111111-1111-1111-1111-111111111111' },
+      { value: 'Second value', id: '22222222-2222-2222-2222-222222222222' },
+    ]);
+
+    assertNotShowingErrorMessage();
+
+    boundBlock.deleteBlock(1);
+
+    assertShowingErrorMessage();
   });
 });
 
@@ -491,13 +575,14 @@ describe('telepath: wagtail.blocks.ListBlock with StreamBlock child', () => {
           icon: 'placeholder',
           classname: null,
           helpText: 'use <strong>plenty</strong> of these',
-          helpIcon: '<div class="icon-help">?</div>',
+          helpIcon: '<svg></svg>',
           maxNum: null,
           minNum: null,
           blockCounts: {},
           strings: {
             MOVE_UP: 'Move up',
             MOVE_DOWN: 'Move down',
+            DRAG: 'Drag',
             DELETE: 'Delete',
             DUPLICATE: 'Duplicate',
             ADD: 'Add',
@@ -510,10 +595,11 @@ describe('telepath: wagtail.blocks.ListBlock with StreamBlock child', () => {
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>a few</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -575,10 +661,11 @@ describe('telepath: wagtail.blocks.ListBlock inside a StreamBlock', () => {
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>a few</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -596,13 +683,14 @@ describe('telepath: wagtail.blocks.ListBlock inside a StreamBlock', () => {
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>plenty</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         maxNum: null,
         minNum: null,
         blockCounts: {},
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',

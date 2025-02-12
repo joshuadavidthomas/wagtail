@@ -1,10 +1,8 @@
 import warnings
-from operator import itemgetter
 
-import l18n
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models.fields import BLANK_CHOICE_DASH
 from django.utils.translation import get_language_info
 from django.utils.translation import gettext_lazy as _
 
@@ -13,7 +11,7 @@ from wagtail.admin.localization import (
     get_available_admin_time_zones,
 )
 from wagtail.admin.widgets import SwitchInput
-from wagtail.models import UserPagePermissionsProxy
+from wagtail.permissions import page_permission_policy
 from wagtail.users.models import UserProfile
 
 User = get_user_model()
@@ -22,10 +20,11 @@ User = get_user_model()
 class NotificationPreferencesForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        user_perms = UserPagePermissionsProxy(self.instance.user)
-        if not user_perms.can_publish_pages():
+
+        permission_policy = page_permission_policy
+        if not permission_policy.user_has_permission(self.instance.user, "publish"):
             del self.fields["submitted_notifications"]
-        if not user_perms.can_edit_pages():
+        if not permission_policy.user_has_permission(self.instance.user, "change"):
             del self.fields["approved_notifications"]
             del self.fields["rejected_notifications"]
             del self.fields["updated_comments_notifications"]
@@ -51,16 +50,22 @@ def _get_language_choices():
         (lang_code, get_language_info(lang_code)["name_local"])
         for lang_code, lang_name in get_available_admin_languages()
     ]
-    return sorted(BLANK_CHOICE_DASH + language_choices, key=lambda l: l[1].lower())
+    server_language = get_language_info(settings.LANGUAGE_CODE)["name_local"]
+    default = (
+        "",
+        _("Use server language: %(language_name)s")
+        % {"language_name": server_language},
+    )
+    return [default] + sorted(
+        language_choices,
+        key=lambda language_choice: language_choice[1].lower(),
+    )
 
 
 def _get_time_zone_choices():
-    time_zones = [
-        (tz, str(l18n.tz_fullnames.get(tz, tz)))
-        for tz in get_available_admin_time_zones()
+    return [("", _("Use server time zone"))] + [
+        (tz, tz) for tz in get_available_admin_time_zones()
     ]
-    time_zones.sort(key=itemgetter(1))
-    return BLANK_CHOICE_DASH + time_zones
 
 
 class LocalePreferencesForm(forms.ModelForm):
@@ -78,7 +83,16 @@ class LocalePreferencesForm(forms.ModelForm):
     )
 
     current_time_zone = forms.ChoiceField(
-        required=False, choices=_get_time_zone_choices, label=_("Current time zone")
+        required=False,
+        choices=_get_time_zone_choices,
+        label=_("Current time zone"),
+        widget=forms.Select(
+            attrs={
+                "data-controller": "w-init w-locale",
+                "data-action": "w-init:ready->w-locale#localizeTimeZoneOptions",
+                "data-w-locale-server-time-zone-param": settings.TIME_ZONE,
+            },
+        ),
     )
 
     class Meta:
@@ -121,7 +135,7 @@ class AvatarPreferencesForm(forms.ModelForm):
             # will clear the now-updated field on self.instance too
             try:
                 self._original_avatar.storage.delete(self._original_avatar.name)
-            except IOError:
+            except OSError:
                 # failure to delete the old avatar shouldn't prevent us from continuing
                 warnings.warn(
                     "Failed to delete old avatar file: %s" % self._original_avatar.name
@@ -131,3 +145,9 @@ class AvatarPreferencesForm(forms.ModelForm):
     class Meta:
         model = UserProfile
         fields = ["avatar"]
+
+
+class ThemePreferencesForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ["theme", "contrast", "density"]

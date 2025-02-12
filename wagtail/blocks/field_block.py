@@ -1,9 +1,10 @@
+import copy
 import datetime
 from decimal import Decimal
 
 from django import forms
+from django.db.models import Model
 from django.db.models.fields import BLANK_CHOICE_DASH
-from django.forms.fields import CallableChoiceIterator
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 from django.utils.encoding import force_str
 from django.utils.functional import cached_property
@@ -16,11 +17,18 @@ from wagtail.coreutils import camelcase_to_underscore, resolve_model_string
 from wagtail.rich_text import (
     RichText,
     RichTextMaxLengthValidator,
+    extract_references_from_rich_text,
     get_text_for_indexing,
 )
 from wagtail.telepath import Adapter, register
 
 from .base import Block
+
+try:
+    from django.utils.choices import CallableChoiceIterator
+except ImportError:
+    # DJANGO_VERSION < 5.0
+    from django.forms.fields import CallableChoiceIterator
 
 
 class FieldBlock(Block):
@@ -73,6 +81,9 @@ class FieldBlock(Block):
             self.field.prepare_value(self.value_for_form(value))
         )
 
+    def get_description(self):
+        return super().get_description() or self.field.help_text or ""
+
     class Meta:
         # No icon specified here, because that depends on the purpose that the
         # block is being used for. Feel encouraged to specify an icon in your
@@ -102,8 +113,11 @@ class FieldBlockAdapter(Adapter):
 
         meta = {
             "label": block.label,
+            "description": block.get_description(),
             "required": block.required,
             "icon": block.meta.icon,
+            "blockDefId": block.definition_prefix,
+            "isPreviewable": block.is_previewable,
             "classname": " ".join(classname),
             "showAddCommentButton": getattr(
                 block.field.widget, "show_add_comment_button", True
@@ -112,6 +126,9 @@ class FieldBlockAdapter(Adapter):
         }
         if block.field.help_text:
             meta["helpText"] = block.field.help_text
+
+        if hasattr(block, "max_length") and block.max_length is not None:
+            meta["maxLength"] = block.max_length
 
         return [
             block.name,
@@ -139,10 +156,12 @@ class CharBlock(FieldBlock):
         max_length=None,
         min_length=None,
         validators=(),
+        search_index=True,
         **kwargs,
     ):
         # CharField's 'label' and 'initial' parameters are not exposed, as Block handles that functionality natively
         # (via 'label' and 'default')
+        self.search_index = search_index
         self.field = forms.CharField(
             required=required,
             help_text=help_text,
@@ -153,7 +172,7 @@ class CharBlock(FieldBlock):
         super().__init__(**kwargs)
 
     def get_searchable_content(self, value):
-        return [force_str(value)]
+        return [force_str(value)] if self.search_index else []
 
 
 class TextBlock(FieldBlock):
@@ -164,6 +183,7 @@ class TextBlock(FieldBlock):
         rows=1,
         max_length=None,
         min_length=None,
+        search_index=True,
         validators=(),
         **kwargs,
     ):
@@ -175,6 +195,7 @@ class TextBlock(FieldBlock):
             "validators": validators,
         }
         self.rows = rows
+        self.search_index = search_index
         super().__init__(**kwargs)
 
     @cached_property
@@ -186,7 +207,7 @@ class TextBlock(FieldBlock):
         return forms.CharField(**field_kwargs)
 
     def get_searchable_content(self, value):
-        return [force_str(value)]
+        return [force_str(value)] if self.search_index else []
 
     class Meta:
         icon = "pilcrow"
@@ -222,7 +243,7 @@ class FloatBlock(FieldBlock):
         super().__init__(*args, **kwargs)
 
     class Meta:
-        icon = "plus-inverse"
+        icon = "decimal"
 
 
 class DecimalBlock(FieldBlock):
@@ -250,10 +271,13 @@ class DecimalBlock(FieldBlock):
         super().__init__(*args, **kwargs)
 
     def to_python(self, value):
-        return Decimal(value)
+        if value is None:
+            return value
+        else:
+            return Decimal(value)
 
     class Meta:
-        icon = "plus-inverse"
+        icon = "decimal"
 
 
 class RegexBlock(FieldBlock):
@@ -281,7 +305,7 @@ class RegexBlock(FieldBlock):
         super().__init__(*args, **kwargs)
 
     class Meta:
-        icon = "code"
+        icon = "regex"
 
 
 class URLBlock(FieldBlock):
@@ -304,7 +328,7 @@ class URLBlock(FieldBlock):
         super().__init__(**kwargs)
 
     class Meta:
-        icon = "site"
+        icon = "link-external"
 
 
 class BooleanBlock(FieldBlock):
@@ -460,7 +484,7 @@ class IntegerBlock(FieldBlock):
         super().__init__(**kwargs)
 
     class Meta:
-        icon = "plus-inverse"
+        icon = "placeholder"
 
 
 class BaseChoiceBlock(FieldBlock):
@@ -472,13 +496,14 @@ class BaseChoiceBlock(FieldBlock):
         default=None,
         required=True,
         help_text=None,
+        search_index=True,
         widget=None,
         validators=(),
         **kwargs,
     ):
-
         self._required = required
         self._default = default
+        self.search_index = search_index
 
         if choices is None:
             # no choices specified, so pick up the choice defined at the class level
@@ -545,7 +570,7 @@ class BaseChoiceBlock(FieldBlock):
             for v1, v2 in local_choices:
                 if isinstance(v2, (list, tuple)):
                     # this is a named group, and v2 is the value list
-                    has_blank_choice = any([value in ("", None) for value, label in v2])
+                    has_blank_choice = any(value in ("", None) for value, label in v2)
                     if has_blank_choice:
                         break
                 else:
@@ -589,6 +614,8 @@ class ChoiceBlock(BaseChoiceBlock):
 
     def get_searchable_content(self, value):
         # Return the display value as the searchable value
+        if not self.search_index:
+            return []
         text_value = force_str(value)
         for k, v in self.field.choices:
             if isinstance(v, (list, tuple)):
@@ -623,6 +650,8 @@ class MultipleChoiceBlock(BaseChoiceBlock):
 
     def get_searchable_content(self, value):
         # Return the display value as the searchable value
+        if not self.search_index:
+            return []
         content = []
         text_value = force_str(value)
         for k, v in self.field.choices:
@@ -647,6 +676,7 @@ class RichTextBlock(FieldBlock):
         features=None,
         max_length=None,
         validators=(),
+        search_index=True,
         **kwargs,
     ):
         if max_length is not None:
@@ -658,15 +688,11 @@ class RichTextBlock(FieldBlock):
             "help_text": help_text,
             "validators": validators,
         }
+        self.max_length = max_length
         self.editor = editor
         self.features = features
+        self.search_index = search_index
         super().__init__(**kwargs)
-
-    def get_default(self):
-        if isinstance(self.meta.default, RichText):
-            return self.meta.default
-        else:
-            return RichText(self.meta.default)
 
     def to_python(self, value):
         # convert a source-HTML string from the JSONish representation
@@ -677,6 +703,11 @@ class RichTextBlock(FieldBlock):
         # convert a RichText object back to a source-HTML string to go into
         # the JSONish representation
         return value.source
+
+    def normalize(self, value):
+        if isinstance(value, RichText):
+            return value
+        return RichText(value)
 
     @cached_property
     def field(self):
@@ -697,12 +728,18 @@ class RichTextBlock(FieldBlock):
         return RichText(value)
 
     def get_searchable_content(self, value):
-        # Strip HTML tags to prevent search backend from indexing them
+        if not self.search_index:
+            return []
         source = force_str(value.source)
+        # Strip HTML tags to prevent search backend from indexing them
         return [get_text_for_indexing(source)]
 
+    def extract_references(self, value):
+        # Extracts any references to images/pages/embeds
+        yield from extract_references_from_rich_text(force_str(value.source))
+
     class Meta:
-        icon = "doc-full"
+        icon = "pilcrow"
 
 
 class RawHTMLBlock(FieldBlock):
@@ -726,9 +763,12 @@ class RawHTMLBlock(FieldBlock):
         super().__init__(**kwargs)
 
     def get_default(self):
-        return mark_safe(self.meta.default or "")
+        return self.normalize(self.meta.default or "")
 
     def to_python(self, value):
+        return mark_safe(value)
+
+    def normalize(self, value):
         return mark_safe(value)
 
     def get_prep_value(self, value):
@@ -784,11 +824,22 @@ class ChooserBlock(FieldBlock):
         """Return the model instances for the given list of primary keys.
 
         The instances must be returned in the same order as the values and keep None values.
+        If the same ID appears multiple times, a distinct object instance is created for each one.
         """
         objects = self.model_class.objects.in_bulk(values)
-        return [
-            objects.get(id) for id in values
-        ]  # Keeps the ordering the same as in values.
+        seen_ids = set()
+        result = []
+
+        for id in values:
+            obj = objects.get(id)
+            if obj is not None and id in seen_ids:
+                # this object is already in the result list, so we need to make a copy
+                obj = copy.copy(obj)
+
+            result.append(obj)
+            seen_ids.add(id)
+
+        return result
 
     def get_prep_value(self, value):
         # the native value (a model instance or None) should serialise to a PK or None
@@ -821,6 +872,10 @@ class ChooserBlock(FieldBlock):
         if isinstance(value, self.model_class):
             value = value.pk
         return super().clean(value)
+
+    def extract_references(self, value):
+        if value is not None and issubclass(self.model_class, Model):
+            yield self.model_class, str(value.pk), "", ""
 
     class Meta:
         # No icon specified here, because that depends on the purpose that the
@@ -906,7 +961,7 @@ class PageChooserBlock(ChooserBlock):
 
             for target_model in self.target_models:
                 opts = target_model._meta
-                target_models.append("{}.{}".format(opts.app_label, opts.object_name))
+                target_models.append(f"{opts.app_label}.{opts.object_name}")
 
             kwargs.pop("target_model", None)
             kwargs["page_type"] = target_models
@@ -914,7 +969,7 @@ class PageChooserBlock(ChooserBlock):
         return name, args, kwargs
 
     class Meta:
-        icon = "redirect"
+        icon = "doc-empty-inverse"
 
 
 # Ensure that the blocks defined here get deconstructed as wagtailcore.blocks.FooBlock

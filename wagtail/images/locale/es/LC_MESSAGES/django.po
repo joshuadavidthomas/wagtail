@@ -9,10 +9,12 @@
 # Daniel Chimeno <daniel@chimeno.me>, 2015
 # Amós Oviedo <amos.oviedo@gmail.com>, 2014
 # Joaquín T <joaquintita@gmail.com>, 2014
+# Joaquín T <joaquintita@gmail.com>, 2014
 # José Luis <alagunajs@gmail.com>, 2015-2016
 # José Luis <alagunajs@gmail.com>, 2018
 # Mauricio Baeza <python@amigos.email>, 2015
 # Mauricio Baeza <python@amigos.email>, 2015
+# Oscar Luciano Espirilla Flores, 2020
 # Oscar Luciano Espirilla Flores, 2020
 # X Bello <xbello@gmail.com>, 2022
 # José Luis <alagunajs@gmail.com>, 2016-2017
@@ -20,10 +22,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:05+0000\n"
 "Last-Translator: X Bello <xbello@gmail.com>, 2022\n"
-"Language-Team: Spanish (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Spanish (http://app.transifex.com/torchbox/wagtail/language/"
 "es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -35,8 +37,16 @@ msgstr ""
 msgid "Wagtail images"
 msgstr "Imágenes Wagtail"
 
-msgid "GIF, JPEG, PNG, WEBP"
-msgstr "GIF, JPEG, PNG, WEBP"
+msgid "Image is decorative"
+msgstr "Imagen es decorativa"
+
+msgid "Alt text"
+msgstr "Texto alternativo"
+
+msgid "Please add some alt text for your image or mark it as decorative"
+msgstr ""
+"Por favor añade algún texto alternativo para tu imagen o márcalo como "
+"decorativo"
 
 #, python-format
 msgid ""
@@ -51,26 +61,31 @@ msgid "Supported formats: %(supported_formats)s."
 msgstr "Formatos soportados: %(supported_formats)s."
 
 #, python-format
-msgid "Not a supported image format. Supported formats: %s."
-msgstr "No esta soportado el formato de imagen. Formatos soportados: %s."
-
-#, python-format
-msgid "Not a valid %s image."
-msgstr "No es una imagen valida %s."
-
-#, python-format
-msgid "This file is too big (%%s). Maximum filesize %s."
+msgid "Not a supported image format. Supported formats: %(supported_formats)s."
 msgstr ""
-"Este archivo es demasiado grande (%%s). El tamaño máximo de archivo es: %s."
+"No esta soportado el formato de imagen. Formatos soportados: "
+"%(supported_formats)s."
 
 #, python-format
-msgid "This file has too many pixels (%%s). Maximum pixels %s."
+msgid ""
+"This file is too big (%(file_size)s). Maximum filesize %(max_filesize)s."
 msgstr ""
-"Este archivo contiene muchos pixeles (%%s). Máxima cantidad de pixeles %s."
+"Este archivo es demasiado grande (%(file_size)s). El tamaño máximo de "
+"archivo es: %(max_filesize)s."
 
 #, python-format
-msgid "This file is too big. Maximum filesize %s."
-msgstr "Este archivo es demasiado grande. El tamaño máximo de archivo es: %s."
+msgid ""
+"This file has too many pixels (%(num_pixels)s). Maximum pixels "
+"%(max_pixels_count)s."
+msgstr ""
+"Este archivo contiene muchos pixeles (%(num_pixels)s). Máxima cantidad de "
+"pixeles %(max_pixels_count)s."
+
+#, python-format
+msgid "This file is too big. Maximum filesize %(max_filesize)s."
+msgstr ""
+"Este archivo es demasiado grande. El tamaño máximo de archivo es: "
+"%(max_filesize)s."
 
 msgid "Full width"
 msgstr "Ancho completo"
@@ -86,17 +101,6 @@ msgstr "Colección"
 
 msgid "Format"
 msgstr "Formato"
-
-msgid "Image is decorative"
-msgstr "Imagen es decorativa"
-
-msgid "Alt text"
-msgstr "Texto alternativo"
-
-msgid "Please add some alt text for your image or mark it as decorative"
-msgstr ""
-"Por favor añade algún texto alternativo para tu imagen o márcalo como "
-"decorativo"
 
 msgid "Filter"
 msgstr "Filtro"
@@ -151,6 +155,9 @@ msgstr "título"
 
 msgid "file"
 msgstr "archivo"
+
+msgid "description"
+msgstr "descripción"
 
 msgid "width"
 msgstr "ancho"
@@ -290,6 +297,10 @@ msgstr "Usar la existente y eliminar la nueva"
 msgid "Latest images"
 msgstr "Últimas imágenes"
 
+#, python-format
+msgid "Select %(title)s"
+msgstr "Seleccionar %(title)s"
+
 msgid "You haven't uploaded any images in this collection."
 msgstr "No has subido ninguna imagen en esta colección."
 
@@ -309,50 +320,23 @@ msgstr "Selecciona un formato"
 msgid "Insert image"
 msgstr "Insertar imagen"
 
-#, python-format
-msgid ""
-"<span>%(total)s</span> Image <span class=\"visuallyhidden\">created in "
-"%(site_name)s</span>"
-msgid_plural ""
-"<span>%(total)s</span> Images <span class=\"visuallyhidden\">created in "
-"%(site_name)s</span>"
-msgstr[0] ""
-"<span>%(total)s</span> Imagen <span class=\"visuallyhidden\">creada en "
-"%(site_name)s</span>"
-msgstr[1] ""
-"<span>%(total)s</span> Imágenes <span class=\"visuallyhidden\">creadas en "
-"%(site_name)s</span>"
-msgstr[2] ""
-"<span>%(total)s</span> Imágenes <span class=\"visuallyhidden\">creadas en "
-"%(site_name)s</span>"
-
 msgid "Change image file:"
 msgstr "Cambiar archivo de imagen:"
 
 msgid "Add an image"
 msgstr "Añadir una imagen"
 
-msgid "Add image"
-msgstr "Añadir imagen"
+msgid "Uploading…"
+msgstr "Subiendo..."
 
-msgid "Save"
-msgstr "Guardar"
-
-msgid "Delete image"
-msgstr "Eliminar imagen"
+msgid "Upload"
+msgstr "Subir"
 
 msgid "Keep new image"
 msgstr "Mantener nueva imagen"
 
 msgid "Delete new image"
 msgstr "Eliminar nueva imagen"
-
-#, python-format
-msgid "Editing image %(title)s"
-msgstr "Editando imagen %(title)s"
-
-msgid "Editing"
-msgstr "Editando"
 
 msgid "Image focal point"
 msgstr "Punto focal de la imagen"
@@ -391,103 +375,42 @@ msgstr "Archivo no encotrado"
 msgid "Usage"
 msgstr "Uso"
 
-msgid "Images"
-msgstr "Imágenes"
-
 msgid "Sort by"
 msgstr "Ordenar por"
-
-msgid "Entries per page"
-msgstr "Entradas por página"
-
-msgid "Popular Tags:"
-msgstr "Etiquetas populares"
-
-msgid "Clear"
-msgstr "Limpiar"
 
 msgid "Select all images in listing"
 msgstr "Seleccionar todas las imágenes de la lista"
 
 #, python-format
-msgid "There is %(counter)s match"
-msgid_plural "There are %(counter)s matches"
-msgstr[0] "Hay %(counter)s coincidencia"
-msgstr[1] "Hay %(counter)s coincidencias"
-msgstr[2] "Hay %(counter)s coincidencias"
-
-msgid "Select image"
-msgstr "Seleccionar imagen"
-
-msgid "pixels"
-msgstr "pixeles"
-
-#, python-format
 msgid "Sorry, no images match \"<em>%(query_string)s</em>\""
 msgstr ""
-"Lo sentimos, no hay coincidencias en las imágenes \"<em>%(query_string)s</em>"
-"\""
+"Lo sentimos, no hay coincidencias en las imágenes \"<em>%(query_string)s</"
+"em>\""
 
 #, python-format
 msgid ""
-"You haven't uploaded any images in this collection. Why not <a href="
-"\"%(wagtailimages_add_image_url)s\">upload one now</a>?"
+"You haven't uploaded any images in this collection. Why not <a "
+"href=\"%(wagtailimages_add_image_url)s\">upload one now</a>?"
 msgstr ""
-"No ha cargado imágenes en esta colección. Por qué no <a href="
-"\"%(wagtailimages_add_image_url)s\"> carga una ahora</a>?"
+"No ha cargado imágenes en esta colección. Por qué no <a "
+"href=\"%(wagtailimages_add_image_url)s\"> carga una ahora</a>?"
 
 #, python-format
 msgid ""
-"You haven't uploaded any images. Why not <a href="
-"\"%(wagtailimages_add_image_url)s\">upload one now</a>?"
+"You haven't uploaded any images. Why not <a "
+"href=\"%(wagtailimages_add_image_url)s\">upload one now</a>?"
 msgstr ""
-"No ha cargado imágenes. Por qué no <a href=\"%(wagtailimages_add_image_url)s"
-"\"> carga una ahora</a>?"
-
-msgid "Generating URL"
-msgstr "Generar URL"
-
-msgid "URL"
-msgstr "URL"
+"No ha cargado imágenes. Por qué no <a "
+"href=\"%(wagtailimages_add_image_url)s\"> carga una ahora</a>?"
 
 msgid "Preview"
 msgstr "Previsualizar"
 
-msgid ""
-"Note that images generated larger than the screen will appear smaller when "
-"previewed here, so they fit the screen."
-msgstr ""
-"Notar que las imágenes que sean más grandes que la pantalla aparecerán más "
-"pequeñas cuando sean previsualizadas, con el objetivo de que quepan en la "
-"pantalla."
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Uso de %(title)s"
-
-msgid "Usage of"
-msgstr "Uso de"
-
-msgid "Title"
-msgstr "Título"
-
-msgid "Parent"
-msgstr "Padre"
-
-msgid "Type"
-msgstr "Tipo"
-
-msgid "Status"
-msgstr "Estado"
-
-msgid "Edit this page"
-msgstr "Editar esta página"
+msgid "URL"
+msgstr "URL"
 
 msgid "Add multiple images"
 msgstr "Agregar multiples imágenes"
-
-msgid "Add images"
-msgstr "Agregar imágenes"
 
 msgid "Drag and drop images into this area to upload immediately."
 msgstr ""
@@ -537,6 +460,9 @@ msgstr "Permisos de imagen"
 msgid "Add an image permission"
 msgstr "Añadir un permiso de imagen"
 
+msgid "Tags"
+msgstr "Etiquetas"
+
 msgid "Tag"
 msgstr "Etiqueta"
 
@@ -578,14 +504,14 @@ msgstr[0] "%(num_parent_objects)d imagen ha sido eliminada"
 msgstr[1] "%(num_parent_objects)d imágenes han sido eliminadas"
 msgstr[2] "%(num_parent_objects)d imágenes han sido eliminadas"
 
-msgid "Upload"
-msgstr "Subir"
-
-msgid "Uploading…"
-msgstr "Subiendo..."
-
 msgid "Choose an image"
 msgstr "Seleccionar una imagen"
+
+msgid "Choose another image"
+msgstr "Seleccionar otra imagen"
+
+msgid "Edit this image"
+msgstr "Editar esta imagen"
 
 msgid "Newest"
 msgstr "Más reciente"
@@ -605,18 +531,15 @@ msgstr "Tamaño de archivo: (de menor a mayor)"
 msgid "File size: (high to low)"
 msgstr "Tamaño de archivo: (de mayor a menor)"
 
-msgid "Search images"
-msgstr "Buscar imágenes"
-
-#, python-brace-format
-msgid "Image '{0}' updated."
-msgstr "Imagen '{0}' actualizada."
-
-msgid "Edit again"
-msgstr "Editar de nuevo"
+msgid "Images"
+msgstr "Imágenes"
 
 msgid "The image could not be saved due to errors."
 msgstr "La imagen no puedo ser guardada debido a errores"
+
+#, python-format
+msgid "Image '%(image_title)s' updated."
+msgstr "Imagen '%(image_title)s' actualizada."
 
 msgid ""
 "The source image file could not be found. Please change the source or delete "
@@ -625,16 +548,22 @@ msgstr ""
 "El archivo origen de la imagen no pudo ser encontrado. Por favor, cambia el "
 "origen o elimina esta imagen."
 
-#, python-brace-format
-msgid "Image '{0}' deleted."
-msgstr "Imagen '{0}' eliminada."
+msgid "Delete image"
+msgstr "Eliminar imagen"
 
-#, python-brace-format
-msgid "Image '{0}' added."
-msgstr "Imagen '{0}' añadida."
+#, python-format
+msgid "Image '%(image_title)s' deleted."
+msgstr "Imagen '%(image_title)s' eliminada."
 
 msgid "The image could not be created due to errors."
 msgstr "La imagen no pudo ser creada debido a errores."
+
+#, python-format
+msgid "Image '%(image_title)s' added."
+msgstr "Imagen '%(image_title)s' añadida."
+
+msgid "Add images"
+msgstr "Agregar imágenes"
 
 msgid "Image"
 msgstr "Imagen"
@@ -645,3 +574,6 @@ msgid_plural "%(count)s images"
 msgstr[0] "%(count)s image"
 msgstr[1] "%(count)s imagenes"
 msgstr[2] "%(count)s imagenes"
+
+msgid "Change image"
+msgstr "Cambiar imagen"

@@ -14,7 +14,7 @@ def view_draft(request, page_id):
         raise PermissionDenied
 
     try:
-        preview_mode = page.default_preview_mode
+        preview_mode = request.GET.get("mode", page.default_preview_mode)
     except IndexError:
         raise PermissionDenied
 
@@ -37,9 +37,18 @@ class PreviewOnEdit(GenericPreviewOnEdit):
 
         if not query_dict:
             # Query dict is empty, return null form
-            return form_class(instance=self.object, parent_page=parent_page)
+            return form_class(
+                instance=self.object,
+                parent_page=parent_page,
+                for_user=self.request.user,
+            )
 
-        return form_class(query_dict, instance=self.object, parent_page=parent_page)
+        return form_class(
+            query_dict,
+            instance=self.object,
+            parent_page=parent_page,
+            for_user=self.request.user,
+        )
 
 
 class PreviewOnCreate(PreviewOnEdit):

@@ -5,21 +5,23 @@
     <fieldset>
         <legend class="w-sr-only">{% trans "Object permissions" %}</legend>
 
-        <table class="listing">
-            <col />
-            <col width="15%" />
-            <col width="15%" />
-            <col width="15%" />
-            {% if custom_perms_exist %}
-                <col width="30%" />
-            {% endif %}
+        <table class="listing" data-controller="w-bulk">
+            <colgroup>
+                <col />
+                <col width="10%" />
+                <col width="10%" />
+                <col width="10%" />
+                {% if extra_perms_exist.custom %}
+                    <col width="25%" />
+                {% endif %}
+            </colgroup>
             <thead>
                 <tr>
                     <th>{% trans "Name" %}</th>
                     <th>{% trans "Add" %}</th>
                     <th>{% trans "Change" %}</th>
                     <th>{% trans "Delete" %}</th>
-                    {% if custom_perms_exist %}
+                    {% if extra_perms_exist.custom %}
                         <th>{% trans "Custom permissions" %}</th>
                     {% endif %}
                 </tr>
@@ -30,29 +32,30 @@
                         <td class="title"><h3>{{ content_perms_dict.object|capfirst }}</h3></td>
                         <td>
                             {% if content_perms_dict.add %}
-                                <label for="{{ content_perms_dict.add.checkbox.id_for_label }}" class="visuallyhidden">{{ content_perms_dict.add.perm.name }}</label>
+                                <label for="{{ content_perms_dict.add.checkbox.id_for_label }}" class="w-sr-only">{{ content_perms_dict.add.perm.name }}</label>
                                 {{ content_perms_dict.add.checkbox.tag }}
                             {% endif %}
                         </td>
                         <td>
                             {% if content_perms_dict.change %}
-                                <label for="{{ content_perms_dict.change.checkbox.id_for_label }}" class="visuallyhidden">{{ content_perms_dict.change.perm.name }}</label>
+                                <label for="{{ content_perms_dict.change.checkbox.id_for_label }}" class="w-sr-only">{{ content_perms_dict.change.perm.name }}</label>
                                 {{ content_perms_dict.change.checkbox.tag }}
                             {% endif %}
                         </td>
                         <td>
                             {% if content_perms_dict.delete %}
-                                <label for="{{ content_perms_dict.delete.checkbox.id_for_label }}" class="visuallyhidden">{{ content_perms_dict.delete.perm.name }}</label>
+                                <label for="{{ content_perms_dict.delete.checkbox.id_for_label }}" class="w-sr-only">{{ content_perms_dict.delete.perm.name }}</label>
                                 {{ content_perms_dict.delete.checkbox.tag }}
                             {% endif %}
                         </td>
-                        {% if custom_perms_exist %}
+                        {% if extra_perms_exist.custom %}
                             <td>
                                 {% if content_perms_dict.custom %}
-                                    <fieldset class="w-p-0">
+                                    <fieldset class="w-p-0 w-flex w-flex-col w-gap-1">
                                         <legend class="w-sr-only">{% trans "Custom permissions" %}</legend>
                                         {% for custom_perm in content_perms_dict.custom %}
-                                            {% include "wagtailadmin/shared/forms/single_checkbox.html" with name="permissions" value=custom_perm.perm.id checked=custom_perm.selected text=custom_perm.name %}
+                                            {% trans custom_perm.name as custom_perm_label %}
+                                            {% include "wagtailadmin/shared/forms/single_checkbox.html" with name="permissions" value=custom_perm.perm.id checked=custom_perm.selected text=custom_perm_label attrs=custom_perm.attrs %}
                                         {% endfor %}
                                     </fieldset>
                                 {% endif %}
@@ -61,6 +64,32 @@
                     </tr>
                 {% endfor %}
             </tbody>
+            <tfoot>
+                <tr>
+                    <th scope="row">
+                        <input id="toggle-all" type="checkbox" data-action="w-bulk#toggleAll" data-w-bulk-target="all">
+                        <label for="toggle-all" >{% trans "Toggle all" %}</label>
+                    </th>
+                    <td>
+                        <label for="toggle-all-add" class="visuallyhidden">{% trans "Toggle all add permissions" %}</label>
+                        <input id="toggle-all-add" type="checkbox" data-action="w-bulk#toggleAll" data-w-bulk-target="all" data-w-bulk-group-param="add">
+                    </td>
+                    <td>
+                        <label for="toggle-all-change" class="visuallyhidden">{% trans "Toggle all change permissions" %}</label>
+                        <input id="toggle-all-change" type="checkbox" data-action="w-bulk#toggleAll" data-w-bulk-target="all" data-w-bulk-group-param="change">
+                    </td>
+                    <td>
+                        <label for="toggle-all-delete" class="visuallyhidden">{% trans "Toggle all delete permissions" %}</label>
+                        <input id="toggle-all-delete" type="checkbox" data-action="w-bulk#toggleAll" data-w-bulk-target="all" data-w-bulk-group-param="delete">
+                    </td>
+                    {% if extra_perms_exist.custom %}
+                        <td>
+                            <label for="toggle-all-custom" class="visuallyhidden">{% trans "Toggle all custom permissions" %}</label>
+                            <input id="toggle-all-custom" type="checkbox" data-action="w-bulk#toggleAll" data-w-bulk-target="all" data-w-bulk-group-param="custom">
+                        </td>
+                    {% endif %}
+                </tr>
+            </tfoot>
         </table>
     </fieldset>
 {% endpanel %}
@@ -76,13 +105,12 @@
             <thead>
                 <tr>
                     <th>{% trans "Name" %}</th>
-                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for perm_tuple in other_perms %}
                     <tr>
-                        <td class="title"><label for="{{ perm_tuple.1.id_for_label }}" class="w-label-3">{{ perm_tuple.0.name }}</label></td>
+                        <td class="title"><label for="{{ perm_tuple.1.id_for_label }}" class="w-label-3">{% trans perm_tuple.0.name %}</label></td>
                         <td>
                             {{ perm_tuple.1.tag }}
                         </td>

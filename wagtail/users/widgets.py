@@ -1,7 +1,5 @@
-from wagtail.admin.widgets import Button
+from wagtail.admin.widgets import ListingButton
 
 
-class UserListingButton(Button):
-    def __init__(self, label, url, classes=set(), **kwargs):
-        classes = {"button", "button-small", "button-secondary"} | set(classes)
-        super().__init__(label, url, classes=classes, **kwargs)
+class UserListingButton(ListingButton):
+    pass

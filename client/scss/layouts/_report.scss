@@ -1,3 +1,5 @@
+@use '../tools' as *;
+
 .report {
   display: grid;
   grid-column-gap: theme('spacing.12');
@@ -8,7 +10,7 @@
     &--text {
       margin: 0 theme('spacing.[1.5]') theme('spacing.[1.5]') 0;
 
-      + .status-tag {
+      + .w-status {
         margin-inline-start: 0;
       }
     }
@@ -19,8 +21,7 @@
   }
 
   &__actions > div {
-    float: right;
-    display: block;
+    float: inline-end;
     margin-inline-end: theme('spacing.3');
   }
 

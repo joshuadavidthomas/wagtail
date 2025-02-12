@@ -9,7 +9,7 @@ callables
 camelCase
 CDN
 Cloudflare
-Cloudfront
+CloudFront
 contrib
 CSP
 Ctrl
@@ -29,7 +29,7 @@ Embedly
 Flickr
 formset
 frontend
-Github
+GitHub
 Gravatar
 Gunicorn
 Hallo

@@ -1,3 +1,6 @@
+@use '../../../../scss/tools' as *;
+@use '../../../../scss/settings' as *;
+
 .sidebar-menu-item {
   $root: &;
   @include transition(border-color $menu-transition-duration ease);
@@ -14,7 +17,6 @@
     justify-content: flex-start;
     align-items: center;
     width: 100%;
-    box-sizing: border-box;
     white-space: nowrap;
     border-inline-start: 3px solid transparent;
     border-inline-end: 3px solid transparent;
@@ -22,10 +24,10 @@
     border: 0;
     background: transparent;
     text-align: start;
-    color: $color-menu-text;
+    color: theme('colors.text-label-menus-default');
     padding: 13px 15px 13px 20px;
     font-weight: 400;
-    overflow: hidden;
+    overflow: visible;
 
     // Note, font-weights lower than normal,
     // and font-size smaller than 1em (80% ~= 12.8px),
@@ -33,27 +35,8 @@
     // making the text semi-transparent
     &:hover,
     &:focus {
-      color: $color-white;
+      color: theme('colors.text-label-menus-active');
       text-shadow: -1px -1px 0 theme('colors.black-35');
-    }
-
-    &:before {
-      width: 1rem;
-      height: 1rem;
-      font-size: 1rem;
-      display: flex;
-      align-items: center;
-      // Ensure consistent button height in collapsed state where no text line-height is adding 1.5px.
-      margin: 0.046875rem 0;
-    }
-
-    // only really used for spinners and settings menu
-    &:after {
-      font-size: 1.5em;
-      margin: 0;
-      position: absolute;
-      inset-inline-end: 0.5em;
-      top: 0.5em;
     }
   }
 
@@ -68,13 +51,24 @@
   }
 
   &--active {
-    @apply w-bg-primary-200;
+    @apply w-bg-surface-menu-item-active;
     text-shadow: -1px -1px 0 theme('colors.black-35');
 
     > a {
-      color: $color-white;
+      color: theme('colors.text-label-menus-active');
     }
   }
+
+  .w-dismissible-badge--count {
+    @apply w-absolute w-top-1 w-left-7;
+    text-shadow: none;
+  }
+}
+
+.menuitem {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .menuitem-label {

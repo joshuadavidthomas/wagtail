@@ -2,7 +2,10 @@ import os.path
 
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.text import capfirst
+from django.utils.translation import gettext_lazy
 
+from wagtail.admin.views.generic.base import WagtailAdminTemplateMixin
 from wagtail.admin.views.generic.multiple_upload import AddView as BaseAddView
 from wagtail.admin.views.generic.multiple_upload import (
     CreateFromUploadView as BaseCreateFromUploadView,
@@ -13,18 +16,19 @@ from wagtail.admin.views.generic.multiple_upload import (
 from wagtail.admin.views.generic.multiple_upload import DeleteView as BaseDeleteView
 from wagtail.admin.views.generic.multiple_upload import EditView as BaseEditView
 from wagtail.images import get_image_model
-from wagtail.images.fields import ALLOWED_EXTENSIONS
+from wagtail.images.fields import get_allowed_image_extensions
 from wagtail.images.forms import get_image_form, get_image_multi_form
-from wagtail.images.models import UploadedImage
 from wagtail.images.permissions import ImagesPermissionPolicyGetter, permission_policy
 from wagtail.images.utils import find_image_duplicates
 
 
-class AddView(BaseAddView):
+class AddView(WagtailAdminTemplateMixin, BaseAddView):
     permission_policy = ImagesPermissionPolicyGetter()
     template_name = "wagtailimages/multiple/add.html"
-    upload_model = UploadedImage
+    header_icon = "image"
+    page_title = gettext_lazy("Add images")
 
+    index_url_name = "wagtailimages:index"
     edit_object_url_name = "wagtailimages:edit_multiple"
     delete_object_url_name = "wagtailimages:delete_multiple"
     edit_object_form_prefix = "image"
@@ -35,7 +39,16 @@ class AddView(BaseAddView):
     delete_upload_url_name = "wagtailimages:delete_upload_multiple"
     edit_upload_form_prefix = "uploaded-image"
     context_upload_name = "uploaded_image"
-    context_upload_id_name = "uploaded_image_id"
+    context_upload_id_name = "uploaded_file_id"
+
+    def get_breadcrumbs_items(self):
+        return self.breadcrumbs_items + [
+            {
+                "url": reverse(self.index_url_name),
+                "label": capfirst(self.model._meta.verbose_name_plural),
+            },
+            {"url": "", "label": self.get_page_title()},
+        ]
 
     def get_model(self):
         return get_image_model()
@@ -90,7 +103,7 @@ class AddView(BaseAddView):
             {
                 "max_filesize": self.form.fields["file"].max_upload_size,
                 "max_title_length": self.form.fields["title"].max_length,
-                "allowed_extensions": ALLOWED_EXTENSIONS,
+                "allowed_extensions": get_allowed_image_extensions(),
                 "error_max_file_size": self.form.fields["file"].error_messages[
                     "file_too_large_unknown_size"
                 ],
@@ -131,8 +144,7 @@ class DeleteView(BaseDeleteView):
 class CreateFromUploadedImageView(BaseCreateFromUploadView):
     edit_upload_url_name = "wagtailimages:create_multiple_from_uploaded_image"
     delete_upload_url_name = "wagtailimages:delete_upload_multiple"
-    upload_model = UploadedImage
-    upload_pk_url_kwarg = "uploaded_image_id"
+    upload_pk_url_kwarg = "uploaded_file_id"
     edit_upload_form_prefix = "uploaded-image"
     context_object_id_name = "image_id"
     context_upload_name = "uploaded_image"
@@ -160,5 +172,7 @@ class CreateFromUploadedImageView(BaseCreateFromUploadView):
 
 
 class DeleteUploadView(BaseDeleteUploadView):
-    upload_model = UploadedImage
-    upload_pk_url_kwarg = "uploaded_image_id"
+    upload_pk_url_kwarg = "uploaded_file_id"
+
+    def get_model(self):
+        return get_image_model()

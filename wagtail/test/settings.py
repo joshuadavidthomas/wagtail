@@ -3,7 +3,17 @@ import os
 from django.contrib.messages import constants as message_constants
 from django.utils.translation import gettext_lazy as _
 
-DEBUG = False
+from wagtail.test.numberformat import patch_number_formats
+
+WAGTAIL_CHECK_TEMPLATE_NUMBER_FORMAT = (
+    os.environ.get("WAGTAIL_CHECK_TEMPLATE_NUMBER_FORMAT", "0") == "1"
+)
+if WAGTAIL_CHECK_TEMPLATE_NUMBER_FORMAT:
+    # Patch Django number formatting functions to raise exceptions if a number is output directly
+    # on a template (which is liable to cause bugs when USE_THOUSAND_SEPARATOR is in use).
+    patch_number_formats()
+
+DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 WAGTAIL_ROOT = os.path.dirname(os.path.dirname(__file__))
 WAGTAILADMIN_BASE_URL = "http://testserver"
 STATIC_ROOT = os.path.join(WAGTAIL_ROOT, "tests", "test-static")
@@ -54,15 +64,26 @@ STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 )
 
+# Default storage settings
+# https://docs.djangoproject.com/en/stable/ref/settings/#std-setting-STORAGES
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 if os.environ.get("STATICFILES_STORAGE", "") == "manifest":
-    STATICFILES_STORAGE = (
-        "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
-    )
+    STORAGES["staticfiles"][
+        "BACKEND"
+    ] = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
 
 USE_TZ = not os.environ.get("DISABLE_TIMEZONE")
 if not USE_TZ:
-    print("Timezone support disabled")  # noqa
+    print("Timezone support disabled")  # noqa: T201
 
 LANGUAGE_CODE = "en"
 
@@ -114,6 +135,9 @@ MIDDLEWARE = (
 )
 
 INSTALLED_APPS = [
+    # Place wagtail.test.earlypage first, to test the behaviour of page models
+    # that are defined before wagtail.admin is loaded
+    "wagtail.test.earlypage",
     # Install wagtailredirects with its appconfig
     # There's nothing special about wagtailredirects, we just need to have one
     # app which uses AppConfigs to test that hooks load properly
@@ -123,15 +147,14 @@ INSTALLED_APPS = [
     "wagtail.test.snippets",
     "wagtail.test.routablepage",
     "wagtail.test.search",
-    "wagtail.test.modeladmintest",
     "wagtail.test.i18n",
+    "wagtail.test.streamfield_migrations",
     "wagtail.contrib.simple_translation",
     "wagtail.contrib.styleguide",
     "wagtail.contrib.routable_page",
     "wagtail.contrib.frontend_cache",
     "wagtail.contrib.search_promotions",
     "wagtail.contrib.settings",
-    "wagtail.contrib.modeladmin",
     "wagtail.contrib.table_block",
     "wagtail.contrib.forms",
     "wagtail.contrib.typed_table_block",
@@ -172,7 +195,13 @@ PASSWORD_HASHERS = (
     "django.contrib.auth.hashers.MD5PasswordHasher",  # don't use the intentionally slow default password hasher
 )
 
-ALLOWED_HOSTS = ["localhost", "testserver", "other.example.com"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "testserver",
+    "other.example.com",
+    "127.0.0.1",
+    "0.0.0.0",
+]
 
 WAGTAILSEARCH_BACKENDS = {
     "default": {
@@ -185,7 +214,7 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 if os.environ.get("USE_EMAIL_USER_MODEL"):
     INSTALLED_APPS.append("wagtail.test.emailuser")
     AUTH_USER_MODEL = "emailuser.EmailUser"
-    print("EmailUser (no username) user model active")  # noqa
+    print("EmailUser (no username) user model active")  # noqa: T201
 else:
     INSTALLED_APPS.append("wagtail.test.customuser")
     AUTH_USER_MODEL = "customuser.CustomUser"
@@ -203,12 +232,10 @@ if os.environ.get("DATABASE_ENGINE") == "django.db.backends.postgresql":
     }
 
 if "ELASTICSEARCH_URL" in os.environ:
-    if os.environ.get("ELASTICSEARCH_VERSION") == "7":
+    if os.environ.get("ELASTICSEARCH_VERSION") == "8":
+        backend = "wagtail.search.backends.elasticsearch8"
+    elif os.environ.get("ELASTICSEARCH_VERSION") == "7":
         backend = "wagtail.search.backends.elasticsearch7"
-    elif os.environ.get("ELASTICSEARCH_VERSION") == "6":
-        backend = "wagtail.search.backends.elasticsearch6"
-    elif os.environ.get("ELASTICSEARCH_VERSION") == "5":
-        backend = "wagtail.search.backends.elasticsearch5"
 
     WAGTAILSEARCH_BACKENDS["elasticsearch"] = {
         "BACKEND": backend,

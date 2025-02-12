@@ -1,5 +1,4 @@
 import functools
-import hashlib
 
 from django.conf import settings
 from django.http import Http404
@@ -7,18 +6,20 @@ from django.urls import include, path, re_path
 from django.views.decorators.cache import never_cache
 from django.views.defaults import page_not_found
 from django.views.generic import TemplateView
-from django.views.i18n import JavaScriptCatalog
 
 from wagtail import hooks
 from wagtail.admin.api import urls as api_urls
 from wagtail.admin.auth import require_admin_access
 from wagtail.admin.urls import collections as wagtailadmin_collections_urls
+from wagtail.admin.urls import editing_sessions as wagtailadmin_editing_sessions_urls
 from wagtail.admin.urls import pages as wagtailadmin_pages_urls
 from wagtail.admin.urls import password_reset as wagtailadmin_password_reset_urls
 from wagtail.admin.urls import reports as wagtailadmin_reports_urls
 from wagtail.admin.urls import workflows as wagtailadmin_workflows_urls
-from wagtail.admin.views import account, chooser, home, tags, userbar
+from wagtail.admin.views import account, chooser, dismissibles, home, tags
 from wagtail.admin.views.bulk_action import index as bulk_actions
+from wagtail.admin.views.generic.preview import StreamFieldBlockPreview
+from wagtail.admin.views.i18n import localized_js_catalog
 from wagtail.admin.views.pages import listing
 from wagtail.utils.urlpatterns import decorate_urlpatterns
 
@@ -28,8 +29,21 @@ urlpatterns = [
     path("api/", include(api_urls)),
     path("failwhale/", home.error_test, name="wagtailadmin_error_test"),
     # TODO: Move into wagtailadmin_pages namespace
-    path("pages/", listing.index, name="wagtailadmin_explore_root"),
-    path("pages/<int:parent_page_id>/", listing.index, name="wagtailadmin_explore"),
+    path(
+        "pages/",
+        listing.ExplorableIndexView.as_view(),
+        name="wagtailadmin_explore_root",
+    ),
+    path(
+        "pages/<int:parent_page_id>/",
+        listing.ExplorableIndexView.as_view(),
+        name="wagtailadmin_explore",
+    ),
+    path(
+        "pages/<int:parent_page_id>/results/",
+        listing.ExplorableIndexView.as_view(results_only=True),
+        name="wagtailadmin_explore_results",
+    ),
     # bulk actions
     path(
         "bulk/<str:app_label>/<str:model_name>/<str:action>/",
@@ -48,6 +62,11 @@ urlpatterns = [
         "choose-page/search/",
         chooser.SearchView.as_view(),
         name="wagtailadmin_choose_page_search",
+    ),
+    path(
+        "choose-page/chosen-multiple/",
+        chooser.ChosenMultipleView.as_view(),
+        name="wagtailadmin_choose_page_chosen_multiple",
     ),
     path(
         "choose-external-link/",
@@ -86,12 +105,24 @@ urlpatterns = [
     path(
         "reports/", include(wagtailadmin_reports_urls, namespace="wagtailadmin_reports")
     ),
-    path("account/", account.account, name="wagtailadmin_account"),
+    path("account/", account.AccountView.as_view(), name="wagtailadmin_account"),
     path("logout/", account.LogoutView.as_view(), name="wagtailadmin_logout"),
     path(
-        "jsi18n/",
-        JavaScriptCatalog.as_view(packages=["wagtail.admin"]),
-        name="wagtailadmin_javascript_catalog",
+        "dismissibles/",
+        dismissibles.DismissiblesView.as_view(),
+        name="wagtailadmin_dismissibles",
+    ),
+    path(
+        "editing-sessions/",
+        include(
+            wagtailadmin_editing_sessions_urls,
+            namespace="wagtailadmin_editing_sessions",
+        ),
+    ),
+    path(
+        "block-preview/",
+        StreamFieldBlockPreview.as_view(),
+        name="wagtailadmin_block_preview",
     ),
 ]
 
@@ -106,37 +137,19 @@ for fn in hooks.get_hooks("register_admin_urls"):
 # Add "wagtailadmin.access_admin" permission check
 urlpatterns = decorate_urlpatterns(urlpatterns, require_admin_access)
 
-sprite_hash = None
-
-
-def get_sprite_hash():
-    global sprite_hash
-    if not sprite_hash:
-        content = str(home.sprite(None).content, "utf-8")
-        sprite_hash = hashlib.sha1(
-            (content + settings.SECRET_KEY).encode("utf-8")
-        ).hexdigest()[:8]
-    return sprite_hash
-
 
 # These url patterns do not require an authenticated admin user
 urlpatterns += [
-    path(f"sprite-{get_sprite_hash()}/", home.sprite, name="wagtailadmin_sprite"),
+    path("sprite/", home.sprite, name="wagtailadmin_sprite"),
     path("login/", account.LoginView.as_view(), name="wagtailadmin_login"),
-    # These two URLs have the "permission_required" decorator applied directly
-    # as they need to fail with a 403 error rather than redirect to the login page
-    path(
-        "userbar/<int:page_id>/",
-        userbar.for_frontend,
-        name="wagtailadmin_userbar_frontend",
-    ),
-    path(
-        "userbar/moderation/<int:revision_id>/",
-        userbar.for_moderation,
-        name="wagtailadmin_userbar_moderation",
-    ),
     # Password reset
     path("password_reset/", include(wagtailadmin_password_reset_urls)),
+    # JS translation catalog
+    path(
+        "jsi18n/",
+        localized_js_catalog,
+        name="wagtailadmin_javascript_catalog",
+    ),
 ]
 
 

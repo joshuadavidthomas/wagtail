@@ -1,12 +1,8 @@
 import logging
-import re
-from urllib.parse import urlparse, urlunparse
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import import_string
-
-from wagtail.coreutils import get_content_languages
 
 logger = logging.getLogger("wagtail.frontendcache")
 
@@ -50,7 +46,7 @@ def get_backends(backend_settings=None, backends=None):
             backend_cls = import_string(backend)
         except ImportError as e:
             raise InvalidFrontendCacheBackendError(
-                "Could not find backend '%s': %s" % (backend, e)
+                f"Could not find backend '{backend}': {e}"
             )
 
         backend_objects[backend_name] = backend_cls(backend_config)
@@ -63,48 +59,9 @@ def purge_url_from_cache(url, backend_settings=None, backends=None):
 
 
 def purge_urls_from_cache(urls, backend_settings=None, backends=None):
-    # Convert each url to urls one for each managed language (WAGTAILFRONTENDCACHE_LANGUAGES setting).
-    # The managed languages are common to all the defined backends.
-    # This depends on settings.USE_I18N
-    # If WAGTAIL_I18N_ENABLED is True, this defaults to WAGTAIL_CONTENT_LANGUAGES
-    wagtail_i18n_enabled = getattr(settings, "WAGTAIL_I18N_ENABLED", False)
-    content_languages = get_content_languages() if wagtail_i18n_enabled else {}
-    languages = getattr(
-        settings, "WAGTAILFRONTENDCACHE_LANGUAGES", list(content_languages.keys())
-    )
-    if settings.USE_I18N and languages:
-        langs_regex = "^/(%s)/" % "|".join(languages)
-        new_urls = []
+    from .tasks import purge_urls_from_cache_task
 
-        # Purge the given url for each managed language
-        for isocode in languages:
-            for url in urls:
-                up = urlparse(url)
-                new_url = urlunparse(
-                    (
-                        up.scheme,
-                        up.netloc,
-                        re.sub(langs_regex, "/%s/" % isocode, up.path),
-                        up.params,
-                        up.query,
-                        up.fragment,
-                    )
-                )
-
-                # Check for best performance. True if re.sub found no match
-                # It happens when i18n_patterns was not used in urls.py to serve content for different languages from different URLs
-                if new_url in new_urls:
-                    continue
-
-                new_urls.append(new_url)
-
-        urls = new_urls
-
-    for backend_name, backend in get_backends(backend_settings, backends).items():
-        for url in urls:
-            logger.info("[%s] Purging URL: %s", backend_name, url)
-
-        backend.purge_batch(urls)
+    purge_urls_from_cache_task.enqueue(list(urls), backend_settings, backends)
 
 
 def _get_page_cached_urls(page):
@@ -132,14 +89,14 @@ class PurgeBatch:
     """Represents a list of URLs to be purged in a single request"""
 
     def __init__(self, urls=None):
-        self.urls = []
+        self.urls = set()
 
         if urls is not None:
             self.add_urls(urls)
 
     def add_url(self, url):
         """Adds a single URL"""
-        self.urls.append(url)
+        self.urls.add(url)
 
     def add_urls(self, urls):
         """
@@ -148,7 +105,7 @@ class PurgeBatch:
         This is equivalent to running ``.add_url(url)`` on each URL
         individually
         """
-        self.urls.extend(urls)
+        self.urls.update(urls)
 
     def add_page(self, page):
         """

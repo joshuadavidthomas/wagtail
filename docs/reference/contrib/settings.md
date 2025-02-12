@@ -1,9 +1,9 @@
 # Settings
 
 The `wagtail.contrib.settings` module allows you to define models that hold
-settings which are either common across all site records, or specific to each site.
+settings which are either common across all site records or specific to each site.
 
-Settings are editable by administrators within the Wagtail admin, and can be
+Settings are editable by administrators within the Wagtail admin and can be
 accessed in code as well as in templates.
 
 ## Installation
@@ -84,7 +84,7 @@ class SiteSpecificImportantPages(BaseSiteSetting):
     ]
 ```
 
-You can also customise the edit handlers [like you would do for `Page` model](customising_the_tabbed_interface) with a custom `edit_handler` attribute:
+You can also customize the edit handlers [like you would do for `Page` model](customizing_the_tabbed_interface) with a custom `edit_handler` attribute:
 
 ```python
 from wagtail.admin.panels import TabbedInterface, ObjectList
@@ -127,7 +127,7 @@ class SiteSpecificSocialMediaSettings(BaseSiteSetting):
         verbose_name = "Site-specific social media settings"
 ```
 
-For a list of all available icons, please see the [styleguide](styleguide).
+Wagtail’s default icon set can be seen in our [icons overview](icons). All icons available in a given project are displayed in the [styleguide](styleguide).
 
 ## Using the settings
 
@@ -274,13 +274,13 @@ if you have to use multiple values from one model:
 
 ```html+jinja
 {% with generic_social_settings=settings("app_label.GenericSocialMediaSettings") %}
-    Follow us on Twitter at @{{ generic_social_settings.facebook }},
+    Follow us on Facebook at {{ generic_social_settings.facebook }},
     or Instagram at @{{ generic_social_settings.instagram }}.
 {% endwith %}
 
 {% with site_social_settings=settings("app_label.SiteSpecificSocialMediaSettings") %}
-    Follow us on Twitter at @{{ site_social_settings.facebook }},
-    or Instagram at @{{ site_social_settings.instagram }}.
+    Follow us on Facebook at {{ site_social_settings.facebook }},
+    or Instagram at {{ site_social_settings.instagram }}.
 {% endwith %}
 ```
 
@@ -295,8 +295,8 @@ Or, alternately, using the `set` tag:
 
 For models with foreign key relationships to other objects (for example pages),
 which are very often needed to output values in templates, you can set
-the `select_related` attribute on your model to have Wagtail utilise
-Django's [QuerySet.select_related()](https://docs.djangoproject.com/en/stable/ref/models/querysets/#select-related)
+the `select_related` attribute on your model to have Wagtail utilize
+Django's [`QuerySet.select_related()`](django.db.models.query.QuerySet.select_related)
 method to fetch the settings object and related objects in a single query.
 With this, the initial query is more complex, but you will be able to
 freely access the foreign key values without any additional queries,

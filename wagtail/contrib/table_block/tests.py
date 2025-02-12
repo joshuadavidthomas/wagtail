@@ -116,7 +116,7 @@ class TestTableBlock(TestCase):
         """
         self.assertHTMLEqual(result, expected)
 
-    def test_do_not_render_html(self):
+    def test_do_not_render_html_by_default(self):
         """
         Ensure that raw html doesn't render
         by default.
@@ -142,6 +142,36 @@ class TestTableBlock(TestCase):
         """
 
         block = TableBlock()
+        result = block.render(value)
+        self.assertHTMLEqual(result, expected)
+
+    def test_does_render_html_if_allowed(self):
+        """
+        Ensure html renders if table_options set renderer to allow html
+        """
+        value = {
+            "first_row_is_table_header": False,
+            "first_col_is_header": False,
+            "data": [
+                ["<p><strong>Test</strong></p>", None, None],
+                [None, None, None],
+                [None, None, None],
+            ],
+        }
+
+        expected = """
+            <table>
+                <tbody>
+                    <tr><td><p><strong>Test</strong></p></td><td></td><td></td></tr>
+                    <tr><td></td><td></td><td></td></tr>
+                    <tr><td></td><td></td><td></td></tr>
+                </tbody>
+            </table>
+        """
+
+        new_options = self.default_table_options.copy()
+        new_options["renderer"] = "html"
+        block = TableBlock(table_options=new_options)
         result = block.render(value)
         self.assertHTMLEqual(result, expected)
 
@@ -219,6 +249,33 @@ class TestTableBlock(TestCase):
                 <tbody>
                     <tr><th scope="row">one</th><td>two</td><td>three</td></tr>
                     <tr><th scope="row">four</th><td>five</td><td>six</td></tr>
+                </tbody>
+            </table>
+        """
+        block = TableBlock()
+        result = block.render(value)
+        self.assertHTMLEqual(result, expected)
+
+    def test_no_headers(self):
+        """
+        Test table without headers.
+        """
+        value = {
+            "first_row_is_table_header": False,
+            "first_col_is_header": False,
+            "data": [
+                ["Foo", "Bar", "Baz"],
+                ["one", "two", "three"],
+                ["four", "five", "six"],
+            ],
+        }
+
+        expected = """
+            <table>
+                <tbody>
+                    <tr><td>Foo</td><td>Bar</td><td>Baz</td></tr>
+                    <tr><td>one</td><td>two</td><td>three</td></tr>
+                    <tr><td>four</td><td>five</td><td>six</td></tr>
                 </tbody>
             </table>
         """
@@ -348,6 +405,46 @@ class TestTableBlock(TestCase):
         self.assertHTMLEqual(result, expected)
         self.assertNotIn("None", result)
 
+    def test_merge_cells_render(self):
+        """
+        Test that merged table cells are rendered.
+        """
+        value = {
+            "first_row_is_table_header": False,
+            "first_col_is_header": False,
+            "data": [
+                ["one", None, "two"],
+                ["three", "four", "five"],
+                ["six", "seven", None],
+            ],
+            "cell": [
+                {"row": 0, "col": 1, "hidden": True},
+                {"row": 2, "col": 2, "hidden": True},
+            ],
+            "mergeCells": [
+                {"row": 0, "col": 0, "rowspan": 1, "colspan": 2},
+                {"row": 1, "col": 2, "rowspan": 2, "colspan": 1},
+            ],
+        }
+        block = TableBlock()
+        result = block.render(value)
+        expected = """
+            <table>
+                <tbody>
+                    <tr><td rowspan="1" colspan="2">one</td><td>two</td></tr>
+                    <tr><td>three</td><td>four</td><td rowspan="2" colspan="1">five</td></tr>
+                    <tr><td>six</td><td>seven</td></tr>
+                </tbody>
+            </table>
+        """
+        self.assertHTMLEqual(result, expected)
+
+    def test_empty_table_block_to_python(self):
+        # Should not raise an error
+        # See https://github.com/wagtail/wagtail/issues/11816
+        block = TableBlock()
+        self.assertIsNone(block.to_python(None))
+
 
 class TestTableBlockForm(WagtailTestUtils, SimpleTestCase):
     def setUp(self):
@@ -461,7 +558,7 @@ class TestTableBlockForm(WagtailTestUtils, SimpleTestCase):
         self.assertIs(block_3_opts["allowEmpty"], False)
 
     def test_adapt(self):
-        block = TableBlock()
+        block = TableBlock(description="A table to display data.")
 
         block.set_name("test_tableblock")
         js_args = FieldBlockAdapter().js_args(block)
@@ -472,8 +569,11 @@ class TestTableBlockForm(WagtailTestUtils, SimpleTestCase):
             js_args[2],
             {
                 "label": "Test tableblock",
+                "description": "A table to display data.",
                 "required": True,
                 "icon": "table",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--char_field w-field--table_input",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -491,7 +591,7 @@ class TestTableBlockForm(WagtailTestUtils, SimpleTestCase):
 
 
 # TODO(telepath) replace this with a functional test
-class TestTableBlockPageEdit(TestCase, WagtailTestUtils):
+class TestTableBlockPageEdit(WagtailTestUtils, TestCase):
     def setUp(self):
         self.value = {
             "first_row_is_table_header": True,

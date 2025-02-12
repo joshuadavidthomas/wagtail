@@ -9,7 +9,6 @@ const getOutputPath = (app, folder, filename) => {
     'contrib/table_block': 'table_block',
     'contrib/typed_table_block': 'typed_table_block',
     'contrib/styleguide': 'wagtailstyleguide',
-    'contrib/modeladmin': 'wagtailmodeladmin',
   };
 
   const appLabel = exceptions[app] || `wagtail${app}`;
@@ -38,14 +37,12 @@ module.exports = function exports(env, argv) {
       'core',
       'date-time-chooser',
       'draftail',
-      'expanding-formset',
       'filtered-select',
-      'lock-unlock-action',
+      'icons',
       'modal-workflow',
       'page-chooser-modal',
       'page-chooser',
-      'page-editor',
-      'preview-panel',
+      'page-chooser-telepath',
       'privacy-switch',
       'sidebar',
       'task-chooser-modal',
@@ -56,13 +53,13 @@ module.exports = function exports(env, argv) {
       'userbar',
       'wagtailadmin',
       'workflow-action',
-      'workflow-status',
       'bulk-actions',
     ],
     'images': [
       'image-chooser',
       'image-chooser-modal',
       'image-chooser-telepath',
+      'image-block',
     ],
     'documents': [
       'document-chooser',
@@ -112,24 +109,6 @@ module.exports = function exports(env, argv) {
     'panels',
     'streamfield.scss',
   );
-  sassEntry[getOutputPath('admin', 'css', 'userbar')] = path.resolve(
-    'wagtail',
-    'admin',
-    'static_src',
-    'wagtailadmin',
-    'scss',
-    'userbar.scss',
-  );
-  sassEntry[getOutputPath('contrib/styleguide', 'css', 'styleguide')] =
-    path.resolve(
-      'wagtail',
-      'contrib',
-      'styleguide',
-      'static_src',
-      'wagtailstyleguide',
-      'scss',
-      'styleguide.scss',
-    );
   sassEntry[
     getOutputPath('contrib/typed_table_block', 'css', 'typed_table_block')
   ] = path.resolve(
@@ -193,23 +172,8 @@ module.exports = function exports(env, argv) {
             globOptions: { ignore: ['**/{app,scss}/**', '*.{css,txt}'] },
           },
           {
-            from: 'wagtail/search/static_src/',
-            to: 'wagtail/search/static/',
-            globOptions: { ignore: ['**/{app,scss}/**', '*.{css,txt}'] },
-          },
-          {
-            from: 'wagtail/users/static_src/',
-            to: 'wagtail/users/static/',
-            globOptions: { ignore: ['**/{app,scss}/**', '*.{css,txt}'] },
-          },
-          {
-            from: 'wagtail/contrib/settings/static_src/',
-            to: 'wagtail/contrib/settings/static/',
-            globOptions: { ignore: ['**/{app,scss}/**', '*.{css,txt}'] },
-          },
-          {
-            from: 'wagtail/contrib/modeladmin/static_src/',
-            to: 'wagtail/contrib/modeladmin/static/',
+            from: 'wagtail/contrib/search_promotions/static_src/',
+            to: 'wagtail/contrib/search_promotions/static/',
             globOptions: { ignore: ['**/{app,scss}/**', '*.{css,txt}'] },
           },
         ],
@@ -222,14 +186,6 @@ module.exports = function exports(env, argv) {
           test: /\.(js|ts)x?$/,
           loader: 'ts-loader',
           exclude: /node_modules/,
-        },
-        {
-          // Legacy support for font icon loading, to be removed.
-          test: /\.(woff)$/i,
-          generator: {
-            emit: false,
-            filename: 'wagtailadmin/fonts/[name][ext]',
-          },
         },
         {
           test: /\.(svg)$/i,
@@ -253,7 +209,17 @@ module.exports = function exports(env, argv) {
                 },
               },
             },
-            'sass-loader',
+            {
+              loader: 'sass-loader',
+              options: {
+                sassOptions: {
+                  // Manually set Sass output so it’s identical in production and development. See:
+                  // https://github.com/tailwindlabs/tailwindcss/issues/11027
+                  // https://github.com/webpack-contrib/sass-loader/issues/1129
+                  style: 'expanded',
+                },
+              },
+            },
           ],
         },
       ].concat(

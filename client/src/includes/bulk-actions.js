@@ -10,35 +10,27 @@ const BULK_ACTION_FOOTER = '[data-bulk-action-footer]';
 const BULK_ACTION_NUM_OBJECTS = '[data-bulk-action-num-objects]';
 const BULK_ACTION_NUM_OBJECTS_IN_LISTING =
   '[data-bulk-action-num-objects-in-listing]';
-const MORE_ACTIONS_DROPDOWN_BUTTON_SELECTOR = '.actions [data-dropdown]';
-
-let checkedState = {};
 
 /**
- * Toggles the 'more' dropdown button in listing pages.
- * @param {boolean} show - Determines if the button should be shown or not.
+ * Get the bulk action item type from the DOM element, allowing the deprecated global to override until
+ * this is fully removed in a future release.
+ * This is used to determine the strings to display in the bulk action footer.
+ * @type {string}
  */
-function toggleMoreActionsDropdownBtn(show) {
-  const moreActionsDropdown = document.querySelector(
-    MORE_ACTIONS_DROPDOWN_BUTTON_SELECTOR,
-  );
-  if (moreActionsDropdown !== null) {
-    if (show === true) {
-      moreActionsDropdown.classList.remove('hidden');
-    } else {
-      moreActionsDropdown.classList.add('hidden');
-    }
-  }
-}
+const BULK_ACTION_ITEM_TYPE =
+  /** @deprecated RemovedInWagtail70 - Use `data-bulk-action-footer="..."` instead of window.wagtailConfig.* */
+  (wagtailConfig || {}).BULK_ACTION_ITEM_TYPE ||
+  document
+    .querySelector(BULK_ACTION_FOOTER)
+    .getAttribute('data-bulk-action-footer');
+let checkedState = {};
 
 /**
  * Utility function to get the appropriate string for display in action bar
  */
 function getStringForListing(key) {
-  if (wagtailConfig.STRINGS.BULK_ACTIONS[wagtailConfig.BULK_ACTION_ITEM_TYPE]) {
-    return wagtailConfig.STRINGS.BULK_ACTIONS[
-      wagtailConfig.BULK_ACTION_ITEM_TYPE
-    ][key];
+  if (wagtailConfig.STRINGS.BULK_ACTIONS[BULK_ACTION_ITEM_TYPE]) {
+    return wagtailConfig.STRINGS.BULK_ACTIONS[BULK_ACTION_ITEM_TYPE][key];
   }
   return wagtailConfig.STRINGS.BULK_ACTIONS.ITEM[key];
 }
@@ -63,12 +55,9 @@ function onSelectAllChange(e) {
     }
   });
   if (!e.target.checked) {
-    toggleMoreActionsDropdownBtn(true);
     // when deselecting all checkbox, simply hide the footer for smooth transition
     checkedState.checkedObjects.clear();
     document.querySelector(BULK_ACTION_FOOTER).classList.add('hidden');
-  } else {
-    toggleMoreActionsDropdownBtn(false);
   }
 }
 
@@ -128,15 +117,11 @@ function onSelectIndividualCheckbox(e) {
   const numCheckedObjects = checkedState.checkedObjects.size;
 
   if (numCheckedObjects === 0) {
-    /* when all checkboxes are unchecked */
-    toggleMoreActionsDropdownBtn(true);
     document.querySelector(BULK_ACTION_FOOTER).classList.add('hidden');
     document
       .querySelectorAll(BULK_ACTION_PAGE_CHECKBOX_INPUT)
       .forEach((el) => el.classList.remove('show'));
   } else if (numCheckedObjects === 1 && prevLength === 0) {
-    /* when 1 checkbox is checked for the first time */
-    toggleMoreActionsDropdownBtn(false);
     document.querySelectorAll(BULK_ACTION_PAGE_CHECKBOX_INPUT).forEach((el) => {
       el.classList.add('show');
     });
@@ -151,12 +136,12 @@ function onSelectIndividualCheckbox(e) {
     if (checkedState.shouldShowAllInListingText) {
       document
         .querySelector(BULK_ACTION_NUM_OBJECTS_IN_LISTING)
-        .classList.remove('u-hidden');
+        .classList.remove('w-hidden');
     }
   } else if (checkedState.shouldShowAllInListingText) {
     document
       .querySelector(BULK_ACTION_NUM_OBJECTS_IN_LISTING)
-      .classList.add('u-hidden');
+      .classList.add('w-hidden');
   }
 
   if (numCheckedObjects > 0) {
@@ -166,12 +151,12 @@ function onSelectIndividualCheckbox(e) {
       numObjectsSelected = getStringForListing('SINGULAR');
     } else if (numCheckedObjects === checkedState.numObjects) {
       numObjectsSelected = getStringForListing('ALL').replace(
-        '{0}',
+        '%(objects)s',
         numCheckedObjects,
       );
     } else {
       numObjectsSelected = getStringForListing('PLURAL').replace(
-        '{0}',
+        '%(objects)s',
         numCheckedObjects,
       );
     }
@@ -189,12 +174,11 @@ function onSelectIndividualCheckbox(e) {
 function onClickSelectAllInListing(e) {
   e.preventDefault();
   checkedState.selectAllInListing = true;
-  document.querySelector(
-    BULK_ACTION_NUM_OBJECTS,
-  ).textContent = `${getStringForListing('ALL_IN_LISTING')}.`;
+  document.querySelector(BULK_ACTION_NUM_OBJECTS).textContent =
+    `${getStringForListing('ALL_IN_LISTING')}.`;
   document
     .querySelector(BULK_ACTION_NUM_OBJECTS_IN_LISTING)
-    .classList.add('u-hidden');
+    .classList.add('w-hidden');
 }
 
 /**
@@ -241,8 +225,16 @@ function addBulkActionListeners() {
     el.addEventListener('change', onSelectAllChange);
   });
   document
-    .querySelectorAll(`${BULK_ACTION_FOOTER} .bulk-action-btn`)
+    .querySelectorAll(`${BULK_ACTION_FOOTER} [data-bulk-action-button]`)
     .forEach((elem) => elem.addEventListener('click', onClickActionButton));
+  document.addEventListener('w-dropdown:shown', () => {
+    document
+      .querySelectorAll(`${BULK_ACTION_FOOTER} [data-bulk-action-button]`)
+      .forEach((elem) => {
+        elem.removeEventListener('click', onClickActionButton);
+        elem.addEventListener('click', onClickActionButton);
+      });
+  });
   const selectAllInListingText = document.querySelector(
     BULK_ACTION_NUM_OBJECTS_IN_LISTING,
   );

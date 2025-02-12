@@ -5,17 +5,18 @@
 # Translators:
 # Giacomo Ghizzani <giacomo.ghz@gmail.com>, 2015-2018
 # giammi <gian-maria.daffre@giammi.org>, 2018
+# giammi <gian-maria.daffre@giammi.org>, 2018
 # LB (Ben Johnston) <mail@lb.ee>, 2019
-# Marco Badan <marco.badan@gmail.com>, 2021-2022
+# Marco Badan <marco.badan@gmail.com>, 2021-2023
 # Sandro Badalamenti <sandro@mailinator.com>, 2019
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-19 19:01+0000\n"
-"Last-Translator: Marco Badan <marco.badan@gmail.com>, 2021-2022\n"
-"Language-Team: Italian (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Marco Badan <marco.badan@gmail.com>, 2021-2023\n"
+"Language-Team: Italian (http://app.transifex.com/torchbox/wagtail/language/"
 "it/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -27,6 +28,23 @@ msgstr ""
 msgid "Publish"
 msgstr "Pubblica"
 
+msgid "Submit for moderation"
+msgstr "Invia per la moderazione"
+
+#, python-format
+msgid "Resubmit to %(task_name)s"
+msgstr "Invia di nuovo a %(task_name)s"
+
+#, python-format
+msgid "Submit to %(workflow_name)s"
+msgstr "Invia a %(workflow_name)s"
+
+msgid "Restart workflow "
+msgstr "Riavvia il flusso di lavoro"
+
+msgid "Cancel workflow "
+msgstr "Annulla il flusso di lavoro"
+
 msgid "Unpublish"
 msgstr "Annulla pubblicazione"
 
@@ -36,19 +54,29 @@ msgstr "Elimina"
 msgid "Save"
 msgstr "Salva"
 
+msgid "Locked"
+msgstr "Bloccata"
+
+#, python-format
+msgid "%(label)s and Publish"
+msgstr "%(label)s e Pubblica"
+
 msgid "Wagtail snippets"
 msgstr "Snippets Wagtail"
 
-#, python-format
-msgid "%(snippet_type)s '%(instance)s' deleted."
-msgstr "%(snippet_type)s '%(instance)s' eliminato."
+msgid "Delete selected snippets"
+msgstr "Elimina snippet selezionati"
 
 #, python-format
-msgid "%(count)d %(snippet_type)s deleted."
-msgid_plural "%(count)d %(snippet_type)s deleted."
-msgstr[0] "%(count)d %(snippet_type)s eliminato."
-msgstr[1] "%(count)d %(snippet_type)s eliminati."
-msgstr[2] "%(count)d %(snippet_type)s eliminati."
+msgid "%(model_name)s '%(object)s' deleted."
+msgstr "%(model_name)s '%(object)s' eliminato."
+
+#, python-format
+msgid "%(count)d %(model_name)s deleted."
+msgid_plural "%(count)d %(model_name)s deleted."
+msgstr[0] "%(count)d %(model_name)s eliminato."
+msgstr[1] "%(count)d %(model_name)s eliminati."
+msgstr[2] "%(count)d %(model_name)s eliminati."
 
 #, python-format
 msgid "Delete %(snippet_type_name)s"
@@ -72,6 +100,14 @@ msgstr "Sei sicuro di voler eliminare questo %(snippet_type_name)s?"
 msgid "Are you sure you want to delete %(count)s %(snippet_type_name)s?"
 msgstr "Sei sicuro di voler cancellare %(count)s %(snippet_type_name)s?"
 
+#, python-format
+msgid "You don't have permission to delete this %(snippet_type_name)s"
+msgstr "Non hai i permessi per eliminare questo %(snippet_type_name)s."
+
+#, python-format
+msgid "You don't have permission to delete these %(snippet_plural_name)s"
+msgstr "Non hai i permessi per eliminare questi %(snippet_plural_name)s."
+
 msgid "Yes, delete"
 msgstr "Si, elimina"
 
@@ -79,20 +115,18 @@ msgid "No, don't delete"
 msgstr "No, non eliminarlo"
 
 #, python-format
+msgid "Sorry, no snippets match \"<em>%(search_query)s</em>\""
+msgstr "Spiacenti, nessun snippet corrisponde a \"<em>%(search_query)s</em>\""
+
+#, python-format
 msgid ""
-"You haven't created any %(snippet_type_name)s snippets. Why not <a href="
-"\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" rel=\"noreferrer"
-"\">create one now</a>?"
+"You haven't created any %(snippet_type_name)s snippets. Why not <a "
+"href=\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" "
+"rel=\"noreferrer\">create one now</a>?"
 msgstr ""
 "Non hai ancora creato nessuno snippet %(snippet_type_name)s. Perché non <a "
-"href=\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" rel="
-"\"noreferrer\">ne crei uno adesso</a>?"
-
-msgid "Last updated"
-msgstr "Ultima modifica"
-
-msgid "History"
-msgstr "Storico"
+"href=\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" "
+"rel=\"noreferrer\">ne crei uno adesso</a>?"
 
 msgid "Publishing…"
 msgstr "Pubblicazione in corso..."
@@ -106,146 +140,42 @@ msgstr "Salvataggio in corso…"
 msgid "Replace current draft"
 msgstr "Sostituisci la bozza corrente"
 
+msgid "Replace current revision"
+msgstr "Sostituisci la revisione corrente"
+
 msgid "Save draft"
 msgstr "Salva bozza"
 
-#, python-format
-msgid "New  %(snippet_type_name)s"
-msgstr "Nuovo %(snippet_type_name)s"
-
-msgid "New"
-msgstr "Nuovo"
-
-msgid "Actions"
-msgstr "Azioni"
-
-msgid "Usage"
-msgstr "Uso"
-
-msgid "Breadcrumb"
-msgstr "Breadcrumb"
-
-msgid "Snippets"
-msgstr "Snippets"
-
-msgid "New: "
-msgstr "Nuovo:"
-
-msgid "No log entries found."
-msgstr "Nessun log trovato."
-
-#, python-format
-msgid "There is %(counter)s match"
-msgid_plural "There are %(counter)s matches"
-msgstr[0] "C'è %(counter)s corrispondenza"
-msgstr[1] "Ci sono %(counter)s corrispondenze"
-msgstr[2] "Ci sono %(counter)s corrispondenze"
-
-#, python-format
-msgid ""
-"No %(snippet_type_name_plural)s have been created. Why not <a href="
-"\"%(wagtailsnippets_create_url)s\">add one</a>?"
-msgstr ""
-"Non hai creato nessun %(snippet_type_name_plural)s. Perché non ne <a href="
-"\"%(wagtailsnippets_create_url)s\">aggiungi uno</a>?"
-
-msgid "Live version"
-msgstr "Live version"
-
-msgid "Current draft"
-msgstr "La bozza corrente"
-
-msgid "Preview"
-msgstr "Anteprima"
-
-msgid "Edit"
-msgstr "Modifica"
-
-msgid "Review this version"
-msgstr "Revisiona questa versione"
-
-msgid "Compare with previous version"
-msgstr "Compara con  versione precedente"
-
-msgid "Compare with current version"
-msgstr "Compara con la versione attuale"
-
-msgid "Live"
-msgstr "Live"
-
-msgid "Draft"
-msgstr "Bozza"
-
-msgid "View history"
-msgstr "Mostra storico"
-
-#, python-format
-msgid "Snippets %(snippet_type_name_plural)s"
-msgstr "Snippets %(snippet_type_name_plural)s"
-
-#, python-format
-msgid "Add %(snippet_type_name)s"
-msgstr "Aggiungi %(snippet_type_name)s"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Uso di %(title)s"
-
-msgid "Usage of"
-msgstr "Uso di"
-
-msgid "Title"
-msgstr "Titolo"
-
-msgid "Parent"
-msgstr "Genitore"
-
-msgid "Type"
-msgstr "Tipo"
-
-msgid "Status"
-msgstr "Stato"
-
-msgid "Edit this page"
-msgstr "Modifica questa pagina"
+msgid "Select all snippets in listing"
+msgstr "Seleziona tutti gli snippet nell'elenco"
 
 msgid "Choose"
 msgstr "Scegli"
 
+msgid "Snippets"
+msgstr "Snippets"
+
 msgid "Name"
 msgstr "Nome"
 
-msgid "The snippet could not be created due to errors."
-msgstr "Lo snippet non può essere creato a causa di errori."
+msgid "Instances"
+msgstr "Istanze"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' created."
-msgstr "%(snippet_type)s '%(instance)s' creato."
+msgid "More options for '%(title)s'"
+msgstr "Più opzioni per '%(title)s'"
 
-msgid "The snippet could not be saved due to errors."
-msgstr "Lo snippet non può essere salvato a causa di errori."
-
-#, python-format
-msgid "%(snippet_type)s '%(instance)s' updated."
-msgstr "%(snippet_type)s '%(instance)s' aggiornato."
-
-msgid "Date"
-msgstr "Data"
-
-msgid "Snippet history"
-msgstr "Storico snippet"
-
-msgid "Action"
-msgstr "Azione"
+msgid "Home"
+msgstr "Home"
 
 #, python-format
-msgid "Edit '%(title)s'"
-msgstr "Modifica '%(title)s'"
+msgid "Choose %(object)s"
+msgstr "Scegli %(object)s"
 
 #, python-format
-msgid "Delete '%(title)s'"
-msgstr "Elimina '%(title)s'"
+msgid "Choose another %(object)s"
+msgstr "Scegli un' altro %(object)s"
 
 #, python-format
-msgid "Choose %s"
-msgstr "Scegli %s"
+msgid "Edit this %(object)s"
+msgstr "Modifica questo %(object)s"

@@ -1,5 +1,5 @@
 $(function () {
-  $('.image-url-generator').each(function () {
+  $('[data-generator-url]').each(function () {
     var $this = $(this);
     var $form = $this.find('form');
     var $filterMethodField = $form.find('select#id_filter_method');
@@ -9,7 +9,6 @@ $(function () {
     var $result = $this.find('#result-url');
     var $loadingMask = $this.find('.loading-mask');
     var $preview = $this.find('img.preview');
-    var $sizeNote = $('#note-size');
 
     var generatorUrl = $this.data('generatorUrl');
 
@@ -18,30 +17,16 @@ $(function () {
 
       $loadingMask.addClass('loading');
 
-      if (filterSpec === 'original') {
-        $widthField.prop('disabled', true);
-        $heightField.prop('disabled', true);
-        $closenessField.prop('disabled', true);
-      } else if (filterSpec === 'width') {
-        $widthField.prop('disabled', false);
-        $heightField.prop('disabled', true);
-        $closenessField.prop('disabled', true);
+      if (filterSpec === 'width') {
         filterSpec += '-' + $widthField.val();
       } else if (filterSpec === 'height') {
-        $widthField.prop('disabled', true);
-        $heightField.prop('disabled', false);
-        $closenessField.prop('disabled', true);
         filterSpec += '-' + $heightField.val();
       } else if (
         filterSpec === 'min' ||
         filterSpec === 'max' ||
         filterSpec === 'fill'
       ) {
-        $widthField.prop('disabled', false);
-        $heightField.prop('disabled', false);
-
         if (filterSpec === 'fill') {
-          $closenessField.prop('disabled', false);
           filterSpec +=
             '-' +
             $widthField.val() +
@@ -50,16 +35,8 @@ $(function () {
             '-c' +
             $closenessField.val();
         } else {
-          $closenessField.prop('disabled', true);
           filterSpec += '-' + $widthField.val() + 'x' + $heightField.val();
         }
-      }
-
-      // Display note about scaled down images if image is large
-      if ($widthField.val() > $(window).width()) {
-        $sizeNote.show();
-      } else {
-        $sizeNote.hide();
       }
 
       // Fields with width and height
@@ -79,10 +56,5 @@ $(function () {
     $form.on('change', $.debounce(500, formChangeHandler));
     $form.on('keyup', $.debounce(500, formChangeHandler));
     formChangeHandler();
-
-    // When the user clicks the URL, automatically select the whole thing (for easier copying)
-    $result.on('click', function () {
-      $(this).trigger('select');
-    });
   });
 });

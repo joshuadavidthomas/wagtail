@@ -9,10 +9,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
-"Last-Translator: Joanico Barros <joanico@catalpa.io>, 2019-2020\n"
-"Language-Team: Tetum (Tetun) (http://www.transifex.com/torchbox/wagtail/"
+"Last-Translator: Peter Coward <peter@catalpa.io>, 2019\n"
+"Language-Team: Tetum (Tetun) (http://app.transifex.com/torchbox/wagtail/"
 "language/tet/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -24,18 +24,21 @@ msgid "Wagtail core"
 msgstr "Wagtail fuan"
 
 #, python-format
-msgid "The minimum number of items is %d"
-msgstr "Numeru minimum sasan %d"
+msgid "The minimum number of items is %(min_num)d"
+msgstr "Numeru minimum sasan %(min_num)d"
 
 #, python-format
-msgid "The maximum number of items is %d"
-msgstr "Numeru maximum sasan %d"
+msgid "The maximum number of items is %(max_num)d"
+msgstr "Numeru maximum sasan %(max_num)d"
 
 msgid "Move up"
 msgstr "Muda ba leten"
 
 msgid "Move down"
 msgstr "Muda ba karik"
+
+msgid "Drag"
+msgstr "Rasta"
 
 msgid "Delete"
 msgstr "Hamoos"
@@ -59,6 +62,12 @@ msgstr "Seña"
 msgid "The password you have entered is not correct. Please try again."
 msgstr "Seña ladiak! Favor koko ida tan."
 
+msgid "Locked"
+msgstr "Xavi tiha ona"
+
+msgid "Unlocked"
+msgstr "Loke tiha ona"
+
 msgid "live"
 msgstr "Hela"
 
@@ -80,8 +89,14 @@ msgstr "Termu data/tempu"
 msgid "expired"
 msgstr "Data liu ona"
 
+msgid "scheduled"
+msgstr "Ajenda ona"
+
 msgid "draft"
 msgstr "Esbosu"
+
+msgid "live + scheduled"
+msgstr "Hela + ajenda"
 
 msgid "live + draft"
 msgstr "Hela + esbosu"
@@ -91,6 +106,27 @@ msgstr "Estandar"
 
 msgid "locked"
 msgstr "Xavi tiha ona"
+
+msgid "Add/edit pages you own"
+msgstr "Hatama/hadia pajina ita nia rasik."
+
+msgid "Delete pages with children"
+msgstr "Hamoos pajina ho oan"
+
+msgid "Edit"
+msgstr "Hadia"
+
+msgid "Edit any page"
+msgstr "Hadia kualker pajina"
+
+msgid "Lock"
+msgstr "Xavi"
+
+msgid "Publish"
+msgstr "Publika"
+
+msgid "Publish any page"
+msgstr "Publika kualker pajina"
 
 msgid "title"
 msgstr "titlu"
@@ -122,23 +158,11 @@ msgstr "Hatudu iha menus sira"
 msgid "latest revision created at"
 msgstr "Revizaun ikus kria ona iha"
 
-msgid "This slug is already in use"
-msgstr "Slug ida ne'e uza tiha ona"
-
-msgid "scheduled"
-msgstr "Ajenda ona"
-
-msgid "live + scheduled"
-msgstr "Hela + ajenda"
-
 msgid "page"
 msgstr "Pajina"
 
 msgid "pages"
 msgstr "Pajina sira"
-
-msgid "submitted for moderation"
-msgstr "Submete ona ba moderasaun"
 
 msgid "created at"
 msgstr "Kria iha"
@@ -152,32 +176,11 @@ msgstr "Konteudu JSON"
 msgid "approved go live at"
 msgstr "Aprova ona ba hela iha"
 
-msgid "Add/edit pages you own"
-msgstr "Hatama/hadia pajina ita nia rasik."
-
-msgid "Edit"
-msgstr "Hadia"
-
-msgid "Edit any page"
-msgstr "Hadia kualker pajina"
-
-msgid "Publish"
-msgstr "Publika"
-
-msgid "Publish any page"
-msgstr "Publika kualker pajina"
-
-msgid "Delete pages with children"
-msgstr "Hamoos pajina ho oan"
-
-msgid "Lock"
-msgstr "Xavi"
-
 msgid "group"
 msgstr "Grupu"
 
-msgid "permission type"
-msgstr "Tipu Permisaun "
+msgid "permission"
+msgstr "Permisaun"
 
 msgid "group page permission"
 msgstr "Grupu pajina permisaun"
@@ -194,17 +197,14 @@ msgstr "Grupu sira"
 msgid "Approve"
 msgstr "Aprova"
 
-msgid "page revision"
-msgstr "Pajina revizaun"
-
 msgid "collection"
 msgstr "Koleksaun"
 
 msgid "collections"
 msgstr "Koleksaun sira"
 
-msgid "permission"
-msgstr "Permisaun"
+msgid "uploaded by user"
+msgstr "hatama ona husi uzuariu"
 
 msgid "hostname"
 msgstr "naranhost"
@@ -244,6 +244,9 @@ msgstr "situs"
 msgid "sites"
 msgstr "situs sira"
 
+msgid "default"
+msgstr "default"
+
 #, python-format
 msgid ""
 "%(hostname)s is already configured as the default site. You must unset that "
@@ -254,9 +257,6 @@ msgstr ""
 
 msgid "Public"
 msgstr "Publiku"
-
-msgid "password"
-msgstr "Sena"
 
 msgid "Log in"
 msgstr "Tama"
@@ -278,12 +278,6 @@ msgstr "Hadia tiha ona"
 
 msgid "Unpublish"
 msgstr "La publika "
-
-msgid "Locked"
-msgstr "Xavi tiha ona"
-
-msgid "Unlocked"
-msgstr "Loke tiha ona"
 
 msgid "Reject"
 msgstr "Rejeita"

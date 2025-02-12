@@ -9,10 +9,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:05+0000\n"
 "Last-Translator: Reinis Rozenbergs <reinisr@gmail.com>, 2016\n"
-"Language-Team: Latvian (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Latvian (http://app.transifex.com/torchbox/wagtail/language/"
 "lv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -21,31 +21,30 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : "
 "2);\n"
 
+msgid "Alt text"
+msgstr "Alt teksts"
+
 #, python-format
 msgid "Supported formats: %(supported_formats)s."
 msgstr "Atbalstītie formāti: %(supported_formats)s."
 
 #, python-format
-msgid "Not a supported image format. Supported formats: %s."
-msgstr "Attēla formāts nav atbalstīts. Atbalstītie formāti: %s."
+msgid "Not a supported image format. Supported formats: %(supported_formats)s."
+msgstr ""
+"Attēla formāts nav atbalstīts. Atbalstītie formāti: %(supported_formats)s."
 
 #, python-format
-msgid "Not a valid %s image."
-msgstr "Attēls %s nav derīgs."
+msgid ""
+"This file is too big (%(file_size)s). Maximum filesize %(max_filesize)s."
+msgstr ""
+"Fails pārāk liels (%(file_size)s). Maksimālais faila izmērs %(max_filesize)s."
 
 #, python-format
-msgid "This file is too big (%%s). Maximum filesize %s."
-msgstr "Fails pārāk liels (%%s). Maksimālais faila izmērs %s."
-
-#, python-format
-msgid "This file is too big. Maximum filesize %s."
-msgstr "Fails pārāk liels. Maksimālais faila izmērs ir %s."
+msgid "This file is too big. Maximum filesize %(max_filesize)s."
+msgstr "Fails pārāk liels. Maksimālais faila izmērs ir %(max_filesize)s."
 
 msgid "Collection"
 msgstr "Kolekcija"
-
-msgid "Alt text"
-msgstr "Alt teksts"
 
 msgid "Filter"
 msgstr "Atsijāt"
@@ -77,6 +76,9 @@ msgstr "Labot"
 msgid "Choose"
 msgstr "Izvēlēties"
 
+msgid "title"
+msgstr "virsraksts"
+
 msgid "Yes, delete"
 msgstr "Dzēst"
 
@@ -95,21 +97,8 @@ msgstr "Mainīt attēla failu"
 msgid "Add an image"
 msgstr "Pievienot attēlu"
 
-msgid "Add image"
-msgstr "Pievienot attēlu"
-
-msgid "Save"
-msgstr "Saglabāt"
-
-msgid "Delete image"
-msgstr "Dzēst attēlu"
-
-#, python-format
-msgid "Editing image %(title)s"
-msgstr "Labo attēlu %(title)s"
-
-msgid "Editing"
-msgstr "Labošana"
+msgid "Upload"
+msgstr "Augšupielādēt"
 
 msgid "Max dimensions"
 msgstr "Maksimāli pieļaujamie izmēri"
@@ -120,46 +109,18 @@ msgstr "Faila izmērs"
 msgid "File not found"
 msgstr "Fails netika atrasts"
 
-msgid "Images"
-msgstr "Attēli"
-
 #, python-format
 msgid "Sorry, no images match \"<em>%(query_string)s</em>\""
 msgstr "Nav attēlu, kas atbilst \"<em>%(query_string)s</em>\""
 
-msgid "URL"
-msgstr "Adrese"
-
 msgid "Preview"
 msgstr "Priekšskatīt"
 
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "%(title)s lietojums"
-
-msgid "Usage of"
-msgstr "Lietojums"
-
-msgid "Title"
-msgstr "Virsraksts"
-
-msgid "Parent"
-msgstr "Augstāka līmeņa vienība"
-
-msgid "Type"
-msgstr "Veids"
-
-msgid "Status"
-msgstr "Statuss"
-
-msgid "Edit this page"
-msgstr "Labot šo lapu"
+msgid "URL"
+msgstr "Adrese"
 
 msgid "Add multiple images"
 msgstr "Pievienot vairākus attēlus."
-
-msgid "Add images"
-msgstr "Pievienot attēlus"
 
 msgid "Or choose from your computer"
 msgstr "Izvēlēties no datora"
@@ -181,32 +142,38 @@ msgstr "Servera kļūda"
 msgid "Delete"
 msgstr "Dzēst"
 
-msgid "Upload"
-msgstr "Augšupielādēt"
-
 msgid "Choose an image"
 msgstr "Izvēlēties attēlu"
 
-msgid "Search images"
-msgstr "Meklēt attēlus"
+msgid "Choose another image"
+msgstr "Izvēlēties citu attēlu"
 
-#, python-brace-format
-msgid "Image '{0}' updated."
-msgstr "Attēls '{0}' atjaunots."
+msgid "Edit this image"
+msgstr "Labot šo attēlu"
 
-msgid "Edit again"
-msgstr "Labot vēlreiz"
+msgid "Images"
+msgstr "Attēli"
 
 msgid "The image could not be saved due to errors."
 msgstr "Attēlu nevarēja saglabāt kļūdu dēļ."
 
-#, python-brace-format
-msgid "Image '{0}' deleted."
-msgstr "Attēls '{0}' dzēsts."
+#, python-format
+msgid "Image '%(image_title)s' updated."
+msgstr "Attēls '%(image_title)s' atjaunots."
 
-#, python-brace-format
-msgid "Image '{0}' added."
-msgstr "Attēls '{0}' pievienots."
+msgid "Delete image"
+msgstr "Dzēst attēlu"
+
+#, python-format
+msgid "Image '%(image_title)s' deleted."
+msgstr "Attēls '%(image_title)s' dzēsts."
 
 msgid "The image could not be created due to errors."
 msgstr "Attēlu nevarēja izveidot kļūdu dēļ."
+
+#, python-format
+msgid "Image '%(image_title)s' added."
+msgstr "Attēls '%(image_title)s' pievienots."
+
+msgid "Add images"
+msgstr "Pievienot attēlus"

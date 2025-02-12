@@ -1,6 +1,8 @@
 from django.http import HttpResponse
+from django.shortcuts import redirect
 
 from wagtail.contrib.routable_page.models import RoutablePage, path, re_path, route
+from wagtail.models import PreviewableMixin
 
 
 def routable_page_external_view(request, arg="ARG NOT SET"):
@@ -29,6 +31,14 @@ class RoutablePageTest(RoutablePage):
     def archive_by_category(self, request, category_slug):
         return HttpResponse("ARCHIVE BY CATEGORY: " + category_slug)
 
+    @route(r"^permanant-homepage-redirect/$")
+    def permanent_homepage_redirect(self, request):
+        return redirect("/", permanent=True)
+
+    @route(r"^temporary-homepage-redirect/$")
+    def temporary_homepage_redirect(self, request):
+        return redirect("/", permanent=False)
+
     @route(r"^external/(.+)/$")
     @route(r"^external-no-arg/$")
     def external_view(self, *args, **kwargs):
@@ -52,12 +62,26 @@ class RoutablePageTest(RoutablePage):
             template="routablepagetests/routable_page_test_alternate.html",
         )
 
+    @route(r"^render-method-with-arg/(?P<slug>.+)/$")
+    def render_method_test_with_arg(self, request, slug):
+        return self.render(request)
+
     def get_route_paths(self):
         return [
             "/",
             "/render-method-test/",
             "not-a-valid-route",
         ]
+
+    preview_modes = PreviewableMixin.DEFAULT_PREVIEW_MODES + [
+        ("extra", "Extra"),
+        ("broken", "Broken"),
+    ]
+
+    def serve_preview(self, request, mode_name):
+        if mode_name == "broken":
+            raise AttributeError("Something is broken!")
+        return super().serve_preview(request, mode_name)
 
 
 class RoutablePageWithOverriddenIndexRouteTest(RoutablePage):

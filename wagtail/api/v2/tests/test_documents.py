@@ -1,7 +1,7 @@
 import json
 from unittest import mock
 
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.test.utils import override_settings
 from django.urls import reverse
 
@@ -359,7 +359,15 @@ class TestDocumentListing(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(content, {"message": "offset must be a positive integer"})
 
-    # SEARCH
+
+class TestDocumentListingSearch(TransactionTestCase):
+    fixtures = ["demosite.json"]
+
+    def get_response(self, **params):
+        return self.client.get(reverse("wagtailapi_v2:documents:listing"), params)
+
+    def get_document_id_list(self, content):
+        return [document["id"] for document in content["items"]]
 
     def test_search_for_james_joyce(self):
         response = self.get_response(search="james")
@@ -582,26 +590,28 @@ class TestDocumentFind(TestCase):
     },
     WAGTAILAPI_BASE_URL="http://api.example.com",
 )
-@mock.patch("wagtail.contrib.frontend_cache.backends.HTTPBackend.purge")
+@mock.patch("wagtail.contrib.frontend_cache.backends.http.HTTPBackend.purge")
 class TestDocumentCacheInvalidation(TestCase):
     fixtures = ["demosite.json"]
 
     @classmethod
     def setUpClass(cls):
-        super(TestDocumentCacheInvalidation, cls).setUpClass()
+        super().setUpClass()
         signal_handlers.register_signal_handlers()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestDocumentCacheInvalidation, cls).tearDownClass()
+        super().tearDownClass()
         signal_handlers.unregister_signal_handlers()
 
     def test_resave_document_purges(self, purge):
-        get_document_model().objects.get(id=5).save()
+        with self.captureOnCommitCallbacks(execute=True):
+            get_document_model().objects.get(id=5).save()
 
         purge.assert_any_call("http://api.example.com/api/main/documents/5/")
 
     def test_delete_document_purges(self, purge):
-        get_document_model().objects.get(id=5).delete()
+        with self.captureOnCommitCallbacks(execute=True):
+            get_document_model().objects.get(id=5).delete()
 
         purge.assert_any_call("http://api.example.com/api/main/documents/5/")

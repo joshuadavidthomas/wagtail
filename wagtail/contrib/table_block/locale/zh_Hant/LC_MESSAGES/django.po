@@ -3,15 +3,16 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
-# ChihWei Wang <ihcgno@icloud.com>, 2020
+# Chih Wang <ihcgno@icloud.com>, 2020
+# Chih Wang <ihcgno@icloud.com>, 2020
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2016-05-11 20:23+0000\n"
-"Last-Translator: ChihWei Wang <ihcgno@icloud.com>, 2020\n"
-"Language-Team: Chinese Traditional (http://www.transifex.com/torchbox/"
+"Last-Translator: Chih Wang <ihcgno@icloud.com>, 2020\n"
+"Language-Team: Chinese Traditional (http://app.transifex.com/torchbox/"
 "wagtail/language/zh-Hant/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -25,14 +26,8 @@ msgstr "Wagtail 表格區塊"
 msgid "Row header"
 msgstr "列標題"
 
-msgid "Display the first row as a header."
-msgstr "將第一列作為標題。"
-
 msgid "Column header"
 msgstr "行標題"
-
-msgid "Display the first column as a header."
-msgstr "將第一行作為標題。"
 
 msgid "Table caption"
 msgstr "表格標題"

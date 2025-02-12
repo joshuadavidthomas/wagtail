@@ -1,19 +1,32 @@
 import datetime
 from collections import OrderedDict
 
-from django.conf import settings
+from django.contrib.admin.utils import quote
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.core.paginator import InvalidPage
+from django.forms import CheckboxSelectMultiple
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from django.utils.translation import gettext_lazy, ngettext
-from django.views.generic import ListView, TemplateView
+from django.utils.functional import classproperty
+from django.utils.translation import gettext, gettext_lazy, ngettext
+from django.views.generic import TemplateView
+from django_filters import DateFromToRangeFilter
 
 from wagtail.admin import messages
+from wagtail.admin.filters import (
+    DateRangePickerWidget,
+    MultipleContentTypeFilter,
+    WagtailFilterSet,
+)
+from wagtail.admin.ui.tables import Column, TitleColumn
+from wagtail.admin.utils import get_valid_next_url_from_request
+from wagtail.admin.views.generic import PermissionCheckedMixin
+from wagtail.admin.views.generic.base import BaseListingView
 from wagtail.admin.views.mixins import SpreadsheetExportMixin
-from wagtail.contrib.forms.forms import SelectDateForm
-from wagtail.contrib.forms.utils import get_forms_for_user
-from wagtail.models import Locale, Page
+from wagtail.admin.views.pages.listing import PageFilterSet, PageListingMixin
+from wagtail.contrib.forms.utils import get_form_types, get_forms_for_user
+from wagtail.models import Page
+from wagtail.permissions import page_permission_policy
 
 
 def get_submissions_list_view(request, *args, **kwargs):
@@ -23,92 +36,90 @@ def get_submissions_list_view(request, *args, **kwargs):
     return form_page.serve_submissions_list_view(request, *args, **kwargs)
 
 
-class SafePaginateListView(ListView):
-    """Listing view with safe pagination, allowing incorrect or out of range values"""
+class ContentTypeColumn(Column):
+    edit_url_name = "wagtailadmin_pages:edit"
+    cell_template_name = "wagtailforms/content_type_column.html"
 
-    paginate_by = 20
-    page_kwarg = "p"
+    def get_url(self, instance):
+        return reverse(self.edit_url_name, args=(quote(instance.pk),))
 
-    def paginate_queryset(self, queryset, page_size):
-        """Paginate the queryset if needed with nice defaults on invalid param."""
-        paginator = self.get_paginator(
-            queryset,
-            page_size,
-            orphans=self.get_paginate_orphans(),
-            allow_empty_first_page=self.get_allow_empty(),
-        )
-        page_kwarg = self.page_kwarg
-        page_request = (
-            self.kwargs.get(page_kwarg) or self.request.GET.get(page_kwarg) or 0
-        )
-        try:
-            page_number = int(page_request)
-        except ValueError:
-            if page_request == "last":
-                page_number = paginator.num_pages
-            else:
-                page_number = 0
-        try:
-            if page_number > paginator.num_pages:
-                page_number = paginator.num_pages  # page out of range, show last page
-            page = paginator.page(page_number)
-        except InvalidPage:
-            page = paginator.page(1)
-        finally:
-            return paginator, page, page.object_list, page.has_other_pages()
+    def get_cell_context_data(self, instance, parent_context):
+        context = super().get_cell_context_data(instance, parent_context)
+        context["url"] = self.get_url(instance)
+        return context
 
 
-class FormPagesListView(SafePaginateListView):
+class FormPageFilterSet(PageFilterSet):
+    content_type = MultipleContentTypeFilter(
+        label=gettext_lazy("Page type"),
+        queryset=lambda request: ContentType.objects.filter(
+            pk__in=[ct.pk for ct in get_form_types()]
+        ).order_by("model"),
+        widget=CheckboxSelectMultiple,
+    )
+
+
+class FormPagesListView(PageListingMixin, PermissionCheckedMixin, BaseListingView):
     """Lists the available form pages for the current user"""
 
+    permission_policy = page_permission_policy
+    any_permission_required = {
+        "add",
+        "change",
+        "publish",
+        "bulk_delete",
+        "lock",
+        "unlock",
+    }
     template_name = "wagtailforms/index.html"
+    results_template_name = "wagtailforms/index_results.html"
     context_object_name = "form_pages"
+    paginate_by = 20
+    page_kwarg = "p"
+    index_url_name = "wagtailforms:index"
+    index_results_url_name = "wagtailforms:index_results"
+    page_title = gettext_lazy("Forms")
+    header_icon = "form"
+    model = Page
+    is_searchable = True
+    filterset_class = FormPageFilterSet
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @classproperty
+    def columns(self):
+        columns = [
+            col for col in PageListingMixin.columns if col.name not in {"title", "type"}
+        ]
+        columns.insert(
+            1,
+            TitleColumn(
+                "title",
+                classname="title",
+                label=gettext_lazy("Title"),
+                url_name="wagtailforms:list_submissions",
+                sort_key="title",
+                width="30%",
+            ),
+        )
+        columns.insert(
+            -1,
+            ContentTypeColumn(
+                "content_type",
+                label=gettext_lazy("Origin"),
+                sort_key="content_type",
+                width="20%",
+            ),
+        )
+        return columns
 
-        self.locale = None
+    def get_breadcrumbs_items(self):
+        return self.breadcrumbs_items + [
+            {"url": "", "label": self.page_title, "sublabel": gettext("Pages")},
+        ]
 
-    def get_queryset(self):
+    def get_base_queryset(self):
         """Return the queryset of form pages for this view"""
-        queryset = get_forms_for_user(self.request.user)
-        if self.locale:
-            queryset = queryset.filter(locale=self.locale)
-        ordering = self.get_ordering()
-        if ordering:
-            if isinstance(ordering, str):
-                ordering = (ordering,)
-            queryset = queryset.order_by(*ordering)
-        return queryset
-
-    def get(self, request, *args, **kwargs):
-        if getattr(settings, "WAGTAIL_I18N_ENABLED", False):
-            if request.GET.get("locale"):
-                self.locale = get_object_or_404(
-                    Locale, language_code=request.GET["locale"]
-                )
-            else:
-                self.locale = Locale.get_default()
-
-        return super().get(request, *args, **kwargs)
-
-    def get_context_data(self, *, object_list=None, **kwargs):
-        locale_context = {"locale": None, "translations": []}
-
-        if self.locale:
-            url = reverse("wagtailforms:index")
-            locale_context = {
-                "locale": self.locale,
-                "translations": [
-                    {"locale": locale, "url": url + "?locale=" + locale.language_code}
-                    for locale in Locale.objects.all().exclude(pk=self.locale.pk)
-                ],
-            }
-
-        context = super().get_context_data(object_list=object_list, **kwargs)
-        context.update(locale_context)
-
-        return context
+        pages = get_forms_for_user(self.request.user).select_related("content_type")
+        return self.annotate_queryset(pages)
 
 
 class DeleteSubmissionsView(TemplateView):
@@ -117,7 +128,7 @@ class DeleteSubmissionsView(TemplateView):
     template_name = "wagtailforms/confirm_delete.html"
     page = None
     submissions = None
-    success_url = "wagtailforms:list_submissions"
+    success_url_name = "wagtailforms:list_submissions"
 
     def get_queryset(self):
         """Returns a queryset for the selected submissions"""
@@ -141,7 +152,10 @@ class DeleteSubmissionsView(TemplateView):
 
     def get_success_url(self):
         """Returns the success URL to redirect to after a successful deletion"""
-        return self.success_url
+        next_url = get_valid_next_url_from_request(self.request)
+        if next_url:
+            return next_url
+        return reverse(self.success_url_name, args=(self.page.id,))
 
     def dispatch(self, request, *args, **kwargs):
         """Check permissions, set the page and submissions, handle delete"""
@@ -156,7 +170,7 @@ class DeleteSubmissionsView(TemplateView):
 
         if self.request.method == "POST":
             self.handle_delete(self.submissions)
-            return redirect(self.get_success_url(), page_id)
+            return redirect(self.get_success_url())
 
         return super().dispatch(request, *args, **kwargs)
 
@@ -170,24 +184,40 @@ class DeleteSubmissionsView(TemplateView):
                 "submissions": self.submissions,
             }
         )
+        context["next_url"] = self.get_success_url()
 
         return context
 
 
-class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
+class SubmissionsListFilterSet(WagtailFilterSet):
+    date = DateFromToRangeFilter(
+        label=gettext_lazy("Submission date"),
+        field_name="submit_time",
+        widget=DateRangePickerWidget,
+    )
+
+
+class SubmissionsListView(SpreadsheetExportMixin, BaseListingView):
     """Lists submissions for the provided form page"""
 
     template_name = "wagtailforms/submissions_index.html"
+    results_template_name = "wagtailforms/list_submissions.html"
     context_object_name = "submissions"
     form_page = None
-    ordering = ("-submit_time",)
+    default_ordering = ("-submit_time",)
     ordering_csv = ("submit_time",)  # keep legacy CSV ordering
     orderable_fields = (
         "id",
         "submit_time",
     )  # used to validate ordering in URL
     page_title = gettext_lazy("Form data")
-    select_date_form = None
+    header_icon = "form"
+    paginate_by = 20
+    filterset_class = SubmissionsListFilterSet
+    forms_index_url_name = "wagtailforms:index"
+    index_url_name = "wagtailforms:list_submissions"
+    index_results_url_name = "wagtailforms:list_submissions_results"
+    show_export_buttons = True
 
     def dispatch(self, request, *args, **kwargs):
         """Check permissions and set the form page"""
@@ -197,9 +227,7 @@ class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
         if not get_forms_for_user(request.user).filter(pk=self.form_page.id).exists():
             raise PermissionDenied
 
-        self.is_export = self.request.GET.get("export") in self.FORMATS
         if self.is_export:
-            self.paginate_by = None
             data_fields = self.form_page.get_data_fields()
             # Set the export fields and the headings for spreadsheet export
             self.list_export = [field for field, label in data_fields]
@@ -207,28 +235,16 @@ class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
 
         return super().dispatch(request, *args, **kwargs)
 
-    def get_queryset(self):
-        """Return queryset of form submissions with filter and order_by applied"""
+    def get_filterset_kwargs(self):
+        kwargs = super().get_filterset_kwargs()
+        kwargs["queryset"] = self.get_base_queryset()
+        return kwargs
+
+    def get_base_queryset(self):
+        """Return queryset of form submissions"""
         submission_class = self.form_page.get_submission_class()
         queryset = submission_class._default_manager.filter(page=self.form_page)
-
-        filtering = self.get_filtering()
-        if filtering and isinstance(filtering, dict):
-            queryset = queryset.filter(**filtering)
-
-        ordering = self.get_ordering()
-        if ordering:
-            if isinstance(ordering, str):
-                ordering = (ordering,)
-            queryset = queryset.order_by(*ordering)
-
         return queryset
-
-    def get_paginate_by(self, queryset):
-        """Get the number of items to paginate by, or ``None`` for no pagination"""
-        if self.is_export:
-            return None
-        return self.paginate_by
 
     def get_validated_ordering(self):
         """Return a dict of field names with ordering labels if ordering is valid"""
@@ -238,7 +254,7 @@ class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
             #  Revert to CSV order_by submit_time ascending for backwards compatibility
             default_ordering = self.ordering_csv or ()
         else:
-            default_ordering = self.ordering or ()
+            default_ordering = self.default_ordering or ()
         if isinstance(default_ordering, str):
             default_ordering = (default_ordering,)
         ordering_strs = self.request.GET.getlist("order_by") or list(default_ordering)
@@ -258,25 +274,6 @@ class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
         """Return the field or fields to use for ordering the queryset"""
         ordering = self.get_validated_ordering()
         return [values[0] + name for name, values in ordering.items()]
-
-    def get_filtering(self):
-        """Return filering as a dict for submissions queryset"""
-        self.select_date_form = SelectDateForm(self.request.GET)
-        result = {}
-        if self.select_date_form.is_valid():
-            date_from = self.select_date_form.cleaned_data.get("date_from")
-            date_to = self.select_date_form.cleaned_data.get("date_to")
-            if date_to:
-                # careful: date_to must be increased by 1 day
-                # as submit_time is a time so will always be greater
-                date_to += datetime.timedelta(days=1)
-                if date_from:
-                    result["submit_time__range"] = [date_from, date_to]
-                else:
-                    result["submit_time__lte"] = date_to
-            elif date_from:
-                result["submit_time__gte"] = date_from
-        return result
 
     def get_filename(self):
         """Returns the base filename for the generated spreadsheet data file"""
@@ -298,6 +295,28 @@ class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
         )
         return row_dict
 
+    def get_index_url(self):
+        return reverse(self.index_url_name, args=(self.form_page.id,))
+
+    def get_index_results_url(self):
+        return reverse(self.index_results_url_name, args=(self.form_page.id,))
+
+    def get_page_subtitle(self):
+        return self.form_page.get_admin_display_title()
+
+    def get_breadcrumbs_items(self):
+        return self.breadcrumbs_items + [
+            {
+                "url": reverse(self.forms_index_url_name),
+                "label": gettext("Forms"),
+            },
+            {
+                "url": "",
+                "label": self.get_page_title(),
+                "sublabel": self.get_page_subtitle(),
+            },
+        ]
+
     def get_context_data(self, **kwargs):
         """Return context for view"""
         context = super().get_context_data(**kwargs)
@@ -305,7 +324,6 @@ class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
         data_fields = self.form_page.get_data_fields()
         data_rows = []
         context["submissions"] = submissions
-        context["page_title"] = self.page_title
         if not self.is_export:
             # Build data_rows as list of dicts containing model_id and fields
             for submission in submissions:
@@ -340,10 +358,10 @@ class SubmissionsListView(SpreadsheetExportMixin, SafePaginateListView):
             context.update(
                 {
                     "form_page": self.form_page,
-                    "select_date_form": self.select_date_form,
                     "data_headings": data_headings,
                     "data_rows": data_rows,
                 }
             )
 
+        context["next_url"] = self.request.get_full_path()
         return context

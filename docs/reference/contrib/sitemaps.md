@@ -7,14 +7,14 @@ using the `wagtail.contrib.sitemaps` module.
 
 ```{note}
 As of Wagtail 1.10 the Django contrib sitemap app is used to generate
-sitemaps.  However since Wagtail requires the Site instance to be available
+sitemaps. However since Wagtail requires the Site instance to be available
 during the sitemap generation you will have to use the views from the
 `wagtail.contrib.sitemaps.views` module instead of the views
 provided by Django (`django.contrib.sitemaps.views`).
 
 The usage of these views is otherwise identical, which means that
-customisation and caching of the sitemaps are done using the default Django
-patterns.  See the Django documentation for in-depth information.
+customization and caching of the sitemaps are done using the default Django
+patterns. See the Django documentation for in-depth information.
 ```
 
 ## Basic configuration
@@ -45,7 +45,7 @@ urlpatterns = [
     ...
 
     # Ensure that the 'sitemap' line appears above the default Wagtail page serving route
-    re_path(r'', include(wagtail_urls)),
+    path("", include(wagtail_urls)),
 ]
 ```
 
@@ -80,12 +80,12 @@ a valid, crawlable hostname. If you change the site's hostname from
 If you change the site's port to `443`, the `https` scheme will be used.
 Find out more about [working with Sites](site_model_ref).
 
-## Customising
+## Customizing
 
 ### URLs
 
 The `Page` class defines a `get_sitemap_urls` method which you can
-override to customise sitemaps per `Page` instance. This method must accept
+override to customize sitemaps per `Page` instance. This method must accept
 a request object and return a list of dictionaries, one dictionary per URL
 entry in the sitemap. You can exclude pages from the sitemap by returning an
 empty list.

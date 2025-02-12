@@ -2,36 +2,38 @@
 
 # Form widget client-side API
 
-In order for the StreamField editing interface to dynamically create form fields, any Django form widgets used within StreamField blocks must have an accompanying JavaScript implementation, defining how the widget is rendered client-side and populated with data, and how to extract data from that field. Wagtail provides this implementation for widgets inheriting from `django.forms.widgets.Input`, `django.forms.Textarea`, `django.forms.Select` and `django.forms.RadioSelect`. For any other widget types, or ones which require custom client-side behaviour, you will need to provide your own implementation.
+For the StreamField editing interface to dynamically create form fields, any Django form widgets used within StreamField blocks must have an accompanying JavaScript implementation, defining how the widget is rendered client-side and populated with data, and how to extract data from that field. Wagtail provides this implementation for widgets inheriting from `django.forms.widgets.Input`, `django.forms.Textarea`, `django.forms.Select` and `django.forms.RadioSelect`. For any other widget types, or ones that require custom client-side behavior, you will need to provide your own implementation.
+
+This implementation can be driven by [Stimulus](extending_client_side_stimulus) or for deeper integrations you can leverage telepath.
 
 The [telepath](https://wagtail.github.io/telepath/) library is used to set up mappings between Python widget classes and their corresponding JavaScript implementations. To create a mapping, define a subclass of `wagtail.widget_adapters.WidgetAdapter` and register it with `wagtail.telepath.register`.
 
 ```python
 from wagtail.telepath import register
-   from wagtail.widget_adapters import WidgetAdapter
+from wagtail.widget_adapters import WidgetAdapter
 
-   class FancyInputAdapter(WidgetAdapter):
-       # Identifier matching the one registered on the client side
-       js_constructor = 'myapp.widgets.FancyInput'
+class FancyInputAdapter(WidgetAdapter):
+    # Identifier matching the one registered on the client side
+    js_constructor = 'myapp.widgets.FancyInput'
 
-       # Arguments passed to the client-side object
-       def js_args(self, widget):
-           return [
-               # Arguments typically include the widget's HTML representation
-               # and label ID rendered with __NAME__ and __ID__ placeholders,
-               # for use in the client-side render() method
-               widget.render('__NAME__', None, attrs={'id': '__ID__'}),
-               widget.id_for_label('__ID__'),
-               widget.extra_options,
-           ]
+    # Arguments passed to the client-side object
+    def js_args(self, widget):
+        return [
+            # Arguments typically include the widget's HTML representation
+            # and label ID rendered with __NAME__ and __ID__ placeholders,
+            # for use in the client-side render() method
+            widget.render('__NAME__', None, attrs={'id': '__ID__'}),
+            widget.id_for_label('__ID__'),
+            widget.extra_options,
+        ]
 
-       class Media:
-           # JS / CSS includes required in addition to the widget's own media;
-           # generally this will include the client-side adapter definition
-           js = ['myapp/js/fancy-input-adapter.js']
+    class Media:
+        # JS / CSS includes required in addition to the widget's own media;
+        # generally this will include the client-side adapter definition
+        js = ['myapp/js/fancy-input-adapter.js']
 
 
-   register(FancyInputAdapter(), FancyInput)
+register(FancyInputAdapter(), FancyInput)
 ```
 
 The JavaScript object associated with a widget instance should provide a single method:
@@ -39,7 +41,7 @@ The JavaScript object associated with a widget instance should provide a single 
 ```{eval-rst}
 .. js:function:: render(placeholder, name, id, initialState)
 
-   Render a copy of this widget into the current page, and perform any initialisation required.
+   Render a copy of this widget into the current page, and perform any initialization required.
 
    :param placeholder: An HTML DOM element to be replaced by the widget's HTML.
    :param name: A string to be used as the ``name`` attribute on the input element. For widgets that use multiple input elements (and have server-side logic for collating them back into a final value), this can be treated as a prefix, with further elements delimited by dashes. (For example, if ``name`` is ``'person-0'``, the widget may create elements with names ``person-0-first_name`` and ``person-0-surname`` without risking collisions with other field names on the form.)

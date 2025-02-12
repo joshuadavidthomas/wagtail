@@ -1,5 +1,3 @@
-import json
-
 from django import forms
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -13,10 +11,13 @@ from wagtail.telepath import register
 
 class AdminImageChooser(BaseChooser):
     choose_one_text = _("Choose an image")
+    choose_another_text = _("Change image")
+    link_to_chosen_text = _("Edit this image")
     template_name = "wagtailimages/widgets/image_chooser.html"
     chooser_modal_url_name = "wagtailimages_chooser:choose"
     icon = "image"
     classname = "image-chooser"
+    js_constructor = "ImageChooser"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -30,15 +31,14 @@ class AdminImageChooser(BaseChooser):
             "width": preview_image.width,
             "height": preview_image.height,
         }
+        data["default_alt_text"] = instance.default_alt_text
         return data
 
     def get_context(self, name, value_data, attrs):
         context = super().get_context(name, value_data, attrs)
         context["preview"] = value_data.get("preview", {})
+        context["default_alt_text"] = value_data.get("default_alt_text", "")
         return context
-
-    def render_js_init(self, id_, name, value_data):
-        return "new ImageChooser({0});".format(json.dumps(id_))
 
     @property
     def media(self):
@@ -46,6 +46,7 @@ class AdminImageChooser(BaseChooser):
             js=[
                 versioned_static("wagtailimages/js/image-chooser-modal.js"),
                 versioned_static("wagtailimages/js/image-chooser.js"),
+                versioned_static("wagtailimages/js/image-chooser-telepath.js"),
             ]
         )
 
@@ -57,6 +58,7 @@ class ImageChooserAdapter(BaseChooserAdapter):
     def media(self):
         return forms.Media(
             js=[
+                versioned_static("wagtailimages/js/image-chooser-modal.js"),
                 versioned_static("wagtailimages/js/image-chooser-telepath.js"),
             ]
         )

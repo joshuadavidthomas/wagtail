@@ -73,8 +73,6 @@ class CopyPageAction:
         return self._uuid_mapping[old_uuid]
 
     def check(self, skip_permission_checks=False):
-        from wagtail.models import UserPagePermissionsProxy
-
         # Essential data model checks
         if self.page._state.adding:
             raise CopyPageIntegrityError("Page.copy() called on an unsaved page")
@@ -102,9 +100,7 @@ class CopyPageAction:
                 )
 
             if self.keep_live:
-                destination_perms = UserPagePermissionsProxy(self.user).for_page(
-                    self.to
-                )
+                destination_perms = self.to.permissions_for_user(self.user)
 
                 if not destination_perms.can_publish_subpage():
                     raise CopyPagePermissionError(
@@ -149,7 +145,6 @@ class CopyPageAction:
         )
         # Save copied child objects and run process_child_object on them if we need to
         for (child_relation, old_pk), child_object in child_object_map.items():
-
             if self.process_child_object:
                 self.process_child_object(
                     specific_page, page_copy, child_relation, child_object
@@ -187,8 +182,8 @@ class CopyPageAction:
         # Copy revisions
         if self.copy_revisions:
             for revision in page.revisions.all():
+                use_as_latest_revision = revision.pk == page.latest_revision_id
                 revision.pk = None
-                revision.submitted_for_moderation = False
                 revision.approved_go_live_at = None
                 revision.object_id = page_copy.id
 
@@ -226,10 +221,21 @@ class CopyPageAction:
                                 child_object["translation_key"]
                             )
 
+                for exclude_field in specific_page.exclude_fields_in_copy:
+                    if exclude_field in revision_content and hasattr(
+                        page_copy, exclude_field
+                    ):
+                        revision_content[exclude_field] = getattr(
+                            page_copy, exclude_field, None
+                        )
+
                 revision.content = revision_content
 
                 # Save
                 revision.save()
+                # If this revision was designated the latest revision, update the page copy to point to the copied revision
+                if use_as_latest_revision:
+                    page_copy.latest_revision = revision
 
         # Create a new revision
         # This code serves a few purposes:
@@ -245,11 +251,25 @@ class CopyPageAction:
         latest_revision_as_page_revision = latest_revision.save_revision(
             user=self.user, changed=False, clean=False
         )
+
+        # save_revision should have updated this in the database - update the in-memory copy for consistency
+        page_copy.latest_revision = latest_revision_as_page_revision
+
         if self.keep_live:
             page_copy.live_revision = latest_revision_as_page_revision
             page_copy.last_published_at = latest_revision_as_page_revision.created_at
             page_copy.first_published_at = latest_revision_as_page_revision.created_at
-            page_copy.save(clean=False)
+            # The call to save_revision above will have updated several fields of the page record, including
+            # draft_title and latest_revision. These changes are not reflected in page_copy, so we must only
+            # update the specific fields set above to avoid overwriting them.
+            page_copy.save(
+                clean=False,
+                update_fields=[
+                    "live_revision",
+                    "last_published_at",
+                    "first_published_at",
+                ],
+            )
 
         if page_copy.live:
             page_published.send(
@@ -306,7 +326,7 @@ class CopyPageAction:
         )
 
         # Copy child pages
-        from wagtail.models import Page
+        from wagtail.models import Page, PageViewRestriction
 
         if self.recursive:
             numchild = 0
@@ -325,6 +345,23 @@ class CopyPageAction:
             if numchild > 0:
                 page_copy.numchild = numchild
                 page_copy.save(clean=False, update_fields=["numchild"])
+
+        # Copy across any view restrictions defined directly on the page,
+        # unless the destination page already has view restrictions defined
+        if to:
+            parent_page_restriction = to.get_view_restrictions()
+        else:
+            parent_page_restriction = self.page.get_parent().get_view_restrictions()
+
+        if not parent_page_restriction.exists():
+            for view_restriction in self.page.view_restrictions.all():
+                view_restriction_copy = PageViewRestriction(
+                    restriction_type=view_restriction.restriction_type,
+                    password=view_restriction.password,
+                    page=page_copy,
+                )
+                view_restriction_copy.save(user=self.user)
+                view_restriction_copy.groups.set(view_restriction.groups.all())
 
         return page_copy
 

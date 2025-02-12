@@ -9,10 +9,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:06+0000\n"
 "Last-Translator: Reinis Rozenbergs <reinisr@gmail.com>, 2016\n"
-"Language-Team: Latvian (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Latvian (http://app.transifex.com/torchbox/wagtail/language/"
 "lv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -33,6 +33,9 @@ msgstr "Labot"
 msgid "Choose"
 msgstr "Izvēlēties"
 
+msgid "title"
+msgstr "virsraksts"
+
 msgid "Yes, delete"
 msgstr "Dzēst"
 
@@ -45,62 +48,14 @@ msgstr "Mainīt dokumentu:"
 msgid "Add a document"
 msgstr "Pievienot dokumentu"
 
-msgid "Add document"
-msgstr "Pievienot dokumentu"
-
 msgid "Upload"
 msgstr "Augšupielādēt"
-
-#, python-format
-msgid "Delete %(title)s"
-msgstr "Dzēst %(title)s"
-
-msgid "Delete document"
-msgstr "Dzēst dokumentu"
-
-#, python-format
-msgid "Editing %(title)s"
-msgstr "Labo %(title)s"
-
-msgid "Editing"
-msgstr "Labošana"
-
-msgid "Save"
-msgstr "Saglabāt"
 
 msgid "Filesize"
 msgstr "Faila izmērs"
 
 msgid "File not found"
 msgstr "Fails netika atrasts"
-
-msgid "Documents"
-msgstr "Dokumenti"
-
-msgid "Title"
-msgstr "Virsraksts"
-
-msgid "File"
-msgstr "Fails"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "%(title)s lietojums"
-
-msgid "Usage of"
-msgstr "Lietojums"
-
-msgid "Parent"
-msgstr "Augstāka līmeņa vienība"
-
-msgid "Type"
-msgstr "Veids"
-
-msgid "Status"
-msgstr "Statuss"
-
-msgid "Edit this page"
-msgstr "Labot šo lapu"
 
 msgid "Or choose from your computer"
 msgstr "Izvēlēties no datora"
@@ -111,26 +66,41 @@ msgstr "Augšupielāde neizdevās."
 msgid "Delete"
 msgstr "Dzēst"
 
+msgid "File"
+msgstr "Fails"
+
 msgid "Choose a document"
 msgstr "Izvēlēties dokumentu"
 
-msgid "Search documents"
-msgstr "Meklēt dokumentus"
+msgid "Choose another document"
+msgstr "Izvēlēties citu dokumentu."
 
-#, python-brace-format
-msgid "Document '{0}' added."
-msgstr "Dokuments '{0}' tika pievienots."
+msgid "Edit this document"
+msgstr "Labot šo dokumentu"
+
+msgid "Documents"
+msgstr "Dokumenti"
+
+msgid "Title"
+msgstr "Virsraksts"
+
+#, python-format
+msgid "Document '%(document_title)s' added."
+msgstr "Dokuments '%(document_title)s' tika pievienots."
 
 msgid "The document could not be saved due to errors."
 msgstr "Dokumentu nevarēja saglabāt kļūdu dēļ."
 
-#, python-brace-format
-msgid "Document '{0}' updated"
-msgstr "Dokuments '{0}' atjaunots"
+#, python-format
+msgid "Document '%(document_title)s' updated"
+msgstr "Dokuments '%(document_title)s' atjaunots"
 
-#, python-brace-format
-msgid "Document '{0}' deleted."
-msgstr "Dokuments '{0}' tika dzēsts."
+msgid "Delete document"
+msgstr "Dzēst dokumentu"
+
+#, python-format
+msgid "Document '%(document_title)s' deleted."
+msgstr "Dokuments '%(document_title)s' tika dzēsts."
 
 msgid "Document"
 msgstr "Dokuments"

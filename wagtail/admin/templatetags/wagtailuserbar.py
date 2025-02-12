@@ -2,14 +2,13 @@ from django import template
 from django.template.loader import render_to_string
 from django.utils import translation
 
-from wagtail import hooks
 from wagtail.admin.userbar import (
+    AccessibilityItem,
     AddPageItem,
     AdminItem,
-    ApproveModerationEditPageItem,
     EditPageItem,
     ExplorePageItem,
-    RejectModerationEditPageItem,
+    apply_userbar_hooks,
 )
 from wagtail.models import PAGE_TEMPLATE_VAR, Page, Revision
 from wagtail.users.models import UserProfile
@@ -48,9 +47,8 @@ def wagtailuserbar(context, position="bottom-right"):
     if not user.has_perm("wagtailadmin.access_admin"):
         return ""
 
-    # Don't render if page is loaded in page editor's preview panel iframe
-    if getattr(request, "in_preview_panel", False):
-        return ""
+    # Render the userbar differently within the preview panel.
+    in_preview_panel = getattr(request, "in_preview_panel", False)
 
     # Render the userbar using the user's preferred admin language
     userprofile = UserProfile.get_for_user(user)
@@ -62,15 +60,18 @@ def wagtailuserbar(context, position="bottom-right"):
         except AttributeError:
             revision_id = None
 
-        if page and page.id:
+        if in_preview_panel:
+            items = [
+                AccessibilityItem(),
+            ]
+        elif page and page.id:
             if revision_id:
                 revision = Revision.page_revisions.get(id=revision_id)
                 items = [
                     AdminItem(),
                     ExplorePageItem(revision.content_object),
                     EditPageItem(revision.content_object),
-                    ApproveModerationEditPageItem(revision),
-                    RejectModerationEditPageItem(revision),
+                    AccessibilityItem(),
                 ]
             else:
                 # Not a revision
@@ -79,13 +80,16 @@ def wagtailuserbar(context, position="bottom-right"):
                     ExplorePageItem(page),
                     EditPageItem(page),
                     AddPageItem(page),
+                    AccessibilityItem(),
                 ]
         else:
             # Not a page.
-            items = [AdminItem()]
+            items = [
+                AdminItem(),
+                AccessibilityItem(),
+            ]
 
-        for fn in hooks.get_hooks("construct_wagtail_userbar"):
-            fn(request, items)
+        apply_userbar_hooks(request, items, page)
 
         # Render the items
         rendered_items = [item.render(request) for item in items]

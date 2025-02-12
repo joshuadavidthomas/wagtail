@@ -1,16 +1,26 @@
 from datetime import datetime
-from hashlib import md5
 
 from django.utils.timezone import now
 
-from wagtail.coreutils import accepts_kwarg
+from wagtail.coreutils import accepts_kwarg, safe_md5
 
 from .exceptions import EmbedUnsupportedProviderException
 from .finders import get_finders
 from .models import Embed
 
 
-def get_embed(url, max_width=None, max_height=None, finder=None):
+def get_finder_for_embed(url, max_width=None, max_height=None):
+    for finder in get_finders():
+        if finder.accept(url):
+            kwargs = {}
+            if accepts_kwarg(finder.find_embed, "max_height"):
+                kwargs["max_height"] = max_height
+            return finder.find_embed(url, max_width=max_width, **kwargs)
+
+    raise EmbedUnsupportedProviderException
+
+
+def get_embed(url, max_width=None, max_height=None, finder=get_finder_for_embed):
     embed_hash = get_embed_hash(url, max_width, max_height)
 
     # Check database
@@ -18,19 +28,6 @@ def get_embed(url, max_width=None, max_height=None, finder=None):
         return Embed.objects.exclude(cache_until__lte=now()).get(hash=embed_hash)
     except Embed.DoesNotExist:
         pass
-
-    # Get/Call finder
-    if not finder:
-
-        def finder(url, max_width=None, max_height=None):
-            for finder in get_finders():
-                if finder.accept(url):
-                    kwargs = {}
-                    if accepts_kwarg(finder.find_embed, "max_height"):
-                        kwargs["max_height"] = max_height
-                    return finder.find_embed(url, max_width=max_width, **kwargs)
-
-            raise EmbedUnsupportedProviderException
 
     embed_dict = finder(url, max_width, max_height)
 
@@ -66,8 +63,7 @@ def get_embed(url, max_width=None, max_height=None, finder=None):
 
 
 def get_embed_hash(url, max_width=None, max_height=None):
-    h = md5()
-    h.update(url.encode("utf-8"))
+    h = safe_md5(url.encode("utf-8"), usedforsecurity=False)
     if max_width is not None:
         h.update(b"\n")
         h.update(str(max_width).encode("utf-8"))

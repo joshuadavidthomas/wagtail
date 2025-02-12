@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*
 import json
-from unittest import skip
+import pickle
 
 from django.apps import apps
 from django.db import connection, models
@@ -13,20 +12,20 @@ from wagtail.blocks import StreamBlockValidationError, StreamValue
 from wagtail.fields import StreamField
 from wagtail.images.models import Image
 from wagtail.images.tests.utils import get_test_image_file
+from wagtail.models import Page
 from wagtail.rich_text import RichText
+from wagtail.signal_handlers import disable_reference_index_auto_update
 from wagtail.test.testapp.models import (
-    BlockCountsStreamModel,
+    ComplexDefaultStreamPage,
     JSONBlockCountsStreamModel,
     JSONMinMaxCountStreamModel,
     JSONStreamModel,
-    MinMaxCountStreamModel,
-    StreamModel,
+    StreamPage,
 )
-from wagtail.utils.deprecation import RemovedInWagtail50Warning
 
 
 class TestLazyStreamField(TestCase):
-    model = StreamModel
+    model = JSONStreamModel
 
     def setUp(self):
         self.image = Image.objects.create(
@@ -177,17 +176,12 @@ class TestLazyStreamField(TestCase):
 
         # Expect a single UPDATE to update the model, without any additional
         # SELECT related to the image block that has not been accessed.
-        with self.assertNumQueries(1):
-            instance.save()
-
-
-class TestJSONLazyStreamField(TestLazyStreamField):
-    model = JSONStreamModel
+        with disable_reference_index_auto_update():
+            with self.assertNumQueries(1):
+                instance.save()
 
 
 class TestSystemCheck(TestCase):
-    use_json_field = False
-
     def tearDown(self):
         # unregister InvalidStreamModel from the overall model registry
         # so that it doesn't break tests elsewhere
@@ -205,7 +199,6 @@ class TestSystemCheck(TestCase):
                     ("heading", blocks.CharBlock()),
                     ("rich text", blocks.RichTextBlock()),
                 ],
-                use_json_field=self.use_json_field,
             )
 
         errors = InvalidStreamModel.check()
@@ -215,57 +208,29 @@ class TestSystemCheck(TestCase):
         self.assertEqual(errors[0].obj, InvalidStreamModel._meta.get_field("body"))
 
 
-class TestJSONSystemCheck(TestSystemCheck):
-    use_json_field = True
-
-
-class TestUseJsonFieldWarning(TestCase):
-    def tearDown(self):
-        # unregister DeprecatedStreamModel from the overall model registry
-        # so that it doesn't break tests elsewhere
-        for package in ("wagtailcore", "wagtail.tests"):
-            try:
-                del apps.all_models[package]["deprecatedstreammodel"]
-            except KeyError:
-                pass
-        apps.clear_cache()
-
-    def test_system_check_validates_block(self):
-        message = "StreamField must explicitly set use_json_field argument to True/False instead of None."
-        with self.assertWarnsMessage(RemovedInWagtail50Warning, message):
-
-            class DeprecatedStreamModel(models.Model):
-                body = StreamField(
-                    [
-                        ("heading", blocks.CharBlock()),
-                        ("rich text", blocks.RichTextBlock()),
-                    ],
-                )
-
-
 class TestStreamValueAccess(TestCase):
-    model = StreamModel
-
     def setUp(self):
-        self.json_body = self.model.objects.create(
+        self.json_body = JSONStreamModel.objects.create(
             body=json.dumps([{"type": "text", "value": "foo"}])
         )
-
-    def test_can_read_non_json_content(self):
-        """StreamField columns should handle non-JSON database content gracefully"""
-        nonjson_body = self.model.objects.create(body="<h1>hello world</h1>")
-        self.assertIsInstance(nonjson_body.body, StreamValue)
-        # the main list-like content of the StreamValue should be blank
-        self.assertFalse(nonjson_body.body)
-        # the unparsed text content should be available in raw_text
-        self.assertEqual(nonjson_body.body.raw_text, "<h1>hello world</h1>")
 
     def test_can_assign_as_list(self):
         self.json_body.body = [("rich_text", RichText("<h2>hello world</h2>"))]
         self.json_body.save()
 
         # the body should now be a stream consisting of a single rich_text block
-        fetched_body = self.model.objects.get(id=self.json_body.id).body
+        fetched_body = JSONStreamModel.objects.get(id=self.json_body.id).body
+        self.assertIsInstance(fetched_body, StreamValue)
+        self.assertEqual(len(fetched_body), 1)
+        self.assertIsInstance(fetched_body[0].value, RichText)
+        self.assertEqual(fetched_body[0].value.source, "<h2>hello world</h2>")
+
+    def test_normalize_on_assign(self):
+        self.json_body.body = [("rich_text", "<h2>hello world</h2>")]
+        self.json_body.save()
+
+        # the body should now be a stream consisting of a single rich_text block
+        fetched_body = JSONStreamModel.objects.get(id=self.json_body.id).body
         self.assertIsInstance(fetched_body, StreamValue)
         self.assertEqual(len(fetched_body), 1)
         self.assertIsInstance(fetched_body[0].value, RichText)
@@ -275,7 +240,7 @@ class TestStreamValueAccess(TestCase):
         self.json_body.body.append(("text", "bar"))
         self.json_body.save()
 
-        fetched_body = self.model.objects.get(id=self.json_body.id).body
+        fetched_body = JSONStreamModel.objects.get(id=self.json_body.id).body
         self.assertIsInstance(fetched_body, StreamValue)
         self.assertEqual(len(fetched_body), 2)
         self.assertEqual(fetched_body[0].block_type, "text")
@@ -283,17 +248,105 @@ class TestStreamValueAccess(TestCase):
         self.assertEqual(fetched_body[1].block_type, "text")
         self.assertEqual(fetched_body[1].value, "bar")
 
+    def test_normalize_on_append(self):
+        self.json_body.body.append(("rich_text", "<h2>hello world</h2>"))
+        self.json_body.save()
 
-class TestJSONStreamValueAccess(TestStreamValueAccess):
-    model = JSONStreamModel
+        fetched_body = JSONStreamModel.objects.get(id=self.json_body.id).body
+        self.assertIsInstance(fetched_body, StreamValue)
+        self.assertEqual(len(fetched_body), 2)
+        self.assertEqual(fetched_body[0].block_type, "text")
+        self.assertEqual(fetched_body[0].value, "foo")
+        self.assertEqual(fetched_body[1].block_type, "rich_text")
+        self.assertIsInstance(fetched_body[1].value, RichText)
+        self.assertEqual(fetched_body[1].value.source, "<h2>hello world</h2>")
 
-    @skip("JSONField-based StreamField does not support storing non-json content.")
-    def test_can_read_non_json_content(self):
-        pass
+    def test_normalize_on_replace(self):
+        self.json_body.body[0] = ("rich_text", "<h2>hello world</h2>")
+        self.json_body.save()
+
+        fetched_body = JSONStreamModel.objects.get(id=self.json_body.id).body
+        self.assertIsInstance(fetched_body, StreamValue)
+        self.assertEqual(len(fetched_body), 1)
+        self.assertEqual(fetched_body[0].block_type, "rich_text")
+        self.assertIsInstance(fetched_body[0].value, RichText)
+        self.assertEqual(fetched_body[0].value.source, "<h2>hello world</h2>")
+
+    def test_can_append_on_queried_instance(self):
+        # The test is analog to test_can_append(), but instead of working with the
+        # in-memory version from JSONStreamModel.objects.create(), we query a fresh
+        # instance from the db.
+        # It tests adding data to child blocks that
+        # have not yet been lazy loaded. This would previously crash.
+        self.json_body = JSONStreamModel.objects.get(pk=self.json_body.pk)
+        self.json_body.body.append(("text", "bar"))
+        self.json_body.save()
+
+        fetched_body = JSONStreamModel.objects.get(id=self.json_body.id).body
+        self.assertIsInstance(fetched_body, StreamValue)
+        self.assertEqual(len(fetched_body), 2)
+        self.assertEqual(fetched_body[0].block_type, "text")
+        self.assertEqual(fetched_body[0].value, "foo")
+        self.assertEqual(fetched_body[1].block_type, "text")
+        self.assertEqual(fetched_body[1].value, "bar")
+
+    def test_complex_assignment(self):
+        page = StreamPage(title="Test page", body=[])
+        page.body = [
+            ("rich_text", "<h2>hello world</h2>"),
+            (
+                "books",
+                [
+                    ("title", "Great Expectations"),
+                    ("author", "Charles Dickens"),
+                ],
+            ),
+        ]
+        self.assertEqual(page.body[0].block_type, "rich_text")
+        self.assertIsInstance(page.body[0].value, RichText)
+        self.assertEqual(page.body[0].value.source, "<h2>hello world</h2>")
+        self.assertEqual(page.body[1].block_type, "books")
+        self.assertIsInstance(page.body[1].value, StreamValue)
+        self.assertEqual(len(page.body[1].value), 2)
+        self.assertEqual(page.body[1].value[0].block_type, "title")
+        self.assertEqual(page.body[1].value[0].value, "Great Expectations")
+        self.assertEqual(page.body[1].value[1].block_type, "author")
+        self.assertEqual(page.body[1].value[1].value, "Charles Dickens")
+
+
+class TestComplexDefault(TestCase):
+    def setUp(self):
+        self.page = ComplexDefaultStreamPage(title="Test page")
+
+    def test_default_value(self):
+        self.assertEqual(self.page.body[0].block_type, "rich_text")
+        self.assertIsInstance(self.page.body[0].value, RichText)
+        self.assertEqual(
+            self.page.body[0].value.source, "<p>My <i>lovely</i> books</p>"
+        )
+        self.assertEqual(self.page.body[1].block_type, "books")
+        self.assertIsInstance(self.page.body[1].value, StreamValue)
+        self.assertEqual(len(self.page.body[1].value), 2)
+        self.assertEqual(self.page.body[1].value[0].block_type, "title")
+        self.assertEqual(self.page.body[1].value[0].value, "The Great Gatsby")
+        self.assertEqual(self.page.body[1].value[1].block_type, "author")
+        self.assertEqual(self.page.body[1].value[1].value, "F. Scott Fitzgerald")
+
+    def test_creation_form_with_initial_instance(self):
+        form_class = ComplexDefaultStreamPage.get_edit_handler().get_form_class()
+        form = form_class(instance=self.page)
+        form_html = form.as_p()
+        self.assertIn("The Great Gatsby", form_html)
+
+    def test_creation_form_without_initial_instance(self):
+        form_class = ComplexDefaultStreamPage.get_edit_handler().get_form_class()
+        form = form_class()
+        form_html = form.as_p()
+        self.assertIn("The Great Gatsby", form_html)
 
 
 class TestStreamFieldRenderingBase(TestCase):
-    model = StreamModel
+    model = JSONStreamModel
 
     def setUp(self):
         self.image = Image.objects.create(
@@ -316,7 +369,7 @@ class TestStreamFieldRenderingBase(TestCase):
             [
                 '<div class="block-rich_text"><p>Rich text</p></div>',
                 '<div class="block-rich_text"><p>Привет, Микола</p></div>',
-                '<div class="block-image">{}</div>'.format(img_tag),
+                f'<div class="block-image">{img_tag}</div>',
                 '<div class="block-text">Hello, World!</div>',
             ]
         )
@@ -334,10 +387,6 @@ class TestStreamFieldRendering(TestStreamFieldRenderingBase):
         self.assertIsInstance(rendered, SafeString)
 
 
-class TestJSONStreamFieldRendering(TestStreamFieldRendering):
-    model = JSONStreamModel
-
-
 class TestStreamFieldDjangoRendering(TestStreamFieldRenderingBase):
     def render(self, string, context):
         return Template(string).render(Context(context))
@@ -345,10 +394,6 @@ class TestStreamFieldDjangoRendering(TestStreamFieldRenderingBase):
     def test_render(self):
         rendered = self.render("{{ instance.body }}", {"instance": self.instance})
         self.assertHTMLEqual(rendered, self.expected)
-
-
-class TestJSONStreamFieldDjangoRendering(TestStreamFieldDjangoRendering):
-    model = JSONStreamModel
 
 
 class TestStreamFieldJinjaRendering(TestStreamFieldRenderingBase):
@@ -364,19 +409,12 @@ class TestStreamFieldJinjaRendering(TestStreamFieldRenderingBase):
         self.assertHTMLEqual(rendered, self.expected)
 
 
-class TestJSONStreamFieldJinjaRendering(TestStreamFieldJinjaRendering):
-    model = JSONStreamModel
-
-
 class TestRequiredStreamField(TestCase):
-    use_json_field = False
-
     def test_non_blank_field_is_required(self):
         # passing a block list
         field = StreamField(
             [("paragraph", blocks.CharBlock())],
             blank=False,
-            use_json_field=self.use_json_field,
         )
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
@@ -389,9 +427,7 @@ class TestRequiredStreamField(TestCase):
                 required = False
 
         # passing a block instance
-        field = StreamField(
-            MyStreamBlock(), blank=False, use_json_field=self.use_json_field
-        )
+        field = StreamField(MyStreamBlock(), blank=False)
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
             field.stream_block.clean([])
@@ -399,25 +435,20 @@ class TestRequiredStreamField(TestCase):
         field = StreamField(
             MyStreamBlock(required=False),
             blank=False,
-            use_json_field=self.use_json_field,
         )
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
             field.stream_block.clean([])
 
         # passing a block class
-        field = StreamField(
-            MyStreamBlock, blank=False, use_json_field=self.use_json_field
-        )
+        field = StreamField(MyStreamBlock, blank=False)
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
             field.stream_block.clean([])
 
     def test_blank_false_is_implied_by_default(self):
         # passing a block list
-        field = StreamField(
-            [("paragraph", blocks.CharBlock())], use_json_field=self.use_json_field
-        )
+        field = StreamField([("paragraph", blocks.CharBlock())])
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
             field.stream_block.clean([])
@@ -429,20 +460,18 @@ class TestRequiredStreamField(TestCase):
                 required = False
 
         # passing a block instance
-        field = StreamField(MyStreamBlock(), use_json_field=self.use_json_field)
+        field = StreamField(MyStreamBlock())
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
             field.stream_block.clean([])
 
-        field = StreamField(
-            MyStreamBlock(required=False), use_json_field=self.use_json_field
-        )
+        field = StreamField(MyStreamBlock(required=False))
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
             field.stream_block.clean([])
 
         # passing a block class
-        field = StreamField(MyStreamBlock, use_json_field=self.use_json_field)
+        field = StreamField(MyStreamBlock)
         self.assertTrue(field.stream_block.required)
         with self.assertRaises(StreamBlockValidationError):
             field.stream_block.clean([])
@@ -452,7 +481,6 @@ class TestRequiredStreamField(TestCase):
         field = StreamField(
             [("paragraph", blocks.CharBlock())],
             blank=True,
-            use_json_field=self.use_json_field,
         )
         self.assertFalse(field.stream_block.required)
         field.stream_block.clean([])  # no validation error on empty stream
@@ -464,35 +492,21 @@ class TestRequiredStreamField(TestCase):
                 required = True
 
         # passing a block instance
-        field = StreamField(
-            MyStreamBlock(), blank=True, use_json_field=self.use_json_field
-        )
+        field = StreamField(MyStreamBlock(), blank=True)
         self.assertFalse(field.stream_block.required)
         field.stream_block.clean([])  # no validation error on empty stream
 
-        field = StreamField(
-            MyStreamBlock(required=True), blank=True, use_json_field=self.use_json_field
-        )
+        field = StreamField(MyStreamBlock(required=True), blank=True)
         self.assertFalse(field.stream_block.required)
         field.stream_block.clean([])  # no validation error on empty stream
 
         # passing a block class
-        field = StreamField(
-            MyStreamBlock, blank=True, use_json_field=self.use_json_field
-        )
+        field = StreamField(MyStreamBlock, blank=True)
         self.assertFalse(field.stream_block.required)
         field.stream_block.clean([])  # no validation error on empty stream
 
 
-class TestJSONRequiredStreamField(TestRequiredStreamField):
-    use_json_field = True
-
-
 class TestStreamFieldCountValidation(TestCase):
-    min_max_count_model = MinMaxCountStreamModel
-    block_counts_model = BlockCountsStreamModel
-    use_json_field = False
-
     def setUp(self):
         self.image = Image.objects.create(
             title="Test image", file=get_test_image_file()
@@ -503,14 +517,14 @@ class TestStreamFieldCountValidation(TestCase):
         self.text_body = {"type": "text", "value": "Hello, World!"}
 
     def test_minmax_pass_to_block(self):
-        instance = self.min_max_count_model.objects.create(body=json.dumps([]))
+        instance = JSONMinMaxCountStreamModel.objects.create(body=json.dumps([]))
         internal_block = instance.body.stream_block
 
         self.assertEqual(internal_block.meta.min_num, 2)
         self.assertEqual(internal_block.meta.max_num, 5)
 
     def test_counts_pass_to_block(self):
-        instance = self.block_counts_model.objects.create(body=json.dumps([]))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps([]))
         block_counts = instance.body.stream_block.meta.block_counts
 
         self.assertEqual(block_counts.get("text"), {"min_num": 1})
@@ -520,41 +534,43 @@ class TestStreamFieldCountValidation(TestCase):
     def test_minimum_count(self):
         # Single block should fail validation
         body = [self.rich_text_body]
-        instance = self.min_max_count_model.objects.create(body=json.dumps(body))
+        instance = JSONMinMaxCountStreamModel.objects.create(body=json.dumps(body))
         with self.assertRaises(StreamBlockValidationError) as catcher:
             instance.body.stream_block.clean(instance.body)
         self.assertEqual(
-            catcher.exception.params, {"__all__": ["The minimum number of items is 2"]}
+            catcher.exception.as_json_data(),
+            {"messages": ["The minimum number of items is 2"]},
         )
 
         # 2 blocks okay
         body = [self.rich_text_body, self.text_body]
-        instance = self.min_max_count_model.objects.create(body=json.dumps(body))
+        instance = JSONMinMaxCountStreamModel.objects.create(body=json.dumps(body))
         self.assertTrue(instance.body.stream_block.clean(instance.body))
 
     def test_maximum_count(self):
         # 5 blocks okay
         body = [self.rich_text_body] * 5
-        instance = self.min_max_count_model.objects.create(body=json.dumps(body))
+        instance = JSONMinMaxCountStreamModel.objects.create(body=json.dumps(body))
         self.assertTrue(instance.body.stream_block.clean(instance.body))
 
         # 6 blocks should fail validation
         body = [self.rich_text_body, self.text_body] * 3
-        instance = self.min_max_count_model.objects.create(body=json.dumps(body))
+        instance = JSONMinMaxCountStreamModel.objects.create(body=json.dumps(body))
         with self.assertRaises(StreamBlockValidationError) as catcher:
             instance.body.stream_block.clean(instance.body)
         self.assertEqual(
-            catcher.exception.params, {"__all__": ["The maximum number of items is 5"]}
+            catcher.exception.as_json_data(),
+            {"messages": ["The maximum number of items is 5"]},
         )
 
     def test_block_counts_minimums(self):
-        instance = self.block_counts_model.objects.create(body=json.dumps([]))
+        JSONBlockCountsStreamModel.objects.create(body=json.dumps([]))
 
         # Zero blocks should fail validation (requires one text, one image)
-        instance = self.block_counts_model.objects.create(body=json.dumps([]))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps([]))
         with self.assertRaises(StreamBlockValidationError) as catcher:
             instance.body.stream_block.clean(instance.body)
-        errors = list(catcher.exception.params["__all__"])
+        errors = catcher.exception.as_json_data()["messages"]
         self.assertIn("This field is required.", errors)
         self.assertIn("Text: The minimum number of items is 1", errors)
         self.assertIn("Image: The minimum number of items is 1", errors)
@@ -562,25 +578,25 @@ class TestStreamFieldCountValidation(TestCase):
 
         # One plain text should fail validation
         body = [self.text_body]
-        instance = self.block_counts_model.objects.create(body=json.dumps(body))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps(body))
         with self.assertRaises(StreamBlockValidationError) as catcher:
             instance.body.stream_block.clean(instance.body)
         self.assertEqual(
-            catcher.exception.params,
-            {"__all__": ["Image: The minimum number of items is 1"]},
+            catcher.exception.as_json_data(),
+            {"messages": ["Image: The minimum number of items is 1"]},
         )
 
         # One text, one image should be okay
         body = [self.text_body, self.image_body]
-        instance = self.block_counts_model.objects.create(body=json.dumps(body))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps(body))
         self.assertTrue(instance.body.stream_block.clean(instance.body))
 
     def test_block_counts_maximums(self):
-        instance = self.block_counts_model.objects.create(body=json.dumps([]))
+        JSONBlockCountsStreamModel.objects.create(body=json.dumps([]))
 
         # Base is one text, one image
         body = [self.text_body, self.image_body]
-        instance = self.block_counts_model.objects.create(body=json.dumps(body))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps(body))
         self.assertTrue(instance.body.stream_block.clean(instance.body))
 
         # Two rich text should error
@@ -590,25 +606,25 @@ class TestStreamFieldCountValidation(TestCase):
             self.rich_text_body,
             self.rich_text_body,
         ]
-        instance = self.block_counts_model.objects.create(body=json.dumps(body))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps(body))
 
         with self.assertRaises(StreamBlockValidationError):
             instance.body.stream_block.clean(instance.body)
 
         # Two images should error
         body = [self.text_body, self.image_body, self.image_body]
-        instance = self.block_counts_model.objects.create(body=json.dumps(body))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps(body))
 
         with self.assertRaises(StreamBlockValidationError) as catcher:
             instance.body.stream_block.clean(instance.body)
         self.assertEqual(
-            catcher.exception.params,
-            {"__all__": ["Image: The maximum number of items is 1"]},
+            catcher.exception.as_json_data(),
+            {"messages": ["Image: The maximum number of items is 1"]},
         )
 
         # One text, one rich, one image should be okay
         body = [self.text_body, self.image_body, self.rich_text_body]
-        instance = self.block_counts_model.objects.create(body=json.dumps(body))
+        instance = JSONBlockCountsStreamModel.objects.create(body=json.dumps(body))
         self.assertTrue(instance.body.stream_block.clean(instance.body))
 
     def test_streamfield_count_argument_precedence(self):
@@ -622,7 +638,7 @@ class TestStreamFieldCountValidation(TestCase):
                 block_counts = {"heading": {"max_num": 1}}
 
         # args being picked up from the class definition
-        field = StreamField(TestStreamBlock, use_json_field=self.use_json_field)
+        field = StreamField(TestStreamBlock)
         self.assertEqual(field.stream_block.meta.min_num, 2)
         self.assertEqual(field.stream_block.meta.max_num, 5)
         self.assertEqual(field.stream_block.meta.block_counts["heading"]["max_num"], 1)
@@ -633,7 +649,6 @@ class TestStreamFieldCountValidation(TestCase):
             min_num=3,
             max_num=6,
             block_counts={"heading": {"max_num": 2}},
-            use_json_field=self.use_json_field,
         )
         self.assertEqual(field.stream_block.meta.min_num, 3)
         self.assertEqual(field.stream_block.meta.max_num, 6)
@@ -645,17 +660,10 @@ class TestStreamFieldCountValidation(TestCase):
             min_num=None,
             max_num=None,
             block_counts=None,
-            use_json_field=self.use_json_field,
         )
         self.assertIsNone(field.stream_block.meta.min_num)
         self.assertIsNone(field.stream_block.meta.max_num)
         self.assertIsNone(field.stream_block.meta.block_counts)
-
-
-class TestJSONStreamFieldCountValidation(TestStreamFieldCountValidation):
-    min_max_count_model = JSONMinMaxCountStreamModel
-    block_counts_model = JSONBlockCountsStreamModel
-    use_json_field = True
 
 
 class TestJSONStreamField(TestCase):
@@ -667,14 +675,11 @@ class TestJSONStreamField(TestCase):
         )
 
     def test_internal_type(self):
-        text = StreamField([("paragraph", blocks.CharBlock())], use_json_field=False)
-        json = StreamField([("paragraph", blocks.CharBlock())], use_json_field=True)
-
-        self.assertEqual(text.get_internal_type(), "TextField")
+        json = StreamField([("paragraph", blocks.CharBlock())])
         self.assertEqual(json.get_internal_type(), "JSONField")
 
     def test_json_body_equals_to_text_body(self):
-        instance_text = StreamModel.objects.create(
+        instance_text = JSONStreamModel.objects.create(
             body=json.dumps([{"type": "text", "value": "foo"}]),
         )
         self.assertEqual(
@@ -698,3 +703,351 @@ class TestJSONStreamField(TestCase):
         instance = JSONStreamModel.objects.filter(body__contains=value).first()
         self.assertIsNotNone(instance)
         self.assertEqual(instance.id, self.instance.id)
+
+
+class TestStreamFieldPickleSupport(TestCase):
+    def setUp(self):
+        # Find root page
+        self.root_page = Page.objects.get(id=2)
+
+    def test_pickle_support(self):
+        stream_page = StreamPage(title="stream page", body=[("text", "hello")])
+        self.root_page.add_child(instance=stream_page)
+
+        # check that page can be serialized / deserialized
+        serialized = pickle.dumps(stream_page)
+        deserialized = pickle.loads(serialized)
+
+        # check that serialized page can be serialized / deserialized again
+        serialized2 = pickle.dumps(deserialized)
+        deserialized2 = pickle.loads(serialized2)
+
+        # check that page data is not corrupted
+        self.assertEqual(stream_page.body, deserialized.body)
+        self.assertEqual(stream_page.body, deserialized2.body)
+
+
+class TestGetBlockByContentPath(TestCase):
+    def setUp(self):
+        self.page = StreamPage(
+            title="Test page",
+            body=[
+                {"id": "123", "type": "text", "value": "Hello world"},
+                {
+                    "id": "234",
+                    "type": "product",
+                    "value": {"name": "Cuddly toy", "price": "$9.95"},
+                },
+                {
+                    "id": "345",
+                    "type": "books",
+                    "value": [
+                        {"id": "111", "type": "author", "value": "Charles Dickens"},
+                        {"id": "222", "type": "title", "value": "Great Expectations"},
+                    ],
+                },
+                {
+                    "id": "456",
+                    "type": "title_list",
+                    "value": [
+                        {"id": "111", "type": "item", "value": "Barnaby Rudge"},
+                        {"id": "222", "type": "item", "value": "A Tale of Two Cities"},
+                    ],
+                },
+            ],
+        )
+
+    def test_get_block_by_content_path(self):
+        field = self.page._meta.get_field("body")
+
+        # top-level blocks
+        bound_block = field.get_block_by_content_path(self.page.body, ["123"])
+        self.assertEqual(bound_block.value, "Hello world")
+        self.assertEqual(bound_block.block.name, "text")
+        bound_block = field.get_block_by_content_path(self.page.body, ["234"])
+        self.assertEqual(bound_block.block.name, "product")
+        bound_block = field.get_block_by_content_path(self.page.body, ["999"])
+        self.assertIsNone(bound_block)
+
+        # StructBlock children
+        bound_block = field.get_block_by_content_path(self.page.body, ["234", "name"])
+        self.assertEqual(bound_block.value, "Cuddly toy")
+        bound_block = field.get_block_by_content_path(self.page.body, ["234", "colour"])
+        self.assertIsNone(bound_block)
+
+        # StreamBlock children
+        bound_block = field.get_block_by_content_path(self.page.body, ["345", "111"])
+        self.assertEqual(bound_block.value, "Charles Dickens")
+        bound_block = field.get_block_by_content_path(self.page.body, ["345", "999"])
+        self.assertIsNone(bound_block)
+
+        # ListBlock children
+        bound_block = field.get_block_by_content_path(self.page.body, ["456", "111"])
+        self.assertEqual(bound_block.value, "Barnaby Rudge")
+        bound_block = field.get_block_by_content_path(self.page.body, ["456", "999"])
+        self.assertIsNone(bound_block)
+
+
+class TestConstructStreamFieldFromLookup(TestCase):
+    def test_construct_block_list_from_lookup(self):
+        field = StreamField(
+            [
+                ("heading", 0),
+                ("paragraph", 1),
+                ("button", 3),
+            ],
+            block_lookup={
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.RichTextBlock", [], {}),
+                2: ("wagtail.blocks.PageChooserBlock", [], {}),
+                3: (
+                    "wagtail.blocks.StructBlock",
+                    [
+                        [
+                            ("page", 2),
+                            ("link_text", 0),
+                        ]
+                    ],
+                    {},
+                ),
+            },
+        )
+        stream_block = field.stream_block
+        self.assertIsInstance(stream_block, blocks.StreamBlock)
+        self.assertEqual(len(stream_block.child_blocks), 3)
+
+        heading_block = stream_block.child_blocks["heading"]
+        self.assertIsInstance(heading_block, blocks.CharBlock)
+        self.assertTrue(heading_block.required)
+        self.assertEqual(heading_block.name, "heading")
+
+        paragraph_block = stream_block.child_blocks["paragraph"]
+        self.assertIsInstance(paragraph_block, blocks.RichTextBlock)
+        self.assertEqual(paragraph_block.name, "paragraph")
+
+        button_block = stream_block.child_blocks["button"]
+        self.assertIsInstance(button_block, blocks.StructBlock)
+        self.assertEqual(button_block.name, "button")
+        self.assertEqual(len(button_block.child_blocks), 2)
+        page_block = button_block.child_blocks["page"]
+        self.assertIsInstance(page_block, blocks.PageChooserBlock)
+        link_text_block = button_block.child_blocks["link_text"]
+        self.assertIsInstance(link_text_block, blocks.CharBlock)
+        self.assertEqual(link_text_block.name, "link_text")
+
+    def test_construct_top_level_block_from_lookup(self):
+        field = StreamField(
+            4,
+            block_lookup={
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.RichTextBlock", [], {}),
+                2: ("wagtail.blocks.PageChooserBlock", [], {}),
+                3: (
+                    "wagtail.blocks.StructBlock",
+                    [
+                        [
+                            ("page", 2),
+                            ("link_text", 0),
+                        ]
+                    ],
+                    {},
+                ),
+                4: (
+                    "wagtail.blocks.StreamBlock",
+                    [
+                        [
+                            ("heading", 0),
+                            ("paragraph", 1),
+                            ("button", 3),
+                        ]
+                    ],
+                    {},
+                ),
+            },
+        )
+        stream_block = field.stream_block
+        self.assertIsInstance(stream_block, blocks.StreamBlock)
+        self.assertEqual(len(stream_block.child_blocks), 3)
+
+        heading_block = stream_block.child_blocks["heading"]
+        self.assertIsInstance(heading_block, blocks.CharBlock)
+        self.assertTrue(heading_block.required)
+        self.assertEqual(heading_block.name, "heading")
+
+        paragraph_block = stream_block.child_blocks["paragraph"]
+        self.assertIsInstance(paragraph_block, blocks.RichTextBlock)
+        self.assertEqual(paragraph_block.name, "paragraph")
+
+        button_block = stream_block.child_blocks["button"]
+        self.assertIsInstance(button_block, blocks.StructBlock)
+        self.assertEqual(button_block.name, "button")
+        self.assertEqual(len(button_block.child_blocks), 2)
+        page_block = button_block.child_blocks["page"]
+        self.assertIsInstance(page_block, blocks.PageChooserBlock)
+        link_text_block = button_block.child_blocks["link_text"]
+        self.assertIsInstance(link_text_block, blocks.CharBlock)
+        self.assertEqual(link_text_block.name, "link_text")
+
+
+# Used by TestDeconstructStreamFieldWithLookup.test_deconstruct_with_listblock_subclass -
+# needs to be a module-level definition so that the path returned from deconstruct is valid
+class BulletListBlock(blocks.ListBlock):
+    def __init__(self, **kwargs):
+        super().__init__(blocks.CharBlock(required=True), **kwargs)
+
+
+class TestDeconstructStreamFieldWithLookup(TestCase):
+    def test_deconstruct(self):
+        class ButtonBlock(blocks.StructBlock):
+            page = blocks.PageChooserBlock()
+            link_text = blocks.CharBlock(required=True)
+
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                ("paragraph", blocks.RichTextBlock()),
+                ("button", ButtonBlock()),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("paragraph", 1),
+                    ("button", 3),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.blocks.RichTextBlock", (), {}),
+                    2: ("wagtail.blocks.PageChooserBlock", (), {}),
+                    3: (
+                        "wagtail.blocks.StructBlock",
+                        [
+                            [
+                                ("page", 2),
+                                ("link_text", 0),
+                            ]
+                        ],
+                        {},
+                    ),
+                },
+            },
+        )
+
+    def test_deconstruct_with_listblock(self):
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                ("bullets", blocks.ListBlock(blocks.CharBlock(required=True))),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("bullets", 1),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.blocks.ListBlock", (0,), {}),
+                },
+            },
+        )
+
+    def test_deconstruct_with_listblock_with_child_block_kwarg(self):
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                (
+                    "bullets",
+                    blocks.ListBlock(child_block=blocks.CharBlock(required=True)),
+                ),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("bullets", 1),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.blocks.ListBlock", (), {"child_block": 0}),
+                },
+            },
+        )
+
+    def test_deconstruct_with_listblock_subclass(self):
+        # See https://github.com/wagtail/wagtail/issues/12164 - unlike StructBlock and StreamBlock,
+        # ListBlock's deconstruct method doesn't reduce subclasses to the base ListBlock class.
+        # Therefore, if a ListBlock subclass defines its own __init__ method with an incompatible
+        # signature to the base ListBlock, this custom signature will be preserved in the result of
+        # deconstruct(), and we cannot rely on the first argument being the child block.
+
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                ("bullets", BulletListBlock()),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("bullets", 1),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.tests.test_streamfield.BulletListBlock", (), {}),
+                },
+            },
+        )

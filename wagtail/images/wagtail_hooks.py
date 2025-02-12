@@ -1,8 +1,6 @@
-from django.urls import include, path, reverse
-from django.utils.html import format_html
-from django.utils.translation import gettext
+from django.urls import include, path, reverse, reverse_lazy
+from django.utils.translation import gettext, ngettext
 from django.utils.translation import gettext_lazy as _
-from django.utils.translation import ngettext
 
 import wagtail.admin.rich_text.editors.draftail.features as draftail_features
 from wagtail import hooks
@@ -59,18 +57,6 @@ def register_images_menu_item():
     )
 
 
-@hooks.register("insert_editor_js")
-def editor_js():
-    return format_html(
-        """
-        <script>
-            window.chooserUrls.imageChooser = '{0}';
-        </script>
-        """,
-        reverse("wagtailimages_chooser:choose"),
-    )
-
-
 @hooks.register("register_rich_text_features")
 def register_image_feature(features):
     # define a handler for converting <embed embedtype="image"> tags into frontend HTML
@@ -97,6 +83,9 @@ def register_image_feature(features):
                 # Keep only images which are from Wagtail.
                 "allowlist": {
                     "id": True,
+                },
+                "chooserUrls": {
+                    "imageChooser": reverse_lazy("wagtailimages_chooser:choose")
                 },
             },
             js=[
@@ -127,6 +116,7 @@ def register_image_operations():
         ("scale", image_operations.ScaleOperation),
         ("jpegquality", image_operations.JPEGQualityOperation),
         ("webpquality", image_operations.WebPQualityOperation),
+        ("avifquality", image_operations.AvifQualityOperation),
         ("format", image_operations.FormatOperation),
         ("bgcolor", image_operations.BackgroundColorOperation),
     ]
@@ -140,7 +130,9 @@ class ImagesSummaryItem(SummaryItem):
         site_name = get_site_for_user(self.request.user)["site_name"]
 
         return {
-            "total_images": get_image_model().objects.count(),
+            "total_images": permission_policy.instances_user_has_any_permission_for(
+                self.request.user, {"add", "change", "delete", "choose"}
+            ).count(),
             "site_name": site_name,
         }
 

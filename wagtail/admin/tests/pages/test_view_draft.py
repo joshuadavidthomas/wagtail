@@ -4,11 +4,11 @@ from django.test import TestCase
 from django.urls import reverse
 
 from wagtail.models import Page
-from wagtail.test.testapp.models import SimplePage, StreamPage
+from wagtail.test.testapp.models import MultiPreviewModesPage, SimplePage, StreamPage
 from wagtail.test.utils import WagtailTestUtils
 
 
-class TestDraftAccess(TestCase, WagtailTestUtils):
+class TestDraftAccess(WagtailTestUtils, TestCase):
     """Tests for the draft view access restrictions."""
 
     def setUp(self):
@@ -48,7 +48,7 @@ class TestDraftAccess(TestCase, WagtailTestUtils):
         # User can view
         self.assertEqual(response.status_code, 200)
 
-    def test_page_without_preview_modes_is_unauthorized(self):
+    def test_page_without_preview_modes_is_unauthorised(self):
         # Login as admin
         self.user = self.login()
 
@@ -57,10 +57,10 @@ class TestDraftAccess(TestCase, WagtailTestUtils):
             reverse("wagtailadmin_pages:view_draft", args=(self.stream_page.id,))
         )
 
-        # Unauthorized response (because this page type has previewing disabled)
+        # Unauthorised response (because this page type has previewing disabled)
         self.assertRedirects(response, "/admin/")
 
-    def test_draft_access_unauthorized(self):
+    def test_draft_access_unauthorised(self):
         """Test that user without edit/publish permission can't view draft."""
         self.login(username="bob", password="password")
 
@@ -72,7 +72,7 @@ class TestDraftAccess(TestCase, WagtailTestUtils):
         # User gets redirected to the home page
         self.assertEqual(response.status_code, 302)
 
-    def test_draft_access_authorized(self):
+    def test_draft_access_authorised(self):
         """Test that user with edit permission can view draft."""
         # give user the permission to edit page
         user = get_user_model().objects.get(email="bob@example.com")
@@ -100,3 +100,46 @@ class TestDraftAccess(TestCase, WagtailTestUtils):
             HTTP_USER_AGENT="EvilHacker",
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_show_edit_link_in_userbar(self):
+        self.login()
+        response = self.client.get(
+            reverse("wagtailadmin_pages:view_draft", args=(self.child_page.id,))
+        )
+        # Should show edit link in the userbar
+        # https://github.com/wagtail/wagtail/issues/10002
+        self.assertContains(response, "Edit this page")
+        self.assertContains(
+            response, reverse("wagtailadmin_pages:edit", args=(self.child_page.id,))
+        )
+
+    def test_preview_modes(self):
+        """
+        Test that the preview_modes are respected when viewing a draft.
+        """
+        # Create a page with multiple preview modes
+        page = MultiPreviewModesPage(title="multi preview modes page")
+        self.root_page.add_child(instance=page)
+
+        # Login as admin
+        self.user = self.login()
+
+        # Test using explicit preview mode parameter
+        for mode, label in page.preview_modes:
+            with self.subTest(mode=mode, label=label):
+                response = self.client.get(
+                    reverse("wagtailadmin_pages:view_draft", args=(page.id,)),
+                    {"mode": mode},
+                )
+                # Ensure the correct template is used
+                self.assertEqual(response.status_code, 200)
+                preview_template = page.preview_templates[mode]
+                self.assertTemplateUsed(response, preview_template)
+
+        # Test default preview mode with no parameter
+        response = self.client.get(
+            reverse("wagtailadmin_pages:view_draft", args=(page.id,)),
+        )
+        self.assertEqual(response.status_code, 200)
+        preview_template = page.preview_templates[page.default_preview_mode]
+        self.assertTemplateUsed(response, preview_template)

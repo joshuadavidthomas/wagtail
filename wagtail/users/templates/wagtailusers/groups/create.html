@@ -1,43 +1,26 @@
-{% extends "wagtailadmin/base.html" %}
-{% load wagtailusers_tags wagtailimages_tags wagtailadmin_tags i18n %}
+{% extends "wagtailadmin/generic/create.html" %}
+{% load wagtailusers_tags i18n wagtailadmin_tags %}
 
-{% block titletag %}{% trans "Add group" %}{% endblock %}
+{% block form_content %}
+    {% block fields %}
+        {% comment %}
+            This block is not documented, but developers might assume its existence
+            based on the docs for custom user forms.
+        {% endcomment %}
 
-{% block extra_css %}
-    {{ block.super }}
+        {% panel id="name" heading=form.name.label id_for_label=form.name.id_for_label is_required=True %}
+            {% formattedfield field=form.name show_label=False %}
+        {% endpanel %}
 
-    {{ form_media.css }}
-{% endblock %}
+        <div class="w-form-width">
+            {# This block is documented in the docs for customizing group views #}
+            {% block extra_fields %}{% endblock extra_fields %}
 
-{% block content %}
+            {% format_permissions permission_bound_field=form.permissions %}
 
-    {% trans "Add group" as add_group_str %}
-    {% include "wagtailadmin/shared/header.html" with title=add_group_str icon="group" only %}
-
-    <div class="nice-padding">
-        <form action="{% url 'wagtailusers_groups:add' %}" method="POST" novalidate>
-            {% csrf_token %}
-
-            <ul class="fields">
-                {% block fields %}
-                    {% include "wagtailadmin/shared/field_as_li.html" with field=form.name %}
-                    {% block extra_fields %}{% endblock extra_fields %}
-                {% endblock fields %}
-                <li>
-                    {% format_permissions permission_bound_field=form.permissions %}
-                </li>
-                {% for panel in permission_panels %}
-                    <li>
-                        {{ panel.as_admin_panel }}
-                    </li>
-                {% endfor %}
-                <li><input type="submit" value='{% trans "Add group" %}' class="button" /></li>
-            </ul>
-        </form>
-    </div>
-{% endblock %}
-
-{% block extra_js %}
-    {{ block.super }}
-    {% include "wagtailusers/groups/includes/group_form_js.html" %}
+            {% for panel in permission_panels %}
+                {{ panel.as_admin_panel }}
+            {% endfor %}
+        </div>
+    {% endblock %}
 {% endblock %}

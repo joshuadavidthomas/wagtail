@@ -1,11 +1,12 @@
 @use 'sass:color';
 @use 'sass:map';
+@use '../tools' as *;
 // Help text formatters
 .help-block {
   padding: 1em;
   margin: 1em 0;
   clear: both;
-  color: $color-text-base;
+  color: theme('colors.grey.600');
 
   p {
     margin-top: 0;
@@ -16,12 +17,13 @@
   }
 
   a {
-    color: theme('colors.secondary.DEFAULT');
+    color: theme('colors.secondary.400');
     text-decoration: underline;
     text-decoration-thickness: 2px;
     text-underline-offset: 3px;
 
     &:hover {
+      color: theme('colors.secondary.600');
       text-decoration: none;
     }
   }
@@ -35,7 +37,7 @@
   position: relative;
 
   .icon {
-    @include svg-icon(1.25rem);
+    @include svg-icon(1rem);
     position: absolute;
     inset-inline-start: 1.125rem;
     top: 0.8125rem;

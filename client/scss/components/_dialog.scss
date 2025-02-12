@@ -1,4 +1,8 @@
+@use '../tools' as *;
+
 .w-dialog {
+  --w-dialog-close-icon-color: theme('colors.icon-primary');
+
   position: fixed;
   display: flex;
   inset-inline-start: 0;
@@ -18,18 +22,17 @@
     inset-inline-end: 0;
     bottom: 0;
     top: 0;
-    opacity: theme('opacity.40');
-    background: theme('colors.black.DEFAULT');
+    opacity: theme('opacity.80');
+    background: theme('colors.black-50');
   }
 
   &__box {
     width: 100%;
     position: relative;
     margin: auto;
-    overflow: hidden;
     max-width: theme('maxWidth.2xl');
     z-index: theme('zIndex.dialog');
-    background: theme('colors.white.DEFAULT');
+    background: theme('colors.surface-page');
     box-shadow: theme('boxShadow.DEFAULT');
     border-radius: theme('borderRadius.md');
     animation: theme('animation.fade-in');
@@ -37,7 +40,7 @@
     @include media-breakpoint-up(sm) {
       width: 600px;
     }
-    @media (forced-colors: $media-forced-colours) {
+    @media (forced-colors: active) {
       border: 5px solid currentColor;
     }
   }
@@ -58,7 +61,7 @@
   &__close-icon {
     width: theme('spacing.4');
     height: theme('spacing.4');
-    color: theme('colors.grey.600');
+    color: var(--w-dialog-close-icon-color, #{theme('colors.icon-primary')});
   }
 
   &__content {
@@ -83,7 +86,7 @@
     display: none;
     width: theme('spacing.5');
     height: theme('spacing.5');
-    color: theme('colors.primary.DEFAULT');
+    color: theme('colors.icon-primary');
     top: theme('spacing.[0.5]');
     transform: translateY(theme('spacing.2'));
     inset-inline-start: calc(0 - theme('spacing.10'));
@@ -107,8 +110,10 @@
     display: flex;
     align-items: center;
     padding: theme('spacing.5');
+    border-start-start-radius: theme('borderRadius.md');
+    border-start-end-radius: theme('borderRadius.md');
 
-    @media (forced-colors: $media-forced-colours) {
+    @media (forced-colors: active) {
       border-bottom: 1px solid currentColor;
     }
 
@@ -133,6 +138,10 @@
     }
   }
 
+  &--message {
+    --w-dialog-close-icon-color: theme('colors.grey.600');
+  }
+
   &__message-icon {
     width: theme('spacing.5');
     height: theme('spacing.5');
@@ -148,5 +157,19 @@
 
   &__message-description {
     margin-bottom: 0;
+  }
+}
+
+// Variant of the dialog which allows viewing other page content.
+.w-dialog--floating {
+  pointer-events: none;
+
+  .w-dialog__box {
+    pointer-events: auto;
+    box-shadow: theme('boxShadow.md');
+  }
+
+  .w-dialog__overlay {
+    display: none;
   }
 }

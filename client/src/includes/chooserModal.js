@@ -1,7 +1,7 @@
-/* eslint-disable max-classes-per-file */
+/* global ModalWorkflow */
+
 import $ from 'jquery';
 import { initTabs } from './tabs';
-import { initTooltips } from './initTooltips';
 import { gettext } from '../utils/gettext';
 
 const validateCreationForm = (form) => {
@@ -20,14 +20,19 @@ const validateCreationForm = (form) => {
         }
         const errorElement = document.createElement('p');
         errorElement.classList.add('error-message');
-        errorElement.innerHTML = gettext('This field is required.');
+        errorElement.textContent = gettext('This field is required.');
         errors.appendChild(errorElement);
       }
     }
   });
   if (hasErrors) {
-    // eslint-disable-next-line no-undef
-    setTimeout(cancelSpinner, 500);
+    setTimeout(() => {
+      // clear any loading state on progress buttons
+      const attr = 'data-w-progress-loading-value';
+      form.querySelectorAll(`[${attr}~="true"]`).forEach((element) => {
+        element.removeAttribute(attr);
+      });
+    }, 500);
   }
   return !hasErrors;
 };
@@ -83,7 +88,7 @@ const initPrefillTitleFromFilename = (
         parseInt(titleWidget.attr('maxLength') || '0', 10) || null;
       const data = { title: filename.replace(/\.[^.]+$/, '') };
 
-      // allow an event handler to customise data or call event.preventDefault to stop any title pre-filling
+      // allow an event handler to customize data or call event.preventDefault to stop any title pre-filling
       const form = fileWidget.closest('form').get(0);
 
       if (eventName) {
@@ -227,11 +232,22 @@ class ChooserModalOnloadHandlerFactory {
     // Reinitialize tabs to hook up tab event listeners in the modal
     if (this.modalHasTabs(modal)) initTabs();
 
-    // Reinitialise any tooltips
-    initTooltips();
+    this.updateMultipleChoiceSubmitEnabledState(modal);
+    $('[data-multiple-choice-select]', containerElement).on('change', () => {
+      this.updateMultipleChoiceSubmitEnabledState(modal);
+    });
   }
 
-  // eslint-disable-next-line class-methods-use-this
+  updateMultipleChoiceSubmitEnabledState(modal) {
+    // update the enabled state of the multiple choice submit button depending on whether
+    // any items have been selected
+    if ($('[data-multiple-choice-select]:checked', modal.body).length) {
+      $('[data-multiple-choice-submit]', modal.body).removeAttr('disabled');
+    } else {
+      $('[data-multiple-choice-submit]', modal.body).attr('disabled', true);
+    }
+  }
+
   modalHasTabs(modal) {
     return $('[data-tabs]', modal.body).length;
   }
@@ -282,6 +298,8 @@ class ChooserModalOnloadHandlerFactory {
     this.initSearchController(modal);
     this.ajaxifyLinks(modal, modal.body);
     this.ajaxifyCreationForm(modal);
+    // Set up submissions of the "choose multiple items" form to open in the modal.
+    modal.ajaxifyForm($('form[data-multiple-choice-form]', modal.body));
   }
 
   onLoadChosenStep(modal, jsonData) {
@@ -315,6 +333,44 @@ class ChooserModalOnloadHandlerFactory {
 const chooserModalOnloadHandlers =
   new ChooserModalOnloadHandlerFactory().getOnLoadHandlers();
 
+class ChooserModal {
+  onloadHandlers = chooserModalOnloadHandlers;
+  chosenResponseName = 'chosen'; // identifier for the ModalWorkflow response that indicates an item was chosen
+
+  constructor(baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getURL(opts) {
+    return this.baseUrl;
+  }
+
+  getURLParams(opts) {
+    const urlParams = {};
+    if (opts.multiple) {
+      urlParams.multiple = 1;
+    }
+    if (opts.linkedFieldFilters) {
+      Object.assign(urlParams, opts.linkedFieldFilters);
+    }
+    return urlParams;
+  }
+
+  open(opts, callback) {
+    ModalWorkflow({
+      url: this.getURL(opts || {}),
+      urlParams: this.getURLParams(opts || {}),
+      onload: this.onloadHandlers,
+      responses: {
+        [this.chosenResponseName]: (result) => {
+          callback(result);
+        },
+      },
+    });
+  }
+}
+
 export {
   validateCreationForm,
   submitCreationForm,
@@ -322,4 +378,5 @@ export {
   SearchController,
   ChooserModalOnloadHandlerFactory,
   chooserModalOnloadHandlers,
+  ChooserModal,
 };

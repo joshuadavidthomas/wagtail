@@ -9,11 +9,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2015-08-26 14:04+0000\n"
-"Last-Translator: Stein Strindhaug <stein.strindhaug@gmail.com>, "
-"2016,2018-2019\n"
-"Language-Team: Norwegian Bokmål (http://www.transifex.com/torchbox/wagtail/"
+"Last-Translator: Eirik Krogstad <eirikkr@gmail.com>, 2015\n"
+"Language-Team: Norwegian Bokmål (http://app.transifex.com/torchbox/wagtail/"
 "language/nb/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -24,8 +23,22 @@ msgstr ""
 msgid "Wagtail search promotions"
 msgstr "Wagtail-søkepromotering"
 
+msgid "Search term(s)/phrase"
+msgstr "Søkeord/-frase"
+
+msgid ""
+"Enter the full search string to match. An exact match is required for your "
+"Promoted Results to be displayed, wildcards are NOT allowed."
+msgstr ""
+"Skriv inn fullstendig søkestreng som skal gi treff. Eksakt samsvar er "
+"nødvendig for at ditt forfremmede resultat skal vises, jokertegn er ikke "
+"tillatt."
+
 msgid "Please specify at least one recommendation for this search term."
 msgstr "Vennligst spesifiser minst en anbefaling for dette søkeordet."
+
+msgid "Query Daily Hits"
+msgstr "Daglige søketreff"
 
 msgid "page"
 msgstr "side"
@@ -36,21 +49,9 @@ msgstr "beskrivelse"
 msgid "search promotion"
 msgstr "søkepromotering"
 
-msgid "Add search promotion"
-msgstr "Legg til søkepromotering"
-
-msgid "Add search pick"
-msgstr "Legg til søkevalg"
-
-msgid "Save"
-msgstr "Lagre"
-
 #, python-format
 msgid "Delete %(query)s"
 msgstr "Slett %(query)s"
-
-msgid "Delete"
-msgstr "Slett"
 
 msgid ""
 "Are you sure you want to delete all promoted results for this search term?"
@@ -58,48 +59,20 @@ msgstr ""
 "Er du sikker på at du vil slette alle forfremmede resultater for dette "
 "søkeordet?"
 
-msgid "Yes, delete"
-msgstr "Ja, slett"
-
-#, python-format
-msgid "Editing %(query)s"
-msgstr "Endrer %(query)s"
-
-msgid "Editing"
-msgstr "Endrer"
-
 msgid "Move up"
 msgstr "Flytt opp"
 
 msgid "Move down"
 msgstr "Flytt ned"
 
+msgid "Drag"
+msgstr "Dra"
+
+msgid "Delete"
+msgstr "Slett"
+
 msgid "Promoted search results"
 msgstr "Forfremmede søkeresultater"
-
-msgid "Add recommended page"
-msgstr "Legg til anbefalt side"
-
-msgid "Search Terms"
-msgstr "Søkeord"
-
-msgid "Add new promoted result"
-msgstr "Legg til nytt forfremmet resultat"
-
-msgid "Search term(s)"
-msgstr "Søkeord"
-
-msgid "Promoted results"
-msgstr "Forfremmede resultater"
-
-msgid "Views (past week)"
-msgstr "Visninger (siste uke)"
-
-msgid "Edit this promotion"
-msgstr "Rediger denne promoteringen"
-
-msgid "None"
-msgstr "Ingen"
 
 #, python-format
 msgid "Sorry, no promoted results match \"<em>%(query_string)s</em>\""
@@ -109,28 +82,61 @@ msgstr ""
 
 #, python-format
 msgid ""
-"No promoted results have been created. Why not <a href="
-"\"%(wagtailsearchpromotions_add_url)s\">add one</a>?"
+"No promoted results have been created. Why not <a "
+"href=\"%(wagtailsearchpromotions_add_url)s\">add one</a>?"
 msgstr ""
-"Ingen forfremmede resultater har blitt opprettet. Hvorfor ikke <a href="
-"\"%(wagtailsearchpromotions_add_url)s\">legge til et</a>?"
+"Ingen forfremmede resultater har blitt opprettet. Hvorfor ikke <a "
+"href=\"%(wagtailsearchpromotions_add_url)s\">legge til et</a>?"
 
-msgid "Search promoted results"
-msgstr "Søk i forfremmede resultater"
+msgid "Popular search terms"
+msgstr "Populære søkeord"
 
-#, python-brace-format
-msgid "Editor's picks for '{0}' created."
-msgstr "Redaktørvalg for \"{0}\" er opprettet."
+msgid "Search"
+msgstr "Søk"
 
-msgid "Edit"
-msgstr "Endre"
+msgid "Terms"
+msgstr "Søkeord"
+
+msgid "Views (past week)"
+msgstr "Visninger (siste uke)"
+
+msgid "No results found"
+msgstr "Ingen resultater funnet"
+
+msgid "Choose from popular search terms"
+msgstr "Velg blant populære søkeord"
+
+msgid "External link"
+msgstr "Ekstern lenke"
+
+msgid "None"
+msgstr "Ingen"
+
+msgid "Date"
+msgstr "Dato"
+
+msgid "Search term(s)"
+msgstr "Søkeord"
+
+msgid "Add new promoted result"
+msgstr "Legg til nytt forfremmet resultat"
+
+msgid "Promoted results"
+msgstr "Forfremmede resultater"
+
+msgid "Promoted search result"
+msgstr "Forfremmet søkeresultat"
+
+#, python-format
+msgid "Editor's picks for '%(query)s' created."
+msgstr "Redaktørvalg for \"%(query)s\" er opprettet."
 
 msgid "Recommendations have not been created due to errors"
 msgstr "Anbefalinger kunne ikke opprettes grunnet feil"
 
-#, python-brace-format
-msgid "Editor's picks for '{0}' updated."
-msgstr "Redaktørvalg for \"{0}\" oppdatert."
+#, python-format
+msgid "Editor's picks for '%(query)s' updated."
+msgstr "Redaktørvalg for \"%(query)s\" oppdatert."
 
 msgid "Recommendations have not been saved due to errors"
 msgstr "Anbefalinger kunne ikke lagres grunnet feil"

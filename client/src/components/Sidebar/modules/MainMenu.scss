@@ -1,4 +1,6 @@
-// stylelint-disable declaration-no-important
+@use '../../../../scss/tools' as *;
+@use '../../../../scss/settings' as *;
+
 .sidebar-main-menu {
   overflow: auto;
   overflow-x: hidden;
@@ -23,16 +25,18 @@
 
   > ul > li > a {
     // Need !important to override body.ready class
+    // stylelint-disable-next-line declaration-no-important
     transition: padding $menu-transition-duration ease !important;
+  }
 
-    .menuitem-label {
-      transition: opacity $menu-transition-duration ease;
-    }
+  .menuitem-label {
+    transition: opacity $menu-transition-duration ease;
   }
 }
 
 .sidebar-footer {
-  @apply w-bg-primary w-mt-auto;
+  @apply w-bg-surface-menus w-mt-auto;
+  // stylelint-disable-next-line declaration-no-important
   transition: width $menu-transition-duration ease !important; // Override body.ready
 
   > ul,
@@ -57,12 +61,6 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-
-      &:before {
-        font-size: 1rem;
-        margin-inline-end: 0.5em;
-        vertical-align: -10%;
-      }
     }
   }
 
@@ -71,10 +69,16 @@
 
     &-toggle {
       @apply w-pl-2 w-inline-flex w-justify-between w-w-full w-translate-x-0 w-transition w-duration-150;
+
+      min-width: 0;
+
+      .icon {
+        flex-shrink: 0;
+      }
     }
 
     &-label {
-      @apply w-text-white w-text-left w-overflow-hidden w-whitespace-nowrap w-text-ellipsis;
+      @apply w-text-text-label-menus-default w-text-left w-overflow-hidden w-whitespace-nowrap w-text-ellipsis;
     }
   }
 

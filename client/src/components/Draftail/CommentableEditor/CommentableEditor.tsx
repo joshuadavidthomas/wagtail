@@ -19,7 +19,6 @@ import {
   RichUtils,
   SelectionState,
 } from 'draft-js';
-import type { DraftEditorLeaf } from 'draft-js/lib/DraftEditorLeaf.react';
 import { filterInlineStyles } from 'draftjs-filters';
 import React, {
   MutableRefObject,
@@ -36,6 +35,9 @@ import type { CommentApp } from '../../CommentApp/main';
 import { gettext } from '../../../utils/gettext';
 
 import Icon from '../../Icon/Icon';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const DraftEditorLeaf = require('draft-js/lib/DraftEditorLeaf.react');
 
 const { isOptionKeyCommand } = KeyBindingUtil;
 
@@ -333,6 +335,9 @@ function getCommentControl(
           </>
         }
         onClick={() => {
+          // Open the comments side panel
+          commentApp.activate();
+
           onChange(
             addNewComment(getEditorState(), fieldNode, commentApp, contentPath),
           );
@@ -415,7 +420,8 @@ export function findLeastCommonCommentId(block: ContentBlock, offset: number) {
   const styleCount = styles.count();
   if (styleCount === 0) {
     return null;
-  } else if (styleCount > 1) {
+  }
+  if (styleCount > 1) {
     // We're dealing with overlapping comments.
     // Find the least frequently occurring style and use that - this isn't foolproof, but in
     // most cases should ensure that all comments have at least one clickable section. This
@@ -452,7 +458,7 @@ export function findLeastCommonCommentId(block: ContentBlock, offset: number) {
 
 interface DecoratorProps {
   contentState: ContentState;
-  children?: Array<DraftEditorLeaf>;
+  children?: Array<typeof DraftEditorLeaf>;
 }
 
 function getCommentDecorator(commentApp: CommentApp) {
@@ -464,7 +470,6 @@ function getCommentDecorator(commentApp: CommentApp) {
       return null;
     }
 
-    const enabled = useSelector(commentApp.selectors.selectEnabled);
     const blockKey: BlockKey = children[0].props.block.getKey();
     const start: number = children[0].props.start;
 
@@ -486,10 +491,6 @@ function getCommentDecorator(commentApp: CommentApp) {
       }
       return undefined; // eslint demands an explicit return here
     }, [commentId, annotationNode, blockKey]);
-
-    if (!enabled) {
-      return children;
-    }
 
     const onClick = () => {
       // Ensure the comment will appear alongside the current block
@@ -614,12 +615,6 @@ function handleArrowAtContentEnd(
   );
 }
 
-interface ColorConfigProp {
-  standardHighlight: string;
-  overlappingHighlight: string;
-  focusedHighlight: string;
-}
-
 interface CommentableEditorProps {
   commentApp: CommentApp;
   fieldNode: Element;
@@ -628,7 +623,6 @@ interface CommentableEditorProps {
   onSave: (rawContent: RawDraftContentState | null) => void;
   inlineStyles: InlineStyleControl[];
   editorRef: (editor: ReactNode) => void;
-  colorConfig: ColorConfigProp;
   isCommentShortcut: (e: React.KeyboardEvent) => boolean;
   // Unfortunately the EditorPlugin type isn't exported in our version of 'draft-js-plugins-editor'
   plugins?: Record<string, unknown>[];
@@ -643,7 +637,6 @@ function CommentableEditor({
   onSave,
   inlineStyles,
   editorRef,
-  colorConfig: { standardHighlight, overlappingHighlight, focusedHighlight },
   isCommentShortcut,
   plugins = [],
   controls = [],
@@ -665,7 +658,6 @@ function CommentableEditor({
     [commentApp],
   );
   const comments = useSelector(commentsSelector, shallowEqual);
-  const enabled = useSelector(commentApp.selectors.selectEnabled);
   const focusedId = useSelector(commentApp.selectors.selectFocused);
 
   const ids = useMemo(
@@ -685,7 +677,6 @@ function CommentableEditor({
 
   const previousFocused = usePrevious(focusedId);
   const previousIds = usePrevious(ids);
-  const previousEnabled = usePrevious(enabled);
   useEffect(() => {
     // Only trigger a focus-related rerender if the current focused comment is inside the field, or the previous one was
     const validFocusChange =
@@ -697,7 +688,6 @@ function CommentableEditor({
 
     if (
       !validFocusChange &&
-      previousEnabled === enabled &&
       (previousIds === ids ||
         (previousIds.length === ids.length &&
           previousIds.every((value, index) => value === ids[index])))
@@ -728,7 +718,7 @@ function CommentableEditor({
       ),
     );
     setUniqueStyleId((id) => (id + 1) % 200);
-  }, [focusedId, enabled, inlineStyles, ids, editorState]);
+  }, [focusedId, inlineStyles, ids, editorState]);
 
   useEffect(() => {
     // if there are any comments without annotations, we need to add them to the EditorState
@@ -803,9 +793,7 @@ function CommentableEditor({
         setEditorState(newEditorState);
       }}
       editorState={editorState}
-      controls={
-        enabled ? controls.concat([{ inline: CommentControl }]) : controls
-      }
+      controls={controls.concat([{ inline: CommentControl }])}
       inlineStyles={inlineStyles.concat(commentStyles)}
       plugins={plugins.concat([
         {
@@ -836,8 +824,19 @@ function CommentableEditor({
 
             handleArrowAtContentEnd(getEditorState(), setEditorState, 'RTL');
           },
+          handleDrop: (
+            _: SelectionState,
+            dataTransfer: { data: DataTransfer; types: string[] },
+          ) => {
+            if (dataTransfer.types.includes('application/vnd.wagtail.type'))
+              return 'handled';
+            return undefined;
+          },
           handleKeyCommand: (command: string, state: EditorState) => {
-            if (enabled && command === 'comment') {
+            if (command === 'comment') {
+              // Open the comments side panel
+              commentApp.activate();
+
               const selection = state.getSelection();
               const content = state.getCurrentContent();
               if (selection.isCollapsed()) {
@@ -866,9 +865,6 @@ function CommentableEditor({
             return 'not-handled';
           },
           customStyleFn: (styleSet: DraftInlineStyle) => {
-            if (!enabled) {
-              return undefined;
-            }
             // Use of casting in this function is due to issue #1563 in immutable-js, which causes operations like
             // map and filter to lose type information on the results. It should be fixed in v4: when we upgrade,
             // this casting should be removed
@@ -881,21 +877,13 @@ function CommentableEditor({
               const commentIds = localCommentStyles.map((style) =>
                 getIdForCommentStyle(style as string),
               ) as unknown as Immutable.OrderedSet<number>;
-              let background = standardHighlight;
-              if (focusedId && commentIds.has(focusedId)) {
-                // Use the focused colour if one of the comments is focused
-                background = focusedHighlight;
-                return {
-                  backgroundColor: background,
-                  fontWeight: '700',
-                };
-              } else if (numStyles > 1) {
-                // Otherwise if we're in a region with overlapping comments, use a different colour than usual
-                // to indicate that
-                background = overlappingHighlight;
-              }
+              const isFocused = focusedId && commentIds.has(focusedId);
+
               return {
-                backgroundColor: background,
+                backgroundColor: 'var(--w-color-text-highlight)',
+                outline: isFocused
+                  ? '4px solid var(--w-color-text-highlight)'
+                  : null,
               };
             }
             return undefined;

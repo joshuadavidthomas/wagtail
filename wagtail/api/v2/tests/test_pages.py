@@ -1,15 +1,18 @@
 import collections
 import json
+from io import StringIO
 from unittest import mock
 
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.core import management
+from django.test import TestCase, TransactionTestCase
 from django.test.utils import override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
 from wagtail.api.v2 import signal_handlers
+from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.models import Locale, Page, Site
 from wagtail.models.view_restrictions import BaseViewRestriction
 from wagtail.test.demosite import models
@@ -28,7 +31,11 @@ def get_total_page_count():
     )
 
 
-class TestPageListing(TestCase, WagtailTestUtils):
+class Test10411APIViewSet(PagesAPIViewSet):
+    meta_fields = []
+
+
+class TestPageListing(WagtailTestUtils, TestCase):
     fixtures = ["demosite.json"]
 
     def get_response(self, **params):
@@ -187,10 +194,10 @@ class TestPageListing(TestCase, WagtailTestUtils):
             # Only generic fields available
             self.assertEqual(set(page.keys()), {"id", "meta", "title"})
 
-        self.assertTrue(blog_page_seen, "No blog pages were found in the items")
-        self.assertTrue(event_page_seen, "No event pages were found in the items")
+        self.assertTrue(blog_page_seen, msg="No blog pages were found in the items")
+        self.assertTrue(event_page_seen, msg="No event pages were found in the items")
 
-    def test_non_existant_type_gives_error(self):
+    def test_non_existent_type_gives_error(self):
         response = self.get_response(type="demosite.IDontExist")
         content = json.loads(response.content.decode("UTF-8"))
 
@@ -219,22 +226,6 @@ class TestPageListing(TestCase, WagtailTestUtils):
         self.assertEqual(len(content["items"]), 1)
         self.assertEqual(content["items"][0]["id"], french_homepage.id)
 
-    @override_settings(WAGTAIL_I18N_ENABLED=True)
-    def test_locale_filter_with_search(self):
-        french = Locale.objects.create(language_code="fr")
-        homepage = self.get_homepage()
-        french_homepage = homepage.copy_for_translation(french)
-        french_homepage.get_latest_revision().publish()
-        events_index = Page.objects.get(url_path="/home-page/events-index/")
-        french_events_index = events_index.copy_for_translation(french)
-        french_events_index.get_latest_revision().publish()
-
-        response = self.get_response(locale="fr", search="events")
-        content = json.loads(response.content.decode("UTF-8"))
-
-        self.assertEqual(len(content["items"]), 1)
-        self.assertEqual(content["items"][0]["id"], french_events_index.id)
-
     # TRANSLATION OF FILTER
 
     @override_settings(WAGTAIL_I18N_ENABLED=True)
@@ -249,21 +240,6 @@ class TestPageListing(TestCase, WagtailTestUtils):
 
         self.assertEqual(len(content["items"]), 1)
         self.assertEqual(content["items"][0]["id"], french_homepage.id)
-
-    @override_settings(WAGTAIL_I18N_ENABLED=True)
-    def test_translation_of_filter_with_search(self):
-        french = Locale.objects.create(language_code="fr")
-        homepage = self.get_homepage()
-        french_homepage = homepage.copy_for_translation(french)
-        french_homepage.get_latest_revision().publish()
-
-        response = self.get_response(translation_of=homepage.id, search="home")
-        content = json.loads(response.content.decode("UTF-8"))
-        self.assertEqual(len(content["items"]), 1)
-        self.assertEqual(content["items"][0]["id"], french_homepage.id)
-        response = self.get_response(translation_of=homepage.id, search="gnome")
-        content = json.loads(response.content.decode("UTF-8"))
-        self.assertEqual(len(content["items"]), 0)
 
     # FIELDS
 
@@ -707,6 +683,16 @@ class TestPageListing(TestCase, WagtailTestUtils):
             },
         )
 
+    def test_slug_field_containing_null_bytes_gives_error(self):
+        response = self.get_response(slug="\0")
+        content = json.loads(response.content.decode("UTF-8"))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            content,
+            {"message": "field filter error. null characters are not allowed for slug"},
+        )
+
     # CHILD OF FILTER
 
     def test_child_of_filter(self):
@@ -965,6 +951,71 @@ class TestPageListing(TestCase, WagtailTestUtils):
             content, {"message": "cannot order by 'not_a_field' (unknown field)"}
         )
 
+    def test_random_ordering_with_unknown_field_gives_error(self):
+        response = self.get_response(order=["random,id"])
+        content = json.loads(response.content.decode("UTF-8"))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            content, {"message": "random ordering cannot be combined with other fields"}
+        )
+
+    def test_ordering_by_id_and_slug(self):
+        response = self.get_response(order=["id,slug"])
+        content = json.loads(response.content.decode("UTF-8"))
+
+        page_id_list = self.get_page_id_list(content)
+        expected_order = [
+            2,
+            4,
+            5,
+            6,
+            8,
+            9,
+            10,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+        ]
+        self.assertEqual(page_id_list[:15], expected_order[:15])
+
+    def test_ordering_by_title_and_id_backwards(self):
+        response = self.get_response(order=["title,-id"])
+        content = json.loads(response.content.decode("UTF-8"))
+
+        page_id_list = self.get_page_id_list(content)
+        expected_order = [
+            15,
+            10,
+            6,
+            17,
+            20,
+            13,
+            2,
+            4,
+            9,
+            8,
+            14,
+            12,
+            18,
+            16,
+            5,
+            23,
+            19,
+            22,
+            21,
+        ]
+        self.assertEqual(page_id_list[:5], expected_order[:5])
+
     # LIMIT
 
     def test_limit_only_two_items_returned(self):
@@ -1047,7 +1098,71 @@ class TestPageListing(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(content, {"message": "offset must be a positive integer"})
 
-    # SEARCH
+    # REGRESSION TESTS
+
+    def test_issue_3967(self):
+        # The API crashed whenever the listing view was called without a site configured
+        Site.objects.all().delete()
+        response = self.get_response()
+        self.assertEqual(response.status_code, 200)
+
+    def test_issue_10411(self):
+        # Bug with removing meta fields from API
+        response = self.client.get(reverse("wagtailapi_v2:issue_10411:listing"))
+        self.assertEqual(response.status_code, 200)
+
+
+class TestPageListingSearch(WagtailTestUtils, TransactionTestCase):
+    fixtures = ["demosite.json"]
+
+    def setUp(self):
+        super().setUp()
+        management.call_command(
+            "update_index",
+            backend_name="default",
+            stdout=StringIO(),
+            chunk_size=50,
+        )
+
+    def get_response(self, **params):
+        return self.client.get(reverse("wagtailapi_v2:pages:listing"), params)
+
+    def get_page_id_list(self, content):
+        return [page["id"] for page in content["items"]]
+
+    def get_homepage(self):
+        return Page.objects.get(slug="home-page")
+
+    @override_settings(WAGTAIL_I18N_ENABLED=True)
+    def test_locale_filter_with_search(self):
+        french = Locale.objects.create(language_code="fr")
+        homepage = self.get_homepage()
+        french_homepage = homepage.copy_for_translation(french)
+        french_homepage.get_latest_revision().publish()
+        events_index = Page.objects.get(url_path="/home-page/events-index/")
+        french_events_index = events_index.copy_for_translation(french)
+        french_events_index.get_latest_revision().publish()
+
+        response = self.get_response(locale="fr", search="events")
+        content = json.loads(response.content.decode("UTF-8"))
+
+        self.assertEqual(len(content["items"]), 1)
+        self.assertEqual(content["items"][0]["id"], french_events_index.id)
+
+    @override_settings(WAGTAIL_I18N_ENABLED=True)
+    def test_translation_of_filter_with_search(self):
+        french = Locale.objects.create(language_code="fr")
+        homepage = self.get_homepage()
+        french_homepage = homepage.copy_for_translation(french)
+        french_homepage.get_latest_revision().publish()
+
+        response = self.get_response(translation_of=homepage.id, search="home")
+        content = json.loads(response.content.decode("UTF-8"))
+        self.assertEqual(len(content["items"]), 1)
+        self.assertEqual(content["items"][0]["id"], french_homepage.id)
+        response = self.get_response(translation_of=homepage.id, search="gnome")
+        content = json.loads(response.content.decode("UTF-8"))
+        self.assertEqual(len(content["items"]), 0)
 
     def test_search_for_blog(self):
         response = self.get_response(search="blog")
@@ -1064,6 +1179,14 @@ class TestPageListing(TestCase, WagtailTestUtils):
         page_id_list = self.get_page_id_list(content)
 
         self.assertEqual(set(page_id_list), {16, 18, 19})
+
+    def test_search_with_invalid_type(self):
+        # Check that a 400 error is returned when the type doesn't exist
+        response = self.get_response(type="demosite.InvalidPageType", search="blog")
+        content = json.loads(response.content.decode("UTF-8"))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(content, {"message": "type doesn't exist"})
 
     def test_search_with_filter(self):
         response = self.get_response(
@@ -1133,7 +1256,9 @@ class TestPageListing(TestCase, WagtailTestUtils):
 
     def test_search_operator_and(self):
         response = self.get_response(
-            type="demosite.BlogEntryPage", search="blog again", search_operator="and"
+            type="demosite.BlogEntryPage",
+            search="blog elephants",
+            search_operator="and",
         )
         content = json.loads(response.content.decode("UTF-8"))
 
@@ -1143,7 +1268,7 @@ class TestPageListing(TestCase, WagtailTestUtils):
 
     def test_search_operator_or(self):
         response = self.get_response(
-            type="demosite.BlogEntryPage", search="blog again", search_operator="or"
+            type="demosite.BlogEntryPage", search="blog elephants", search_operator="or"
         )
         content = json.loads(response.content.decode("UTF-8"))
 
@@ -1157,14 +1282,6 @@ class TestPageListing(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-type"], "application/json")
         self.assertEqual(content["meta"]["total_count"], 0)
-
-    # REGRESSION TESTS
-
-    def test_issue_3967(self):
-        # The API crashed whenever the listing view was called without a site configured
-        Site.objects.all().delete()
-        response = self.get_response()
-        self.assertEqual(response.status_code, 200)
 
 
 class TestPageDetail(TestCase):
@@ -1554,6 +1671,60 @@ class TestPageDetail(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(content, {"message": "'title' does not support nested fields"})
 
+    def test_form_fields_on_form_page(self):
+        """
+        Check that adding form_fields will correctly return then in the API response when declared
+        """
+
+        home_page = Page.objects.get(slug="home-page")
+        form_page = home_page.add_child(instance=models.FormPage(title="Contact us"))
+
+        field_1 = models.FormField.objects.create(
+            page=form_page,
+            sort_order=1,
+            label="email",
+            field_type="email",
+        )
+        field_2 = models.FormField.objects.create(
+            page=form_page,
+            sort_order=2,
+            label="message",
+            field_type="multiline",
+            required=True,
+            help_text="<em>please</em> be polite",
+        )
+
+        response = self.get_response(form_page.pk, fields="form_fields")
+        content = json.loads(response.content.decode("UTF-8"))
+
+        self.assertEqual(
+            content["form_fields"],
+            [
+                {
+                    "id": field_1.pk,
+                    "clean_name": "email",
+                    "meta": {"type": "demosite.FormField"},
+                    "label": "email",
+                    "help_text": "",
+                    "required": True,
+                    "field_type": "email",
+                    "choices": "",
+                    "default_value": "",
+                },
+                {
+                    "id": field_2.pk,
+                    "clean_name": "message",
+                    "meta": {"type": "demosite.FormField"},
+                    "label": "message",
+                    "help_text": "<em>please</em> be polite",
+                    "required": True,
+                    "field_type": "multiline",
+                    "choices": "",
+                    "default_value": "",
+                },
+            ],
+        )
+
 
 class TestPageFind(TestCase):
     fixtures = ["demosite.json"]
@@ -1651,7 +1822,7 @@ class TestPageDetailWithStreamField(TestCase):
         self.assertEqual(content["body"][0]["value"], "foo")
         self.assertTrue(content["body"][0]["id"])
 
-    def test_image_block(self):
+    def test_image_chooser_block(self):
         stream_page = self.make_stream_page('[{"type": "image", "value": 1}]')
 
         response_url = reverse("wagtailapi_v2:pages:detail", args=(stream_page.id,))
@@ -1662,7 +1833,7 @@ class TestPageDetailWithStreamField(TestCase):
         self.assertEqual(content["body"][0]["type"], "image")
         self.assertEqual(content["body"][0]["value"], 1)
 
-    def test_image_block_with_custom_get_api_representation(self):
+    def test_image_chooser_block_with_custom_get_api_representation(self):
         stream_page = self.make_stream_page('[{"type": "image", "value": 1}]')
 
         response_url = "{}?extended=1".format(
@@ -1677,6 +1848,19 @@ class TestPageDetailWithStreamField(TestCase):
             content["body"][0]["value"], {"id": 1, "title": "A missing image"}
         )
 
+    def test_image_block(self):
+        stream_page = self.make_stream_page(
+            '[{"type": "image_with_alt", "value": {"image": 1, "alt_text": "Some alt text", "decorative": false}}]'
+        )
+
+        response_url = reverse("wagtailapi_v2:pages:detail", args=(stream_page.id,))
+        response = self.client.get(response_url)
+        content = json.loads(response.content.decode("utf-8"))
+
+        self.assertEqual(content["body"][0]["type"], "image_with_alt")
+        self.assertEqual(content["body"][0]["value"]["image"], 1)
+        self.assertEqual(content["body"][0]["value"]["alt_text"], "Some alt text")
+
 
 @override_settings(
     WAGTAILFRONTENDCACHE={
@@ -1687,36 +1871,50 @@ class TestPageDetailWithStreamField(TestCase):
     },
     WAGTAILAPI_BASE_URL="http://api.example.com",
 )
-@mock.patch("wagtail.contrib.frontend_cache.backends.HTTPBackend.purge")
+@mock.patch("wagtail.contrib.frontend_cache.backends.http.HTTPBackend.purge")
 class TestPageCacheInvalidation(TestCase):
     fixtures = ["demosite.json"]
 
     @classmethod
     def setUpClass(cls):
-        super(TestPageCacheInvalidation, cls).setUpClass()
+        super().setUpClass()
         signal_handlers.register_signal_handlers()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestPageCacheInvalidation, cls).tearDownClass()
+        super().tearDownClass()
         signal_handlers.unregister_signal_handlers()
 
     def test_republish_page_purges(self, purge):
-        Page.objects.get(id=2).specific.save_revision().publish()
+        with self.captureOnCommitCallbacks(execute=True):
+            Page.objects.get(id=2).specific.save_revision().publish()
 
         purge.assert_any_call("http://api.example.com/api/main/pages/2/")
 
     def test_unpublish_page_purges(self, purge):
-        Page.objects.get(id=2).unpublish()
+        with self.captureOnCommitCallbacks(execute=True):
+            Page.objects.get(id=2).unpublish()
 
         purge.assert_any_call("http://api.example.com/api/main/pages/2/")
 
     def test_delete_page_purges(self, purge):
-        Page.objects.get(id=16).delete()
+        with self.captureOnCommitCallbacks(execute=True):
+            Page.objects.get(id=16).delete()
 
         purge.assert_any_call("http://api.example.com/api/main/pages/16/")
 
     def test_save_draft_doesnt_purge(self, purge):
-        Page.objects.get(id=2).specific.save_revision()
+        with self.captureOnCommitCallbacks(execute=True):
+            Page.objects.get(id=2).specific.save_revision()
 
         purge.assert_not_called()
+
+
+class TestPageViewSetSubclassing(PagesAPIViewSet):
+    model = models.BlogEntryPage
+
+    def test_get_queryset(self):
+        self.assertEqual(
+            self.get_queryset().model,
+            models.BlogEntryPage,
+        )

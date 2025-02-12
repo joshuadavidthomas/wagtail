@@ -6,23 +6,24 @@
 # Thiago Cangussu <cng.thg@gmail.com>, 2014
 # Claudemiro Alves Feitosa Neto <dimiro1@gmail.com>, 2015
 # Douglas Miranda <douglasmirandasilva@gmail.com>, 2014
+# Fabio Santos <f4bio.sa@gmail.com>, 2023
 # Gladson <gladsonbrito@gmail.com>, 2014
 # Guilherme Nabanete <neoheartz@gmail.com>, 2016,2019
 # Iuri L. Machado, 2021
+# Iuri L. Machado, 2021
 # Luiz Boaretto <lboaretto@gmail.com>, 2016
-# Luiz Boaretto <lboaretto@gmail.com>, 2016-2018,2021
-# Rodrigo de Almeida Sottomaior Macedo <rmsolucoeseminformatica@protonmail.com>, 2022
+# Luiz Boaretto <lboaretto@gmail.com>, 2016-2018,2021,2024
+# Rodrigo Sottomaior Macedo <sottomaiormacedotec@sottomaiormacedo.tech>, 2022
 # Thiago Cangussu <cangussu.thg@gmail.com>, 2014
 # Thiago Cangussu <cng.thg@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-19 11:54+0000\n"
-"Last-Translator: Rodrigo de Almeida Sottomaior Macedo "
-"<rmsolucoeseminformatica@protonmail.com>, 2022\n"
-"Language-Team: Portuguese (Brazil) (http://www.transifex.com/torchbox/"
+"Last-Translator: Luiz Boaretto <lboaretto@gmail.com>, 2016-2018,2021,2024\n"
+"Language-Team: Portuguese (Brazil) (http://app.transifex.com/torchbox/"
 "wagtail/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -126,6 +127,29 @@ msgstr "Selecione seu fuso horário atual"
 msgid "profile picture"
 msgstr "foto do perfil"
 
+msgid "System default"
+msgstr "Padrão do sistema"
+
+msgid "Light"
+msgstr "Claro"
+
+msgid "Dark"
+msgstr "Escuro"
+
+msgid "admin theme"
+msgstr "Tema admin"
+
+msgid "Default"
+msgstr "Padrão"
+
+msgid "Snug"
+msgstr "Confortável"
+
+#. Translators: "Density" is the term used to describe the amount of space
+#. between elements in the user interface
+msgid "density"
+msgstr "densidade"
+
 msgid "user profile"
 msgstr "Perfil de usuário"
 
@@ -204,9 +228,6 @@ msgstr "Alterar estado"
 msgid "No, don't change state"
 msgstr "Não alterar estado"
 
-msgid "Delete group"
-msgstr "Remover grupo"
-
 #, python-format
 msgid ""
 "The group '%(group_name)s' has <strong>%(group_user_count)s</strong> member."
@@ -232,18 +253,6 @@ msgstr ""
 msgid "Are you sure you want to delete this group?"
 msgstr "Você tem certeza que quer remover este grupo?"
 
-msgid "Add group"
-msgstr "Adicionar grupo"
-
-msgid "Editing"
-msgstr "Editando"
-
-msgid "View users in this group"
-msgstr "Ver usuários neste grupo"
-
-msgid "Save"
-msgstr "Salvar"
-
 msgid "Object permissions"
 msgstr "Permissões de objetos"
 
@@ -258,6 +267,21 @@ msgstr "Alterar"
 
 msgid "Custom permissions"
 msgstr "Permissões personalizadas"
+
+msgid "Toggle all"
+msgstr "Alternar tudo"
+
+msgid "Toggle all add permissions"
+msgstr "Alternar todas as permissões de adição"
+
+msgid "Toggle all change permissions"
+msgstr "Alternar todas as permissões de alteração"
+
+msgid "Toggle all delete permissions"
+msgstr "Alternar todas as permissões de exclusão"
+
+msgid "Toggle all custom permissions"
+msgstr "Alternar todas as permissões personalizadas"
 
 msgid "Other permissions"
 msgstr "Outras permissões"
@@ -277,20 +301,14 @@ msgstr "Desculpe, nenhum grupo coincide com \"%(query)s\""
 
 #, python-format
 msgid ""
-"There are no groups configured. Why not <a href="
-"\"%(wagtailusers_create_group_url)s\">add some</a>?"
+"There are no groups configured. Why not <a "
+"href=\"%(wagtailusers_create_group_url)s\">add some</a>?"
 msgstr ""
-"Não há grupos configurados. Por que não  <a href="
-"\"%(wagtailusers_create_group_url)s\">adicionar alguns</a>?"
-
-msgid "Delete user"
-msgstr "Excluir usuário"
+"Não há grupos configurados. Por que não  <a "
+"href=\"%(wagtailusers_create_group_url)s\">adicionar alguns</a>?"
 
 msgid "Are you sure you want to delete this user?"
 msgstr "Tem certeza que deseja excluir este usuário?"
-
-msgid "Add user"
-msgstr "Adicionar usuário"
 
 msgid "Account"
 msgstr "Conta"
@@ -298,62 +316,23 @@ msgstr "Conta"
 msgid "Roles"
 msgstr "Papéis"
 
-msgid "Users"
-msgstr "Usuários"
-
-msgid "Add a user"
-msgstr "Adicionar um usuário"
-
 msgid "Select all users in listing"
 msgstr "Selecionar todos os usuários da lista"
 
-msgid "Username"
-msgstr "Nome de usuário"
-
-msgid "Level"
-msgstr "Nível"
-
-msgid "Status"
-msgstr "Status"
-
-msgid "Last Login"
-msgstr "Último login"
-
-msgid "Admin"
-msgstr "Admin"
-
-msgid "Active"
-msgstr "Ativo"
-
-msgid "Inactive"
-msgstr "Inativo"
-
-#, python-format
-msgid "There is %(counter)s match"
-msgid_plural "There are %(counter)s matches"
-msgstr[0] "Encontrados %(counter)s resultados"
-msgstr[1] "Encontrados %(counter)s resultados"
-msgstr[2] "Encontrados %(counter)s resultados"
-
-#, python-format
-msgid "Sorry, no users match \"<em>%(query_string)s</em>\""
-msgstr "Desculpe, nenhum usuário coincide com \"<em>%(query_string)s</em>\""
+msgid "Sorry, no users match your query"
+msgstr "Desculpe, nenhum usuário corresponde à sua consulta"
 
 #, python-format
 msgid ""
-"The %(group_name)s group has no users configured. Why not <a href="
-"\"%(wagtailusers_add_url)s\">add some</a>?"
+"There are no users configured. Why not <a "
+"href=\"%(wagtailusers_add_url)s\">add some</a>?"
 msgstr ""
-"O grupo %(group_name)s não tem usuários configurados. Por que não <a href="
-"\"%(wagtailusers_add_url)s\">adicionar alguns</a>?"
+"Não há usuários configurados. Por que não <a "
+"href=\"%(wagtailusers_add_url)s\">adicionar alguns</a>?"
 
 #, python-format
-msgid ""
-"There are no users configured. Why not <a href=\"%(wagtailusers_add_url)s"
-"\">add some</a>?"
-msgstr ""
-"Não há usuários configurados. Por que não <a href=\"%(wagtailusers_add_url)s"
-"\">adicionar alguns</a>?"
+msgid "user %(id)s (deleted)"
+msgstr "usuário%(id)s(excluído)"
 
 msgid "Assign role to selected users"
 msgstr "Atribuir função aos usuários selecionados"
@@ -374,6 +353,15 @@ msgid_plural "%(num_parent_objects)d users have been deleted"
 msgstr[0] "%(num_parent_objects)dusuário foi excluído"
 msgstr[1] "%(num_parent_objects)dusuários foram excluídos"
 msgstr[2] "%(num_parent_objects)dusuários foram excluídos"
+
+msgid "Active"
+msgstr "Ativo"
+
+msgid "Inactive"
+msgstr "Inativo"
+
+msgid "Mark as active"
+msgstr "Marcar como ativo"
 
 msgid "Change the active state for selected users"
 msgstr "Alterar o estado ativo para os usuários selecionados"
@@ -401,47 +389,75 @@ msgstr "Adicionar um grupo"
 msgid "Search groups"
 msgstr "Grupos de busca"
 
-#, python-brace-format
-msgid "Group '{0}' created."
-msgstr "Grupo '{0}' criado."
+msgid "Add group"
+msgstr "Adicionar grupo"
 
-#, python-brace-format
-msgid "Group '{0}' updated."
-msgstr "Grupo '{0}' atualizado."
+#, python-format
+msgid "Group '%(object)s' created."
+msgstr "Grupo '%(object)s' criado."
+
+#, python-format
+msgid "Group '%(object)s' updated."
+msgstr "Grupo '%(object)s' atualizado."
 
 msgid "The group could not be saved due to errors."
 msgstr "O grupo não pôde ser salvo por conter erros."
 
-#, python-brace-format
-msgid "Group '{0}' deleted."
-msgstr "Grupo '{0}' removido."
+msgid "View users in this group"
+msgstr "Ver usuários neste grupo"
 
-msgid "Search users"
-msgstr "Buscar usuários"
+#, python-format
+msgid "Group '%(object)s' deleted."
+msgstr "Grupo '%(object)s' removido."
 
-#, python-brace-format
-msgid "User '{0}' created."
-msgstr "Usuário '{0}' criado."
+msgid "Delete group"
+msgstr "Remover grupo"
 
-msgid "Edit"
-msgstr "Editar"
+msgid "Last login"
+msgstr "Último login"
 
-msgid "The user could not be created due to errors."
-msgstr "O usuário não pôde ser criado devido à erros."
+msgid "Group"
+msgstr "Grupo"
 
-#, python-brace-format
-msgid "User '{0}' updated."
-msgstr "Usuário '{0}' atualizado."
+msgid "Add a user"
+msgstr "Adicionar um usuário"
+
+msgid "Users"
+msgstr "Usuários"
+
+msgid "Username"
+msgstr "Nome de usuário"
+
+msgid "Admin"
+msgstr "Admin"
+
+msgid "Access level"
+msgstr "Nível de acesso"
+
+msgid "Status"
+msgstr "Status"
+
+#, python-format
+msgid "More options for '%(title)s'"
+msgstr "Mais opções para '%(title)s'"
+
+#, python-format
+msgid "User '%(object)s' created."
+msgstr "Usuário '%(object)s' criado."
+
+msgid "Add user"
+msgstr "Adicionar usuário"
+
+#, python-format
+msgid "User '%(object)s' updated."
+msgstr "Usuário '%(object)s' atualizado."
 
 msgid "The user could not be saved due to errors."
 msgstr "O usuário não pôde ser salvo devido à erros."
 
-#, python-brace-format
-msgid "User '{0}' deleted."
-msgstr "Usuário '{0}' removido."
+msgid "Delete user"
+msgstr "Excluir usuário"
 
-msgid "Edit this user"
-msgstr "Editar este usuário"
-
-msgid "Delete this user"
-msgstr "Deletar este usuário"
+#, python-format
+msgid "User '%(object)s' deleted."
+msgstr "Usuário '%(object)s' removido."

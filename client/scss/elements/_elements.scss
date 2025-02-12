@@ -1,3 +1,10 @@
+// These inject Tailwind's base and component styles and any styles registered by plugins of each layer.
+// Unused styles created within tailwinds layers won't be compiled into the compiled stylesheet
+// https://tailwindcss.com/docs/adding-custom-styles#using-css-and-layer
+
+@tailwind base;
+@tailwind components;
+
 *,
 ::before,
 ::after {
@@ -14,11 +21,27 @@
   --tw-content: '';
 }
 
+// Default to LTR if `dir` is not set.
+:root,
+:host,
+[dir='ltr'] {
+  // Flips the direction based on whether the UI is LTR or RTL. Used for:
+  // - `transform` / `background-position` declarations for layout
+  // - icons mirroring.
+  // - Any other styles built with physical properties or values to mirror for RTL languages.
+  --w-direction-factor: 1;
+}
+
+[dir='rtl'] {
+  --w-direction-factor: -1;
+}
+
 html {
-  background: $color-grey-4;
   height: 100%;
   // Set the whole admin to border-box by default.
   box-sizing: border-box;
+  // Display viewport overscroll areas in a theme-appropriate color.
+  background-color: theme('colors.surface-page');
 }
 
 body {
@@ -28,7 +51,9 @@ body {
   &:after {
     content: '';
     position: fixed;
-    transition: visibility 0s linear 0s, opacity 0.2s ease-out;
+    transition:
+      visibility 0s linear 0s,
+      opacity 0.2s ease-out;
     background: theme('colors.white-50');
     width: 100%;
     height: 100%;
@@ -41,7 +66,7 @@ body {
 }
 
 hr {
-  border: 1px solid $color-grey-4;
+  border: 1px solid theme('colors.border-furniture');
   border-width: 1px 0 0;
   margin: 1.5em 0;
 }

@@ -72,14 +72,14 @@
                     }
                     body[yahoo] .img {
                         width: 130px !important;
-                        float:left;
+                        float: inline-start;
                     }
                     body[yahoo] .img img {
                         width:100% !important;
                     }
                     body[yahoo] .text {
                         width: 150px !important;
-                        float:right;
+                        float: inline-end;
                     }
             {% endblock %}
         </style>
@@ -119,7 +119,7 @@
 
                                         <div style="font-size: 10px; margin-top: 20px;">
                                             {% block preferences %}
-                                                {% trans "Edit your notification preferences here:" %} <a href="{{ base_url }}{% url 'wagtailadmin_account' %}#notifications">{{ base_url }}{% url 'wagtailadmin_account' %}#notifications</a>
+                                                {% trans "Edit your notification preferences here:" %} <a href="{{ base_url }}{% url 'wagtailadmin_account' %}#tab-notifications">{{ base_url }}{% url 'wagtailadmin_account' %}#tab-notifications</a>
                                             {% endblock %}
                                         </div>
                                     </td>

@@ -1,6 +1,6 @@
 {% load wagtailadmin_tags i18n %}
 
-<div class="w-divide-y w-divide-grey-100 w-py-6 w-pl-2 md:w-pl-8">
+<div class="w-divide-y w-divide-border-furniture w-py-6 w-pl-2 lg:w-pl-8">
     {% for template in status_templates %}
         {% include template %}
     {% endfor %}
@@ -16,7 +16,7 @@
         </div>
         {% if object.first_published_at %}
             <div class="w-help-text">
-                {% trans 'First published ' %}{% timesince_last_update object.first_published_at use_shorthand=True %}
+                {% trans 'First published' %} {% human_readable_date object.first_published_at placement="bottom" %}
             </div>
         {% endif %}
     </div>

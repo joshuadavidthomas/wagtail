@@ -3,6 +3,8 @@
 // Core button styles
 
 @use 'sass:color';
+@use '../tools' as *;
+@use '../settings' as *;
 
 .button {
   border-radius: theme('borderRadius.sm');
@@ -11,17 +13,17 @@
   padding: 0 1em;
   font-size: theme('fontSize.14');
   font-weight: theme('fontWeight.normal');
-  line-height: 2.25em;
+  line-height: calc(2.25em - 2px); // account for border
   vertical-align: middle;
   display: inline-block;
-  background-color: $color-button;
-  border: 1px solid $color-button;
-  color: $color-white;
+  background-color: theme('colors.surface-button-default');
+  border: 1px solid theme('colors.surface-button-default');
+  outline-offset: $focus-outline-width;
+  color: theme('colors.text-button');
   text-decoration: none;
   white-space: nowrap;
   position: relative;
   overflow: hidden;
-  box-sizing: content-box;
   transition: background-color 0.1s ease;
   // stylelint-disable-next-line property-no-vendor-prefix
   -moz-appearance: none;
@@ -33,94 +35,62 @@
   }
 
   &.button-small {
-    padding: 0 0.8em;
+    padding: 0 theme('spacing.3');
     height: 2em;
     font-size: calc(theme('fontSize.14') * 0.87);
-    line-height: 2em;
+    line-height: calc(2em - 2px); // account for border
+  }
+
+  &.button--icon {
+    .icon {
+      @include svg-icon();
+    }
   }
 
   &.button-secondary {
-    color: $color-button;
+    color: theme('colors.text-button-outline-default');
     background-color: transparent;
-  }
-
-  &.yes {
-    background-color: $color-button-yes;
-    border: 1px solid $color-button-yes;
-
-    &.button-secondary {
-      border: 1px solid $color-button-yes;
-      color: $color-button-yes;
-      background-color: transparent;
-    }
 
     &:hover {
-      color: $color-white;
-      border-color: transparent;
-      background-color: $color-button-yes;
+      background-color: theme('colors.surface-button-outline-hover');
+      border-color: theme('colors.border-button-outline-hover');
+      color: theme('colors.text-button-outline-hover');
     }
   }
 
   &.warning {
-    background-color: $color-button-warning;
-    border: 1px solid $color-button-warning;
+    background-color: theme('colors.warning.100');
+    border-color: theme('colors.warning.100');
 
     &.button-secondary {
-      border: 1px solid $color-button-warning;
-      color: $color-button-warning;
+      border-color: theme('colors.warning.100');
+      color: theme('colors.warning.100');
       background-color: transparent;
     }
 
     &:hover {
-      color: $color-white;
+      color: theme('colors.text-button');
       border-color: transparent;
-      background-color: $color-button-warning;
+      background-color: theme('colors.warning.100');
     }
   }
 
+  // no/serious is not compatible with the button-secondary class
   &.no,
   &.serious {
-    background-color: $color-button-no;
-    border: 1px solid $color-button-no;
-
-    &.button-secondary {
-      border: 1px solid $color-button-no;
-      color: $color-button-no;
-      background-color: transparent;
-    }
+    background-color: theme('colors.surface-page');
+    border: 1px solid theme('colors.text-error');
+    color: theme('colors.text-error');
 
     &:hover {
-      color: $color-white;
-      border-color: transparent;
-      background-color: $color-button-no;
+      color: theme('colors.text-button-critical-outline-hover');
+      border-color: theme('colors.text-button-critical-outline-hover');
+      background-color: theme('colors.surface-button-critical-hover');
     }
   }
 
   &.bicolor {
-    border: 1px solid transparent;
     padding-inline-start: 3.5em;
-
-    &:before {
-      // iconfont
-      font-size: theme('fontSize.15');
-      position: absolute;
-      inset-inline-start: 0;
-      top: 0;
-      width: 2em;
-      line-height: inherit;
-      height: 100%;
-      text-align: center;
-      background-color: theme('colors.black-20');
-      display: block;
-      // Remove once we drop support for Safari 14.
-      // stylelint-disable-next-line property-disallowed-list
-      border-top-left-radius: inherit;
-      border-start-start-radius: inherit;
-      // Remove once we drop support for Safari 14.
-      // stylelint-disable-next-line property-disallowed-list
-      border-bottom-left-radius: inherit;
-      border-end-start-radius: inherit;
-    }
 
     .icon-wrapper {
       background-color: theme('colors.black-20');
@@ -134,23 +104,13 @@
       height: 100%;
       box-sizing: content-box;
       text-align: center;
-      // Remove once we drop support for Safari 14.
-      // stylelint-disable-next-line property-disallowed-list
-      border-top-left-radius: inherit;
       border-start-start-radius: inherit;
-      // Remove once we drop support for Safari 14.
-      // stylelint-disable-next-line property-disallowed-list
-      border-bottom-left-radius: inherit;
       border-end-start-radius: inherit;
     }
 
     &.button--icon {
-      &:before {
-        display: none; // TODO: remove once the icon font styles are gone
-      }
-
       .icon {
-        @include svg-icon(1.5em);
+        @include svg-icon();
       }
     }
 
@@ -161,7 +121,22 @@
     }
 
     &.button-secondary {
-      border: 1px solid theme('colors.black-20');
+      .icon-wrapper {
+        border-inline-end: 1px solid theme('colors.surface-button-default');
+        background-color: transparent;
+      }
+
+      &:hover {
+        background-color: theme('colors.text-button');
+      }
+
+      &:disabled,
+      &[disabled],
+      &.disabled {
+        .icon-wrapper {
+          border-color: theme('colors.surface-button-inactive');
+        }
+      }
     }
 
     &.button-small {
@@ -175,37 +150,41 @@
         @include svg-icon(0.9rem);
         padding: 0.25em;
       }
+
+      &.button-secondary {
+        border: 0;
+        padding-inline-start: 2.2em;
+
+        .icon-wrapper {
+          border: 1px solid theme('colors.surface-button-default');
+          border-radius: 50%;
+          height: fit-content;
+          width: fit-content;
+        }
+
+        &:hover {
+          background-color: transparent;
+
+          .icon-wrapper {
+            background-color: theme('colors.surface-button-default');
+            color: theme('colors.text-button');
+          }
+        }
+
+        &:disabled,
+        &[disabled],
+        &.disabled {
+          .icon-wrapper {
+            background-color: transparent;
+          }
+        }
+      }
     }
   }
 
   &.button-longrunning {
-    span {
-      // iconfont
-      @include transition(all 0.3s ease);
-      transform: scale(0.9);
-      display: inline-block;
-      height: 1em;
-      position: relative;
-      opacity: 0;
-      width: 0;
-      visibility: hidden;
-      text-align: center;
-      padding-inline-end: 0;
-    }
-
     em {
       font-style: normal;
-    }
-
-    span.icon-spinner:after {
-      // iconfont
-      text-align: center;
-      position: absolute;
-      inset-inline-start: 0;
-      margin: 0;
-      line-height: 1em;
-      display: inline-block;
-      font-size: 1em;
     }
 
     svg.icon-spinner {
@@ -218,21 +197,12 @@
     display: inline-flex;
     align-items: center;
 
-    span {
-      // iconfont
-      transform: scale(1);
-      visibility: visible;
-      width: 1em;
-      height: 1em;
-      opacity: 0.8;
-      padding-inline-end: 0.5em;
-    }
-
     svg.icon-spinner {
       @include svg-icon();
       display: inline-block;
       opacity: 0.8;
       padding: 0;
+      margin-inline-end: 0.5em;
     }
 
     .button-longrunning__icon {
@@ -242,8 +212,8 @@
 
   // Base hover state
   &:hover {
-    background-color: $color-button-hover;
-    color: $color-white;
+    background-color: theme('colors.surface-button-hover');
+    color: theme('colors.text-button');
     border-color: transparent;
   }
 
@@ -251,10 +221,18 @@
   &:disabled,
   &[disabled],
   &.disabled {
-    background-color: $color-grey-3;
-    border-color: $color-grey-3;
-    color: $color-grey-2;
+    background-color: theme('colors.surface-button-inactive');
+    border-color: theme('colors.surface-button-inactive');
+    color: theme('colors.text-button');
     cursor: default;
+    pointer-events: none;
+
+    &:hover {
+      background-color: theme('colors.surface-button-inactive');
+      border-color: theme('colors.surface-button-inactive');
+      color: theme('colors.text-button');
+      cursor: default;
+    }
 
     @media (forced-colors: active) {
       color: GrayText;
@@ -266,28 +244,16 @@
   &.button-secondary:disabled,
   &.button-secondary[disabled],
   &.button-secondary.disabled {
-    background-color: $color-white;
-    border-color: $color-grey-3;
-    color: $color-grey-3;
+    background-color: theme('colors.surface-page');
+    border-color: theme('colors.surface-button-inactive');
+    color: theme('colors.text-placeholder');
   }
 
   // Buttons which are only an icon
   &.text-replace {
-    &.icon {
-      // iconfont
-      font-size: 0; // unavoidable duplication of setting in icons.scss
-      height: inherit;
-      width: inherit;
-      box-sizing: content-box;
-
-      &:before {
-        line-height: 1.7em;
-      }
-    }
-
     &.button--icon {
       background-color: transparent;
-      color: $color-grey-2;
+      color: theme('colors.icon-secondary');
       border-color: transparent;
       font-size: 0;
       text-align: center;
@@ -295,7 +261,7 @@
       width: inherit;
 
       &:hover {
-        color: $color-grey-1;
+        color: theme('colors.icon-secondary-hover');
       }
 
       .icon {
@@ -317,17 +283,9 @@
 
     @include media-breakpoint-up(sm) {
       &.icon {
-        &:before {
-          line-height: 2.1em;
-        }
-
         &.button-small {
           width: 1.75em;
           height: 1.75em;
-
-          &:before {
-            line-height: 1.7em;
-          }
         }
       }
     }
@@ -339,23 +297,71 @@
     font-size: theme('fontSize.14');
     padding: 0 1.4em;
     height: 3em;
-    line-height: 3em;
+    line-height: calc(3em - 2px); // account for border
 
     &.bicolor {
       padding-inline-start: 3.5em;
 
-      &:before {
-        width: 2em;
-        font-size: theme('fontSize.16');
-      }
-
       &.button-small {
         padding-inline-start: 3em;
-
-        &:before {
-          width: 1.75em;
-        }
       }
     }
+  }
+
+  // Ensure visual consistency between button and a elements in WHCM
+
+  @media (forced-colors: active) {
+    &:not(:disabled):not(.disabled):not([disabled]) {
+      color: ButtonText;
+      border-color: ButtonText;
+
+      &:hover {
+        border-color: Highlight;
+      }
+    }
+  }
+}
+
+.w-header-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: theme('spacing.1');
+  height: theme('spacing.8');
+  min-width: theme('spacing.8');
+  appearance: none;
+  background-color: initial;
+  border: 1px solid transparent;
+  color: theme('colors.text-button-outline-default');
+  padding: 0 theme('spacing[1.5]');
+  font-size: theme('fontSize.14');
+  font-weight: theme('fontWeight.medium');
+  cursor: pointer;
+
+  @include more-contrast-interactive();
+
+  .icon {
+    width: theme('spacing.4');
+    height: theme('spacing.4');
+    padding: theme('spacing.[0.5]');
+    border: 1px solid currentColor;
+    border-radius: theme('borderRadius.full');
+    transition: transform 0.3s ease;
+  }
+
+  &:hover {
+    border-color: theme('colors.border-button-outline-hover');
+    background-color: theme('colors.surface-button-outline-hover');
+  }
+
+  &:hover,
+  &:focus-visible {
+    .icon {
+      // This ideally should use a solid variant of the icon instead.
+      color: theme('colors.surface-page');
+      border-color: theme('colors.text-button-outline-hover');
+      background-color: theme('colors.text-button-outline-hover');
+    }
+    color: theme('colors.text-link-hover');
   }
 }

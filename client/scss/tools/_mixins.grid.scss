@@ -1,4 +1,11 @@
 @use 'sass:math';
+@use '../settings' as *;
+@use '../tools/mixins.breakpoints' as *;
+@use '../tools/mixins.general' as *;
+
+// grid settings
+$grid-columns: 12;
+$grid-gutter-width: 3%;
 
 // Utility variable - you should never need to modify this
 $padding: math.div($grid-gutter-width, 2);
@@ -6,7 +13,6 @@ $padding: math.div($grid-gutter-width, 2);
 // Our row container
 @mixin row($padding: 0) {
   @include clearfix();
-  box-sizing: border-box;
   display: block;
   margin-inline-end: auto;
   margin-inline-start: auto;
@@ -21,35 +27,11 @@ $padding: math.div($grid-gutter-width, 2);
 
 // Our column container
 @mixin column($x, $padding: $padding, $grid-columns: $grid-columns) {
-  box-sizing: border-box;
   display: inline;
-  float: left;
+  float: inline-start;
   width: 100% * math.div($x, $grid-columns);
   padding-inline-end: $padding;
   padding-inline-start: $padding;
-}
-
-@mixin table-column($x, $padding: $padding, $grid-columns: $grid-columns) {
-  box-sizing: border-box;
-  width: 100% * math.div($x, $grid-columns);
-}
-
-// Push adds left padding
-@mixin push($offset: 1, $grid-columns: $grid-columns) {
-  margin-inline-start: 100% * math.div($offset, $grid-columns);
-}
-
-@mixin push-padding($offset: 1, $grid-columns: $grid-columns) {
-  padding-inline-start: 100% * math.div($offset, $grid-columns);
-}
-
-// Pull adds right padding
-@mixin pull($offset: 1, $grid-columns: $grid-columns) {
-  margin-inline-end: 100% * math.div($offset, $grid-columns);
-}
-
-@mixin pull-padding($offset: 1, $grid-columns: $grid-columns) {
-  padding-inline-end: 100% * math.div($offset, $grid-columns);
 }
 
 // only used in places where padding not applied to same elements as row or row-flush

@@ -7,14 +7,15 @@
 # Benjamin Bach <benjaoming@gmail.com>, 2022
 # Mads Kronborg <madskronborg99@gmail.com>, 2018
 # MRostgaard <Mrostgaard@gmail.com>, 2019
+# MRostgaard <Mrostgaard@gmail.com>, 2019
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:50+0000\n"
-"Last-Translator: Benjamin Bach <benjaoming@gmail.com>, 2022\n"
-"Language-Team: Danish (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: MRostgaard <Mrostgaard@gmail.com>, 2019\n"
+"Language-Team: Danish (http://app.transifex.com/torchbox/wagtail/language/"
 "da/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -87,8 +88,13 @@ msgid "Enter password"
 msgstr "Skriv adgangskode"
 
 #, python-format
-msgid "Enter your %s"
-msgstr "Skriv din %s"
+msgid "Your %(username_field)s and password didn't match. Please try again."
+msgstr ""
+"Dit %(username_field)s og adgangskode matcher ikke. Prøv venligst igen."
+
+#, python-format
+msgid "Enter your %(username_field_name)s"
+msgstr "Skriv din %(username_field_name)s"
 
 msgid "Enter your email address to reset your password"
 msgstr "Skriv din email addresse for at genindstille din adgangskode"
@@ -117,6 +123,12 @@ msgstr "Rediger"
 
 msgid "Delete"
 msgstr "Slet"
+
+msgid "Go live date/time must be before expiry date/time"
+msgstr "Gå live dato/tidspunkt skal forekomme før udløbende dato/tidspunkt"
+
+msgid "Expiry date/time must be in the future"
+msgstr "Udløbende dato/tidspunkt skal være i fremtiden"
 
 msgid "New title"
 msgstr "Ny titel"
@@ -166,21 +178,14 @@ msgstr "Du har ikke tilladelse til at kopiere til side \"%(page_title)s\""
 
 #, python-format
 msgid ""
-"This slug is already in use within the context of its parent page \"%s\""
+"This slug is already in use within the context of its parent page "
+"\"%(parent_page_title)s\""
 msgstr ""
-"Dette slug er allerede i brug inden for konteksten af forældresiden \"%s\""
+"Dette slug er allerede i brug inden for konteksten af forældresiden "
+"\"%(parent_page_title)s\""
 
 msgid "You cannot copy a page into itself when copying subpages"
 msgstr "Du kan ikke kopiere en side til sig selv når du kopierer undersider"
-
-msgid "This slug is already in use"
-msgstr "Dette slug er allerede i brug"
-
-msgid "Go live date/time must be before expiry date/time"
-msgstr "Gå live dato/tidspunkt skal forekomme før udløbende dato/tidspunkt"
-
-msgid "Expiry date/time must be in the future"
-msgstr "Udløbende dato/tidspunkt skal være i fremtiden"
 
 msgid "Visibility"
 msgstr "Synlighed"
@@ -191,15 +196,6 @@ msgstr "Dette felt er påkrævet."
 msgid "Please select at least one group."
 msgstr "Vælg venligst mindst én gruppe."
 
-msgid "Scheduled publishing"
-msgstr "Planlagt udgivning"
-
-msgid "For search engines"
-msgstr "Til søgemaskiner"
-
-msgid "For site menus"
-msgstr "For site-menuer"
-
 msgid "Content"
 msgstr "Indhold"
 
@@ -208,6 +204,9 @@ msgstr "Promover"
 
 msgid "Settings"
 msgstr "Indstillinger"
+
+msgid "Title"
+msgstr "Titel"
 
 msgid "Error 404: Page not found"
 msgstr "Fejl 404: Side ikke fundet"
@@ -220,9 +219,6 @@ msgstr "Den anmodede side kunne ikke findes."
 
 msgid "Go to Wagtail admin"
 msgstr "Gå til Wagtail admin"
-
-msgid "Account"
-msgstr "Konto"
 
 msgid "Reset password"
 msgstr "Genindstil adgangskode"
@@ -301,9 +297,6 @@ msgstr "Udforsk undersider af '%(title)s'?"
 msgid "Explore"
 msgstr "Udforsk"
 
-msgid "Collection privacy"
-msgstr "Indsamling af privatfølsomme data"
-
 msgid "This collection has been made private by a parent collection."
 msgstr "Denne samling er blevet gjort privat af en forældre samling."
 
@@ -328,21 +321,17 @@ msgstr "Offentlig"
 msgid "Private"
 msgstr "Privat"
 
-msgid "Name"
-msgstr "Navn"
-
 msgid "Yes, delete"
 msgstr "Ja, slet"
 
+msgid "Yes, unpublish it"
+msgstr "Ja, afpublicer den"
+
+msgid "No, don't unpublish"
+msgstr "Nej, afpublicer den ikke"
+
 msgid "Update"
 msgstr "Opdater"
-
-#, python-format
-msgid "Comparing %(title)s"
-msgstr "Sammenligner %(title)s"
-
-msgid "Comparing"
-msgstr "Sammenligner"
 
 msgid "Fields"
 msgstr "Felter"
@@ -350,12 +339,11 @@ msgstr "Felter"
 msgid "Changes"
 msgstr "Ændringer"
 
-#, python-format
-msgid "Welcome to the %(site_name)s Wagtail CMS"
-msgstr "Velkommen til %(site_name)s Wagtail CMS"
+msgid "Account"
+msgstr "Konto"
 
-msgid "Title"
-msgstr "Titel"
+msgid "Status"
+msgstr "Status"
 
 msgid "Edit this page"
 msgstr "Rediger denne side"
@@ -369,26 +357,8 @@ msgstr "Skitse"
 msgid "Live"
 msgstr "Live"
 
-msgid "Type"
-msgstr "Type"
-
-msgid "Edited"
-msgstr "Redigeret"
-
-msgid "Approve"
-msgstr "Godkend"
-
-msgid "Reject"
-msgstr "Afvis"
-
-msgid "Preview"
-msgstr "Forhåndsvis"
-
 msgid "Your most recent edits"
 msgstr "Dine seneste redigeringer"
-
-msgid "Status"
-msgstr "Status"
 
 msgid "Date"
 msgstr "Dato"
@@ -396,16 +366,17 @@ msgstr "Dato"
 msgid "Site summary"
 msgstr "Side opsummering"
 
+msgid "Close"
+msgstr "Luk"
+
+msgid "Preview"
+msgstr "Forhåndsvis"
+
 msgid "Sign in"
 msgstr "Log Ind"
 
 msgid "Sign in to Wagtail"
 msgstr "Log ind i Wagtail"
-
-#, python-format
-msgid "Your %(username_field)s and password didn't match. Please try again."
-msgstr ""
-"Dit %(username_field)s og adgangskode matcher ikke. Prøv venligst igen."
 
 msgid "Signing in…"
 msgstr "Logger ind..."
@@ -431,12 +402,6 @@ msgstr "Du kan redigere siden her:"
 msgid "You can preview the page here:"
 msgstr "Du kan få en forhåndsvisning af siden her:"
 
-msgid "Page privacy"
-msgstr "Side privatliv"
-
-msgid "This page has been made private by a parent page."
-msgstr "Denne side er blevet lavet privat af en forældreside."
-
 msgid "Publishing…"
 msgstr "Udgiver..."
 
@@ -461,9 +426,6 @@ msgstr "Vælg hvilken type side du gerne vil lave."
 
 msgid "Move"
 msgstr "Flyt"
-
-msgid "No, don't unpublish"
-msgstr "Nej, afpublicer den ikke"
 
 #, python-format
 msgid "Delete %(title)s"
@@ -501,13 +463,6 @@ msgid "Are you sure you want to unpublish this page?"
 msgstr "Er du sikker på, at du vil afpublicere denne side?"
 
 #, python-format
-msgid "Pages using %(page_class_verbose_name)s"
-msgstr "Sider der bruger %(page_class_verbose_name)s"
-
-msgid "Pages using"
-msgstr "Sider der bruger"
-
-#, python-format
 msgid "Copy %(title)s"
 msgstr "Kopier %(title)s"
 
@@ -517,39 +472,8 @@ msgstr "Kopi"
 msgid "Copy this page"
 msgstr "Kopier denne side"
 
-#, python-format
-msgid "New %(page_type)s"
-msgstr "Ny %(page_type)s"
-
-msgid "This page has unsaved changes."
-msgstr "Denne side har ugemte ændringer."
-
-#, python-format
-msgid "Editing %(page_type)s: %(title)s"
-msgstr "Redigerer %(page_type)s: %(title)s"
-
-msgid "Live version"
-msgstr "Live version"
-
-msgid "Current draft"
-msgstr "Nuværende skitse"
-
-#, python-format
-msgid "Exploring %(title)s"
-msgstr "Udforsker %(title)s"
-
-msgid "Drag"
-msgstr "Træk"
-
 msgid "Configure a site now."
 msgstr "Konfigurer en side nu."
-
-msgid "No pages have been created at this location."
-msgstr "Ingen sider er blevet lavet på denne lokation."
-
-#, python-format
-msgid "Why not <a href=\"%(add_page_url)s\">create one</a>?"
-msgstr "Hvorfor ikke <a href=\"%(add_page_url)s\">lave én</a>?"
 
 #, python-format
 msgid "Explore child pages of '%(title)s'"
@@ -558,6 +482,15 @@ msgstr "Udforsk undersider af '%(title)s'?"
 #, python-format
 msgid "Add a child page to '%(title)s'"
 msgstr "Tilføj en underside til '%(title)s'"
+
+msgid "Drag"
+msgstr "Træk"
+
+msgid "Disable ordering of child pages"
+msgstr "Deaktiver arrangering af undersider"
+
+msgid "Enable ordering of child pages"
+msgstr "Aktiver arrangering af undersider"
 
 msgid "Sites menu"
 msgstr "Sidemenu"
@@ -571,14 +504,8 @@ msgstr "Næste"
 msgid "This page is protected from public view"
 msgstr "Denne side er beskyttet mod offentlig skue"
 
-msgid "Disable ordering of child pages"
-msgstr "Deaktiver arrangering af undersider"
-
-msgid "Enable ordering of child pages"
-msgstr "Aktiver arrangering af undersider"
-
-msgid "Updated"
-msgstr "Opdateret"
+msgid "Add child page"
+msgstr "Tilføj en underside"
 
 #, python-format
 msgid "Add %(label)s"
@@ -590,24 +517,23 @@ msgstr "Bevæg op"
 msgid "Move down"
 msgstr "Bevæg ned"
 
+msgid "Type"
+msgstr "Type"
+
+msgid "Updated"
+msgstr "Opdateret"
+
+msgid "Pages"
+msgstr "Sider"
+
 msgid "Locked"
 msgstr "Låst"
 
+msgid "Name"
+msgstr "Navn"
+
 msgid "Edit this item"
 msgstr "Rediger denne enhed"
-
-msgid "Page"
-msgstr "Side"
-
-msgid "Root"
-msgstr "Rod"
-
-#, python-format
-msgid "Unpublish %(title)s"
-msgstr "Afpublicer %(title)s"
-
-msgid "Yes, unpublish it"
-msgstr "Ja, afpublicer den"
 
 msgid "Unlocked"
 msgstr "Ulåst"
@@ -615,11 +541,17 @@ msgstr "Ulåst"
 msgid "Lock"
 msgstr "Lås"
 
+msgid "Edited"
+msgstr "Redigeret"
+
 msgid "Add a child page"
 msgstr "Tilføj en underside"
 
 msgid "Show in Explorer"
 msgstr "Vis i Udforsker"
+
+msgid "Page"
+msgstr "Side"
 
 msgid "New"
 msgstr "Ny"
@@ -634,6 +566,31 @@ msgstr "%(time_period)s siden"
 msgid "Log out"
 msgstr "Log ud"
 
+msgid "Undo"
+msgstr "Gå tilbage"
+
+msgid "Redo"
+msgstr "Gå frem"
+
+msgid "Bold"
+msgstr "Fed"
+
+msgid "Italic"
+msgstr "Skråskrift"
+
+msgid "Home"
+msgstr "Hjem"
+
+msgid "Live version"
+msgstr "Live version"
+
+msgid "Current draft"
+msgstr "Nuværende skitse"
+
+#, python-format
+msgid "Edit '%(title)s'"
+msgstr "Rediger '%(title)s'"
+
 msgid "Editing"
 msgstr "Redigerer"
 
@@ -646,13 +603,13 @@ msgstr "Seneste"
 msgid "Dashboard"
 msgstr "Dashboard"
 
-#, python-brace-format
-msgid "Page '{0}' and {1} subpages copied."
-msgstr "SIde '{0}' og {1} undersider blev kopieret."
+#, python-format
+msgid "Page '%(page_title)s' and %(subpages_count)s subpages copied."
+msgstr "SIde '%(page_title)s' og %(subpages_count)s undersider blev kopieret."
 
-#, python-brace-format
-msgid "Page '{0}' copied."
-msgstr "SIde '{0}' kopieret."
+#, python-format
+msgid "Page '%(page_title)s' copied."
+msgstr "SIde '%(page_title)s' kopieret."
 
 msgid "View draft"
 msgstr "Vis skitse"
@@ -660,39 +617,39 @@ msgstr "Vis skitse"
 msgid "View live"
 msgstr "Vis live"
 
-#, python-brace-format
-msgid "Page '{0}' created."
-msgstr "Side  '{0}' lavet."
+#, python-format
+msgid "Page '%(page_title)s' created."
+msgstr "Side  '%(page_title)s' lavet."
 
-#, python-brace-format
-msgid "Page '{0}' deleted."
-msgstr "Side '{0}' slettet."
+#, python-format
+msgid "Page '%(page_title)s' deleted."
+msgstr "Side '%(page_title)s' slettet."
 
-#, python-brace-format
-msgid "Page '{0}' has been updated."
-msgstr "Side '{0}' er blevet opdateret."
+#, python-format
+msgid "Page '%(page_title)s' has been updated."
+msgstr "Side '%(page_title)s' er blevet opdateret."
 
-#, python-brace-format
-msgid "Page '{0}' has been published."
-msgstr "Side '{0}' er blevet udgivet."
+#, python-format
+msgid "Page '%(page_title)s' has been published."
+msgstr "Side '%(page_title)s' er blevet udgivet."
 
-#, python-brace-format
-msgid "Page '{0}' has been submitted for moderation."
-msgstr "Side '{0}' er blivet indsendt til moderation."
+#, python-format
+msgid "Page '%(page_title)s' has been submitted for moderation."
+msgstr "Side '%(page_title)s' er blivet indsendt til moderation."
 
-#, python-brace-format
-msgid "Page '{0}' moved."
-msgstr "SIde '{0}' flyttet."
+msgid "Site"
+msgstr "Site"
 
-#, python-brace-format
-msgid "Page '{0}' unpublished."
-msgstr "SIde '{0}' afpubliceret."
+#, python-format
+msgid "Page '%(page_title)s' moved."
+msgstr "SIde '%(page_title)s' flyttet."
 
-msgid "Pages"
-msgstr "Sider"
+#, python-format
+msgid "Page '%(page_title)s' unpublished."
+msgstr "SIde '%(page_title)s' afpubliceret."
 
-msgid "Add child page"
-msgstr "Tilføj en underside"
+msgid "Pages using"
+msgstr "Sider der bruger"
 
 msgid "Bulleted list"
 msgstr "Liste med prikker"
@@ -700,14 +657,17 @@ msgstr "Liste med prikker"
 msgid "Numbered list"
 msgstr "Liste med numre"
 
-msgid "Bold"
-msgstr "Fed"
-
-msgid "Italic"
-msgstr "Skråskrift"
-
 msgid "Link"
 msgstr "Link"
 
 msgid "Choose an item"
 msgstr "Vælg en enhed"
+
+msgid "Choose another item"
+msgstr "Vælg en til enhed"
+
+msgid "Clear choice"
+msgstr "Nulstil valg"
+
+msgid "Choose another page"
+msgstr "Vælg en anden side"

@@ -1,58 +1,53 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.forms.utils import ErrorList
 from django.template.loader import render_to_string
 from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
 
 from wagtail.admin.staticfiles import versioned_static
-from wagtail.blocks.base import Block, DeclarativeSubBlocksMetaclass, get_help_icon
+from wagtail.blocks.base import (
+    Block,
+    DeclarativeSubBlocksMetaclass,
+    get_error_json_data,
+    get_error_list_json_data,
+    get_help_icon,
+)
 from wagtail.telepath import Adapter, register
 
 
 class TypedTableBlockValidationError(ValidationError):
-    def __init__(self, cell_errors=None):
+    def __init__(self, cell_errors=None, non_block_errors=None):
         self.cell_errors = cell_errors
-        super().__init__("Validation error in TypedTableBlock", params=cell_errors)
+        self.non_block_errors = ErrorList(non_block_errors)
+        super().__init__("Validation error in TypedTableBlock")
 
-
-class TypedTableBlockValidationErrorAdapter(Adapter):
-    js_constructor = "wagtail.contrib.typed_table_block.TypedTableBlockValidationError"
-
-    def js_args(self, error):
-        if error.cell_errors is None:
-            return [None]
-        else:
-            return [
-                {
-                    row_index: {
-                        col_index: cell_error
-                        for col_index, cell_error in row_errors.items()
-                    }
-                    for row_index, row_errors in error.cell_errors.items()
+    def as_json_data(self):
+        result = {}
+        if self.non_block_errors:
+            result["messages"] = get_error_list_json_data(self.non_block_errors)
+        if self.cell_errors:
+            result["blockErrors"] = {
+                row_index: {
+                    col_index: get_error_json_data(cell_error)
+                    for col_index, cell_error in row_errors.items()
                 }
-            ]
-
-    @cached_property
-    def media(self):
-        return forms.Media(
-            js=[
-                versioned_static("typed_table_block/js/typed_table_block.js"),
-            ]
-        )
-
-
-register(TypedTableBlockValidationErrorAdapter(), TypedTableBlockValidationError)
+                for row_index, row_errors in self.cell_errors.items()
+            }
+        return result
 
 
 class TypedTable:
     template = "typed_table_block/typed_table_block.html"
 
-    def __init__(self, columns, row_data):
+    def __init__(self, columns, row_data, caption: str):
         # a list of dicts, each with items 'block' (the block instance) and 'heading'
         self.columns = columns
 
         # a list of dicts, each with an item 'values' (the list of block values)
         self.row_data = row_data
+
+        self.caption = caption
 
     @property
     def rows(self):
@@ -92,7 +87,17 @@ class BaseTypedTableBlock(Block):
                 block.set_name(name)
                 self.child_blocks[name] = block
 
+    @classmethod
+    def construct_from_lookup(cls, lookup, child_blocks, **kwargs):
+        if child_blocks:
+            child_blocks = [
+                (name, lookup.get_block(index)) for name, index in child_blocks
+            ]
+        return cls(child_blocks, **kwargs)
+
     def value_from_datadict(self, data, files, prefix):
+        caption = data["%s-caption" % prefix]
+
         column_count = int(data["%s-column-count" % prefix])
         columns = [
             {
@@ -130,6 +135,7 @@ class BaseTypedTableBlock(Block):
                 {"block": col["block"], "heading": col["heading"]} for col in columns
             ],
             row_data=[{"values": row["values"]} for row in rows],
+            caption=caption,
         )
 
     def get_prep_value(self, table):
@@ -148,12 +154,44 @@ class BaseTypedTableBlock(Block):
                     }
                     for row in table.row_data
                 ],
+                "caption": table.caption,
             }
         else:
             return {
                 "columns": [],
                 "rows": [],
+                "caption": "",
             }
+
+    def get_api_representation(self, table, context=None):
+        if table:
+            return {
+                "columns": [
+                    {"type": col["block"].name, "heading": col["heading"]}
+                    for col in table.columns
+                ],
+                "rows": [
+                    {
+                        "values": [
+                            column["block"].get_api_representation(val, context=context)
+                            for column, val in zip(table.columns, row["values"])
+                        ]
+                    }
+                    for row in table.row_data
+                ],
+                "caption": table.caption,
+            }
+        else:
+            return {
+                "columns": [],
+                "rows": [],
+                "caption": "",
+            }
+
+    def normalize(self, value):
+        if value is None or isinstance(value, TypedTable):
+            return value
+        return self.to_python(value)
 
     def to_python(self, value):
         if value:
@@ -177,11 +215,13 @@ class BaseTypedTableBlock(Block):
                     {"values": [column_data[row_index] for column_data in columns_data]}
                     for row_index in range(0, len(value["rows"]))
                 ],
+                caption=value.get("caption", ""),
             )
         else:
             return TypedTable(
                 columns=[],
                 row_data=[],
+                caption="",
             )
 
     def get_form_state(self, table):
@@ -200,11 +240,13 @@ class BaseTypedTableBlock(Block):
                     }
                     for row in table.row_data
                 ],
+                "caption": table.caption,
             }
         else:
             return {
                 "columns": [],
                 "rows": [],
+                "caption": "",
             }
 
     def clean(self, table):
@@ -230,10 +272,16 @@ class BaseTypedTableBlock(Block):
             if cell_errors:
                 raise TypedTableBlockValidationError(cell_errors=cell_errors)
             else:
-                return TypedTable(columns=table.columns, row_data=cleaned_rows)
+                return TypedTable(
+                    columns=table.columns, row_data=cleaned_rows, caption=table.caption
+                )
 
         else:
-            return TypedTable(columns=[], row_data=[])
+            return TypedTable(
+                columns=[],
+                row_data=[],
+                caption="",
+            )
 
     def deconstruct(self):
         """
@@ -246,6 +294,17 @@ class BaseTypedTableBlock(Block):
         """
         path = "wagtail.contrib.typed_table_block.blocks.TypedTableBlock"
         args = [list(self.child_blocks.items())]
+        kwargs = self._constructor_kwargs
+        return (path, args, kwargs)
+
+    def deconstruct_with_lookup(self, lookup):
+        path = "wagtail.contrib.typed_table_block.blocks.TypedTableBlock"
+        args = [
+            [
+                (name, lookup.add_block(block))
+                for name, block in self.child_blocks.items()
+            ]
+        ]
         kwargs = self._constructor_kwargs
         return (path, args, kwargs)
 
@@ -278,9 +337,16 @@ class TypedTableBlockAdapter(Adapter):
     def js_args(self, block):
         meta = {
             "label": block.label,
+            "description": block.get_description(),
             "required": block.required,
             "icon": block.meta.icon,
+            "blockDefId": block.definition_prefix,
+            "isPreviewable": block.is_previewable,
             "strings": {
+                "CAPTION": _("Caption"),
+                "CAPTION_HELP_TEXT": _(
+                    "A heading that identifies the overall topic of the table, and is useful for screen reader users."
+                ),
                 "ADD_COLUMN": _("Add column"),
                 "ADD_ROW": _("Add row"),
                 "COLUMN_HEADING": _("Column heading"),

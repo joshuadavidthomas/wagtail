@@ -1,12 +1,11 @@
-from wsgiref.util import FileWrapper
+from warnings import warn
 
 from django.conf import settings
-from django.http import Http404, HttpResponse, StreamingHttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.cache import cache_control
 from django.views.decorators.http import etag
 
 from wagtail import hooks
@@ -15,6 +14,7 @@ from wagtail.documents.models import document_served
 from wagtail.forms import PasswordViewRestrictionForm
 from wagtail.models import CollectionViewRestriction
 from wagtail.utils import sendfile_streaming_backend
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
 from wagtail.utils.sendfile import sendfile
 
 
@@ -29,7 +29,6 @@ def document_etag(request, document_id, document_filename):
 
 
 @etag(document_etag)
-@cache_control(max_age=3600, public=True)
 def serve(request, document_id, document_filename):
     Document = get_document_model()
     doc = get_object_or_404(Document, id=document_id)
@@ -79,7 +78,6 @@ def serve(request, document_id, document_filename):
         return redirect(direct_url)
 
     if local_path:
-
         # Use wagtail.utils.sendfile to serve the file;
         # this provides support for mimetypes, if-modified-since and django-sendfile backends
 
@@ -92,18 +90,15 @@ def serve(request, document_id, document_filename):
             # Fallback to streaming backend if user hasn't specified SENDFILE_BACKEND
             sendfile_opts["backend"] = sendfile_streaming_backend.sendfile
 
-        return sendfile(request, local_path, **sendfile_opts)
+        response = sendfile(request, local_path, **sendfile_opts)
 
     else:
-
         # We are using a storage backend which does not expose filesystem paths
         # (e.g. storages.backends.s3boto.S3BotoStorage) AND the developer has not allowed
         # redirecting to the file url directly.
         # Fall back on pre-sendfile behaviour of reading the file content and serving it
-        # as a StreamingHttpResponse
-
-        wrapper = FileWrapper(doc.file)
-        response = StreamingHttpResponse(wrapper, doc.content_type)
+        # as a FileResponse
+        response = FileResponse(doc.file, doc.content_type)
 
         # set filename and filename* to handle non-ascii characters in filename
         # see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
@@ -112,7 +107,14 @@ def serve(request, document_id, document_filename):
         # FIXME: storage backends are not guaranteed to implement 'size'
         response["Content-Length"] = doc.file.size
 
-        return response
+    # Add a CSP header to prevent inline execution
+    if getattr(settings, "WAGTAILDOCS_BLOCK_EMBEDDED_CONTENT", True):
+        response["Content-Security-Policy"] = "default-src 'none'"
+
+    # Prevent browsers from auto-detecting the content-type of a document
+    response["X-Content-Type-Options"] = "nosniff"
+
+    return response
 
 
 def authenticate_with_password(request, restriction_id):
@@ -143,9 +145,21 @@ def authenticate_with_password(request, restriction_id):
 
     password_required_template = getattr(
         settings,
-        "DOCUMENT_PASSWORD_REQUIRED_TEMPLATE",
+        "WAGTAILDOCS_PASSWORD_REQUIRED_TEMPLATE",
         "wagtaildocs/password_required.html",
     )
+
+    if hasattr(settings, "DOCUMENT_PASSWORD_REQUIRED_TEMPLATE"):
+        warn(
+            "The `DOCUMENT_PASSWORD_REQUIRED_TEMPLATE` setting is deprecated - use `WAGTAILDOCS_PASSWORD_REQUIRED_TEMPLATE` instead.",
+            category=RemovedInWagtail70Warning,
+        )
+
+        password_required_template = getattr(
+            settings,
+            "DOCUMENT_PASSWORD_REQUIRED_TEMPLATE",
+            password_required_template,
+        )
 
     context = {"form": form, "action_url": action_url}
     return TemplateResponse(request, password_required_template, context)

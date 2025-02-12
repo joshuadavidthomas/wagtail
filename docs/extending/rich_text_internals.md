@@ -15,7 +15,7 @@ The components involved in Wagtail's rich text handling are described below.
 
 ## Data format
 
-Rich text data (as handled by [RichTextField](rich-text), and `RichTextBlock` within [StreamField](../topics/streamfield.rst)) is stored in the database in a format that is similar, but not identical, to HTML. For example, a link to a page might be stored as:
+Rich text data (as handled by [RichTextField](rich_text_field), and `RichTextBlock` within [StreamField](../topics/streamfield)) is stored in the database in a format that is similar, but not identical, to HTML. For example, a link to a page might be stored as:
 
 ```html
 <p><a linktype="page" id="3">Contact us</a> for more information.</p>
@@ -42,7 +42,7 @@ which is converted into an `img` element when rendered:
     alt="A pied wagtail"
     class="richtext-image left"
     height="294"
-    src="/media/images/pied-wagtail.width-500_ENyKffb.jpg"
+    src="/media/images/pied-wagtail.width-500.jpg"
     width="500"
 />
 ```
@@ -52,7 +52,7 @@ Again, the `embedtype` attribute identifies a rule that shall be used to rewrite
 A number of additional constraints apply to `<a linktype="...">` and `<embed embedtype="..." />` tags, to allow the conversion to be performed efficiently via string replacement:
 
 -   The tag name and attributes must be lower-case
--   Attribute values must be quoted with double-quotes
+-   Attribute values must be quoted with double quotes
 -   `embed` elements must use XML self-closing tag syntax (those that end in `/>` instead of a closing `</embed>` tag)
 -   The only HTML entities permitted in attribute values are `&lt;`, `&gt;`, `&amp;` and `&quot;`
 
@@ -92,9 +92,17 @@ You can create custom rewrite handlers to support your own new `linktype` and `e
 
     .. method:: expand_db_attributes(attrs)
 
-        Required. The ``expand_db_attributes`` method is expected to take a dictionary of attributes from a database rich text ``<a>`` tag (``<embed>`` for ``EmbedHandler``) and use it to generate valid frontend HTML.
+        Optional. The ``expand_db_attributes`` method is expected to take a dictionary of attributes from a database rich text ``<a>`` tag (``<embed>`` for ``EmbedHandler``) and use it to generate valid frontend HTML.
 
         For example, ``PageLinkHandler.expand_db_attributes`` might receive ``{'id': 123}``, use it to retrieve the Wagtail page with ID 123, and render a link to its URL like ``<a href="/path/to/page/123">``.
+
+        Either this method or ``expand_db_attributes_many`` must be defined in a custom rewrite handler.
+
+    .. method:: expand_db_attributes_many(attrs_list)
+
+        Optional. The ``expand_db_attributes_many`` method works similarly to ``expand_db_attributes`` but instead takes a list of attribute dictionaries and returns a list of HTML tags. This method is used by rewrite handlers to work in bulk, for example leveraging the ability to make one database query instead of multiple.
+
+        Either this method or ``expand_db_attributes`` must be defined in a custom rewrite handler. If not defined, the default implementation of ``expand_db_attributes_many`` works by making a series of calls to ``expand_db_attributes``.
 
     .. method:: get_model()
 
@@ -106,14 +114,23 @@ You can create custom rewrite handlers to support your own new `linktype` and `e
 
     .. method:: get_instance(attrs)
 
-        Optional. The static or classmethod ``get_instance`` method also only applies to those handlers that are used to render content related to Django models. This method is expected to take a dictionary of attributes from a database rich text ``<a>`` tag (``<embed>`` for ``EmbedHandler``) and use it to return the specific Django model instance being referred to.
+        Optional. The classmethod ``get_instance`` method also only applies to those handlers that are used to render content related to Django models. This method is expected to take a dictionary of attributes from a database rich text ``<a>`` tag (``<embed>`` for ``EmbedHandler``) and use it to return the specific Django model instance being referred to.
 
         For example, ``PageLinkHandler.get_instance`` might receive ``{'id': 123}`` and return the instance of the Wagtail ``Page`` class with ID 123.
 
+        This method should raise an exception if the provided attributes cannot be used to retrieve a
+        Django model instance, for example if the provided ``id`` attribute is invalid.
+
         If left undefined, a default implementation of this method will query the ``id`` model field on the class returned by ``get_model`` using the provided ``id`` attribute; this can be overridden in your own handlers should you want to use some other model field.
+
+    .. method:: get_many(attrs_list)
+
+        Optional. The classmethod ``get_many`` method works similarly to ``get_instance`` but instead takes a list of attribute dictionaries and returns a list of Django model instances.
+
+        Any instances that cannot be retrieved will be represented by ``None`` in the returned list.
 ```
 
-Below is an example custom rewrite handler that implements these methods to add support for rich text linking to user email addresses. It supports the conversion of rich text tags like `<a linktype="user" username="wagtail">` to valid HTML like `<a href="mailto:hello@wagtail.org">`. This example assumes that equivalent front-end functionality has been added to allow users to insert these kinds of links into their rich text editor.
+Below is an example custom rewrite handler that implements some of these methods to add support for rich text linking to user email addresses. It supports the conversion of rich text tags like `<a linktype="user" username="wagtail">` to valid HTML like `<a href="mailto:hello@wagtail.org">`. This example assumes that equivalent front-end functionality has been added to allow users to insert these kinds of links into their rich text editor.
 
 ```python
 from django.contrib.auth import get_user_model
@@ -178,7 +195,7 @@ def register_external_link(features):
     features.register_link_type(NoFollowExternalLinkHandler)
 ```
 
-Similarly you can use `email` linktype to add a custom rewrite handler for email links (for example to obfuscate emails in rich text).
+Similarly, you can use `email` linktype to add a custom rewrite handler for email links (for example to obfuscate emails in rich text).
 
 ```{eval-rst}
 .. method:: FeatureRegistry.register_embed_type(handler)
@@ -205,9 +222,9 @@ It is possible to create your own rich text editor implementation. At minimum, a
 
 Typically, a rich text widget also receives a `features` list, passed from either `RichTextField` / `RichTextBlock` or the `features` option in `WAGTAILADMIN_RICH_TEXT_EDITORS`, which defines the features available in that instance of the editor (see [rich text features](rich_text_features)). To opt in to supporting features, set the attribute `accepts_features = True` on your widget class; the widget constructor will then receive the feature list as a keyword argument `features`.
 
-There is a standard set of recognised feature identifiers as listed under [rich text features](rich_text_features), but this is not a definitive list; feature identifiers are only defined by convention, and it is up to each editor widget to determine which features it will recognise, and adapt its behaviour accordingly. Individual editor widgets might implement fewer or more features than the default set, either as built-in functionality or through a plugin mechanism if the editor widget has one.
+There is a standard set of recognized feature identifiers as listed under [rich text features](rich_text_features), but this is not a definitive list; feature identifiers are only defined by convention, and it is up to each editor widget to determine which features it will recognize, and adapt its behavior accordingly. Individual editor widgets might implement fewer or more features than the default set, either as built-in functionality or through a plugin mechanism if the editor widget has one.
 
-For example, a third-party Wagtail extension might introduce `table` as a new rich text feature, and provide implementations for the Draftail editor (which provides a plugin mechanism). In this case, the third-party extension will not be aware of your custom editor widget, and so the widget will not know how to handle the `table` feature identifier. Editor widgets should silently ignore any feature identifiers that they do not recognise.
+For example, a third-party Wagtail extension might introduce `table` as a new rich text feature, and provide implementations for the Draftail editor (which provides a plugin mechanism). In this case, the third-party extension will not be aware of your custom editor widget, and so the widget will not know how to handle the `table` feature identifier. Editor widgets should silently ignore any feature identifiers that they do not recognize.
 
 The `default_features` attribute of the feature registry is a list of feature identifiers to be used whenever an explicit feature list has not been given in `RichTextField` / `RichTextBlock` or `WAGTAILADMIN_RICH_TEXT_EDITORS`. This list can be modified within the `register_rich_text_features` hook to make new features enabled by default, and retrieved by calling `get_default_features()`.
 
@@ -241,7 +258,7 @@ class CustomRichTextArea(widgets.TextArea):
 ```{eval-rst}
 .. method:: FeatureRegistry.register_editor_plugin(editor_name, feature_name, plugin_definition)
 
-Rich text editors often provide a plugin mechanism to allow extending the editor with new functionality. The ``register_editor_plugin`` method provides a standardised way for ``register_rich_text_features`` hooks to define plugins to be pulled in to the editor when a given rich text feature is enabled.
+Rich text editors often provide a plugin mechanism to allow extending the editor with new functionality. The ``register_editor_plugin`` method provides a standardized way for ``register_rich_text_features`` hooks to define plugins to be pulled into the editor when a given rich text feature is enabled.
 
 ``register_editor_plugin`` is passed an editor name (a string uniquely identifying the editor widget - Wagtail uses the identifier ``draftail`` for the built-in editor), a feature identifier, and a plugin definition object. This object is specific to the editor widget and can be any arbitrary value, but will typically include a :doc:`Django form media <django:topics/forms/media>` definition referencing the plugin's JavaScript code - which will then be merged into the editor widget's own media definition - along with any relevant configuration options to be passed when instantiating the editor.
 
@@ -256,13 +273,13 @@ For details of the plugin formats for Wagtail's built-in editors, see :doc:`./ex
 
 ## Format converters
 
-Editor widgets will often be unable to work directly with Wagtail's rich text format, and require conversion to their own native format. For Draftail, this is a JSON-based format known as ContentState (see [How Draft.js Represents Rich Text Data](https://medium.com/@rajaraodv/how-draft-js-represents-rich-text-data-eeabb5f25cf2)). Editors based on HTML's `contentEditable` mechanism require valid HTML, and so Wagtail uses a convention referred to as "editor HTML", where the additional data required on link and embed elements is stored in `data-` attributes, for example: `<a href="/contact-us/" data-linktype="page" data-id="3">Contact us</a>`.
+Editor widgets will often be unable to work directly with Wagtail's rich text format, and require conversion to their own native format. For Draftail, this is a JSON-based format known as ContentState (see [How Draft.js Represents Rich Text Data](https://rajaraodv.medium.com/how-draft-js-represents-rich-text-data-eeabb5f25cf2)). Editors based on HTML's `contentEditable` mechanism require valid HTML, and so Wagtail uses a convention referred to as "editor HTML", where the additional data required on link and embed elements is stored in `data-` attributes, for example: `<a href="/contact-us/" data-linktype="page" data-id="3">Contact us</a>`.
 
-Wagtail provides two utility classes, `wagtail.admin.rich_text.converters.contentstate.ContentstateConverter` and `wagtail.admin.rich_text.converters.editor_html.EditorHTMLConverter`, to perform conversions between rich text format and the native editor formats. These classes are independent of any editor widget, and distinct from the rewriting process that happens when rendering rich text onto a template.
+Wagtail provides two utility classes, `wagtail.admin.rich_text.converters.contentstate.ContentstateConverter` and `wagtail.admin.rich_text.converters.editor_html.EditorHTMLConverter`, to perform conversions between rich text format and the native editor formats. These classes are independent of any editor widget and distinct from the rewriting process that happens when rendering rich text onto a template.
 
-Both classes accept a `features` list as an argument to their constructor, and implement two methods, `from_database_format(data)` which converts Wagtail rich text data to the editor's format, and `to_database_format(data)` which converts editor data to Wagtail rich text format.
+Both classes accept a `features` list as an argument to their constructor and implement two methods, `from_database_format(data)` which converts Wagtail rich text data to the editor's format, and `to_database_format(data)` which converts editor data to Wagtail rich text format.
 
-As with editor plugins, the behaviour of a converter class can vary according to the feature list passed to it. In particular, it can apply whitelisting rules to ensure that the output only contains HTML elements corresponding to the currently active feature set. The feature registry provides a `register_converter_rule` method to allow `register_rich_text_features` hooks to define conversion rules that will be activated when a given feature is enabled.
+As with editor plugins, the behavior of a converter class can vary according to the feature list passed to it. In particular, it can apply whitelisting rules to ensure that the output only contains HTML elements corresponding to the currently active feature set. The feature registry provides a `register_converter_rule` method to allow `register_rich_text_features` hooks to define conversion rules that will be activated when a given feature is enabled.
 
 ```{eval-rst}
 .. method:: FeatureRegistry.register_converter_rule(converter_name, feature_name, rule_definition)

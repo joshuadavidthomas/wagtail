@@ -4,19 +4,22 @@
 #
 # Translators:
 # Andy Kong <worminfo@gmail.com>, 2020
-# ChihWei Wang <ihcgno@icloud.com>, 2022
-# ChihWei Wang <ihcgno@icloud.com>, 2019
-# ChihWei Wang <ihcgno@icloud.com>, 2020-2021
+# Chih Wang <ihcgno@icloud.com>, 2019,2022
+# Chih Wang <ihcgno@icloud.com>, 2022
+# Chih Wang <ihcgno@icloud.com>, 2019
+# Chih Wang <ihcgno@icloud.com>, 2020-2021
+# Ocin Leung, 2020
 # Ocin Leung, 2020
 # Yeh Yen-Ke <yyken@outlook.com>, 2019
+# Yunchi Pang <yunchipang@gmail.com>, 2024
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:50+0000\n"
-"Last-Translator: ChihWei Wang <ihcgno@icloud.com>, 2022\n"
-"Language-Team: Chinese Traditional (http://www.transifex.com/torchbox/"
+"Last-Translator: Yunchi Pang <yunchipang@gmail.com>, 2024\n"
+"Language-Team: Chinese Traditional (http://app.transifex.com/torchbox/"
 "wagtail/language/zh-Hant/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -30,11 +33,13 @@ msgstr "發佈"
 msgid "Submit for moderation"
 msgstr "提交審核"
 
-msgid "Resubmit to {}"
-msgstr "重新提交至 {}"
+#, python-format
+msgid "Resubmit to %(task_name)s"
+msgstr "重新提交至 %(task_name)s"
 
-msgid "Submit to {}"
-msgstr "提交至 {}"
+#, python-format
+msgid "Submit to %(workflow_name)s"
+msgstr "提交至 %(workflow_name)s"
 
 msgid "Restart workflow "
 msgstr "重啟工作流程"
@@ -50,6 +55,10 @@ msgstr "儲存草稿"
 
 msgid "Page locked"
 msgstr "頁面已鎖定"
+
+#, python-format
+msgid "%(label)s and Publish"
+msgstr "%(label)s並發布"
 
 msgid "Wagtail admin"
 msgstr "Wagtail 管理"
@@ -69,8 +78,17 @@ msgstr "起始日期"
 msgid "Date to"
 msgstr "結束日期"
 
+msgid "Locale"
+msgstr "語系"
+
 msgid "All"
 msgstr "全部"
+
+msgid "Collection"
+msgstr "集合"
+
+msgid "Tag"
+msgstr "標籤"
 
 msgid "Preferred language"
 msgstr "首選語言"
@@ -94,8 +112,12 @@ msgid "Enter password"
 msgstr "輸入密碼"
 
 #, python-format
-msgid "Enter your %s"
-msgstr "輸入你的 %s"
+msgid "Your %(username_field)s and password didn't match. Please try again."
+msgstr "帳戶 %(username_field)s 密碼不正確，請重試。"
+
+#, python-format
+msgid "Enter your %(username_field_name)s"
+msgstr "輸入你的 %(username_field_name)s"
 
 msgid "Enter your email address to reset your password"
 msgstr "輸入電子郵件地址以重置密碼"
@@ -112,11 +134,13 @@ msgstr "搜索"
 msgid "All collections"
 msgstr "所有集合"
 
-msgid "Collection"
-msgstr "集合"
-
 msgid "Parent"
 msgstr "上一級"
+
+msgid ""
+"Select hierarchical position. Note: a collection cannot become a child of "
+"itself or one of its descendants."
+msgstr "選取層級。注意：一個集合無法成為其本身的子集合或是任何子階級。"
 
 msgid "Please select another parent"
 msgstr "請選擇其它上級"
@@ -144,6 +168,12 @@ msgstr "刪除集合"
 
 msgid "You cannot edit another user's comment."
 msgstr "無法編輯其它使用者的評論"
+
+msgid "Go live date/time must be before expiry date/time"
+msgstr "上線時間須早於截止期限"
+
+msgid "Expiry date/time must be in the future"
+msgstr "過期日期/時間必須是未來時間。"
 
 msgid "New title"
 msgstr "新增標題"
@@ -186,26 +216,24 @@ msgstr[0] "正在複製的 %(count)s 個頁面已是發佈狀態，你要發佈�
 msgid "Alias"
 msgstr "別名"
 
+msgid "Keep the new pages updated with future changes"
+msgstr "維持新頁面於最新更改狀態"
+
 #, python-format
 msgid "You do not have permission to copy to page \"%(page_title)s\""
 msgstr "你沒有權限複製到頁面“%(page_title)s”"
 
 #, python-format
 msgid ""
-"This slug is already in use within the context of its parent page \"%s\""
-msgstr "此短標題已被其上階頁面 \"%s\" 使用。"
+"This slug is already in use within the context of its parent page "
+"\"%(parent_page_title)s\""
+msgstr "此短標題已被其上階頁面 \"%(parent_page_title)s\" 使用。"
 
 msgid "You cannot copy a page into itself when copying subpages"
 msgstr "你在複製子頁面時不能複製當前頁面本身"
 
-msgid "This slug is already in use"
-msgstr "此短標題已被使用"
-
-msgid "Go live date/time must be before expiry date/time"
-msgstr "上線時間須早於截止期限"
-
-msgid "Expiry date/time must be in the future"
-msgstr "過期日期/時間必須是未來時間。"
+msgid "Parent page"
+msgstr "上一級頁面"
 
 msgid "Visibility"
 msgstr "可見"
@@ -219,9 +247,9 @@ msgstr "請至少選擇一群組。"
 msgid "All types"
 msgstr "所有類型"
 
-#, python-brace-format
-msgid "This page already has workflow '{0}' assigned."
-msgstr "此頁面已指派至工作流程 '{0}'"
+#, python-format
+msgid "This page already has workflow '%(workflow_name)s' assigned."
+msgstr "此頁面已指派至工作流程 '%(workflow_name)s'"
 
 msgid "You cannot assign this workflow to the same page multiple times."
 msgstr "無法多次指派此工作流程至相同頁面"
@@ -238,13 +266,13 @@ msgstr "作業"
 msgid "1 page selected"
 msgstr "已選擇 1 頁面"
 
-#, python-brace-format
-msgid "{0} pages selected"
-msgstr "已選擇 {0} 頁面"
+#, python-format
+msgid "%(objects)s pages selected"
+msgstr "已選擇 %(objects)s 頁面"
 
-#, python-brace-format
-msgid "All {0} pages on this screen selected"
-msgstr "已選擇顯示範圍內所有 {0} 項頁面"
+#, python-format
+msgid "All %(objects)s pages on this screen selected"
+msgstr "已選擇顯示範圍內所有 %(objects)s 項頁面"
 
 msgid "All pages in listing selected"
 msgstr "已選擇列表中的所有頁面"
@@ -252,13 +280,13 @@ msgstr "已選擇列表中的所有頁面"
 msgid "1 document selected"
 msgstr "已選擇 1 項文件"
 
-#, python-brace-format
-msgid "{0} documents selected"
-msgstr "已選擇 {0} 項文件"
+#, python-format
+msgid "%(objects)s documents selected"
+msgstr "已選擇 %(objects)s 項文件"
 
-#, python-brace-format
-msgid "All {0} documents on this screen selected"
-msgstr "已選擇顯示範圍內所有 {0} 項文件"
+#, python-format
+msgid "All %(objects)s documents on this screen selected"
+msgstr "已選擇顯示範圍內所有 %(objects)s 項文件"
 
 msgid "All documents in listing selected"
 msgstr "已選擇列表中的所有文件"
@@ -266,13 +294,13 @@ msgstr "已選擇列表中的所有文件"
 msgid "1 image selected"
 msgstr "已選擇 1 項圖片"
 
-#, python-brace-format
-msgid "{0} images selected"
-msgstr "已選擇 {0} 項圖片"
+#, python-format
+msgid "%(objects)s images selected"
+msgstr "已選擇 %(objects)s 項圖片"
 
-#, python-brace-format
-msgid "All {0} images on this screen selected"
-msgstr "已選擇顯示範圍內所有 {0} 項圖片"
+#, python-format
+msgid "All %(objects)s images on this screen selected"
+msgstr "已選擇顯示範圍內所有 %(objects)s 項圖片"
 
 msgid "All images in listing selected"
 msgstr "已選擇列表中的所有圖片"
@@ -280,13 +308,13 @@ msgstr "已選擇列表中的所有圖片"
 msgid "1 user selected"
 msgstr "已選擇 1 位使用者"
 
-#, python-brace-format
-msgid "{0} users selected"
-msgstr "已選擇 {0} 位使用者"
+#, python-format
+msgid "%(objects)s users selected"
+msgstr "已選擇 %(objects)s 位使用者"
 
-#, python-brace-format
-msgid "All {0} users on this screen selected"
-msgstr "已選擇顯示範圍內所有 {0} 位使用者"
+#, python-format
+msgid "All %(objects)s users on this screen selected"
+msgstr "已選擇顯示範圍內所有 %(objects)s 位使用者"
 
 msgid "All users in listing selected"
 msgstr "已選擇列表中的所有使用者"
@@ -294,19 +322,16 @@ msgstr "已選擇列表中的所有使用者"
 msgid "1 item selected"
 msgstr "已選擇 1 個項目"
 
-#, python-brace-format
-msgid "{0} items selected"
-msgstr "已選擇 {0} 個項目"
+#, python-format
+msgid "%(objects)s items selected"
+msgstr "已選擇 %(objects)s 個項目"
 
-#, python-brace-format
-msgid "All {0} items on this screen selected"
-msgstr "已選擇顯示範圍內所有 {0} 個項目"
+#, python-format
+msgid "All %(objects)s items on this screen selected"
+msgstr "已選擇顯示範圍內所有 %(objects)s 個項目"
 
 msgid "All items in listing selected"
 msgstr "已選擇列表中的所有項目"
-
-msgid "Scheduled publishing"
-msgstr "定時發佈"
 
 msgid "Content"
 msgstr "內容"
@@ -316,6 +341,12 @@ msgstr "推薦"
 
 msgid "Settings"
 msgstr "設置"
+
+msgid "Title"
+msgstr "標題"
+
+msgid "Page title"
+msgstr "頁面標題"
 
 msgid "Error 404: Page not found"
 msgstr "404錯誤：沒有找到頁面"
@@ -329,14 +360,8 @@ msgstr "找不到請求的頁面。"
 msgid "Go to Wagtail admin"
 msgstr "轉到管理界面"
 
-msgid "Account"
-msgstr "帳號"
-
 msgid "More actions"
 msgstr "更多操作"
-
-msgid "Save account details"
-msgstr "儲存帳戶詳細資料"
 
 msgid "Reset password"
 msgstr "重置密碼"
@@ -408,6 +433,11 @@ msgstr "外部連結"
 msgid "Email link"
 msgstr "電子郵件連結"
 
+#, python-format
+msgid "There is %(counter)s match"
+msgid_plural "There are %(counter)s matches"
+msgstr[0] "共有 %(counter)s 項符合"
+
 msgid "Choose"
 msgstr "選擇"
 
@@ -435,9 +465,6 @@ msgstr "查看'%(title)s'的子頁面"
 
 msgid "Explore"
 msgstr "瀏覽"
-
-msgid "Collection privacy"
-msgstr "集合隱蔽設置"
 
 msgid "This collection has been made private by a parent collection."
 msgstr "此集合已經被上階集合設為隱蔽。"
@@ -471,28 +498,36 @@ msgid ""
 "This collection cannot be deleted, because it is not empty. It contains:"
 msgstr "集合非空，不能刪除，它包含有："
 
-msgid "Name"
-msgstr "名稱"
-
 #, python-format
 msgid ""
-"No collections have been created. Why not <a href=\"%(add_collection_url)s"
-"\">add one</a>?"
+"No collections have been created. Why not <a "
+"href=\"%(add_collection_url)s\">add one</a>?"
 msgstr ""
 "沒有創建任何集合，為何不<a href=\"%(add_collection_url)s\">創建一個</a>"
 
 msgid "Yes, delete"
 msgstr "確認刪除"
 
+msgid "No, don't delete"
+msgstr "否，不刪除"
+
+msgid "Yes, unpublish it"
+msgstr "是，取消發佈"
+
+msgid "No, don't unpublish"
+msgstr "否，不取消發佈"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Comment"
+msgstr "評論"
+
 msgid "Update"
 msgstr "更新"
-
-#, python-format
-msgid "Comparing %(title)s"
-msgstr "比較 %(title)s"
-
-msgid "Comparing"
-msgstr "正在比較"
 
 msgid "Fields"
 msgstr "欄位"
@@ -503,20 +538,22 @@ msgstr "更改"
 msgid "There are no differences between these two versions"
 msgstr "兩版本間無任何差異"
 
-#, python-format
-msgid "Welcome to the %(site_name)s Wagtail CMS"
-msgstr "歡迎使用 %(site_name)s  Wagtail 內容管理系統"
-
 msgid ""
 "This is your dashboard on which helpful information about content you've "
 "created will be displayed."
 msgstr "此面版可顯示你所建立內容的相關資訊。"
 
+msgid "Account"
+msgstr "帳號"
+
 msgid "Your locked pages"
 msgstr "你已鎖定的頁面"
 
-msgid "Title"
-msgstr "標題"
+msgid "Language"
+msgstr "語言"
+
+msgid "Status"
+msgstr "狀態"
 
 msgid "Locked at"
 msgstr "鎖定於"
@@ -533,32 +570,8 @@ msgstr "草稿"
 msgid "Live"
 msgstr "上線"
 
-msgid "Pages awaiting moderation"
-msgstr "等待頁面審核中"
-
-msgid "Type"
-msgstr "類型"
-
-msgid "Edited"
-msgstr "已編輯"
-
-msgid "Preview this page"
-msgstr "預覽頁面"
-
-msgid "Approve"
-msgstr "通過"
-
-msgid "Reject"
-msgstr "駁回"
-
-msgid "Preview"
-msgstr "預覽"
-
 msgid "Your most recent edits"
 msgstr "最近編輯"
-
-msgid "Status"
-msgstr "狀態"
 
 msgid "Date"
 msgstr "日期"
@@ -572,21 +585,29 @@ msgstr "作業開始"
 msgid "Awaiting"
 msgstr "等待中"
 
+msgid "Close"
+msgstr "關閉"
+
 msgid "Awaiting your review"
 msgstr "待審中"
 
 msgid "Tasks"
 msgstr "作業"
 
+msgid "Preview"
+msgstr "預覽"
+
+msgid "Compare with live version"
+msgstr "與線上版本進行比較"
+
+msgid "Compare with previous version"
+msgstr "與前次版本進行比較"
+
 msgid "Sign in"
 msgstr "登錄"
 
 msgid "Sign in to Wagtail"
 msgstr "登錄Wagtail"
-
-#, python-format
-msgid "Your %(username_field)s and password didn't match. Please try again."
-msgstr "帳戶 %(username_field)s 密碼不正確，請重試。"
 
 msgid "Forgotten password?"
 msgstr "忘記密碼？"
@@ -627,17 +648,6 @@ msgid "The page \"%(title)s\" has been rejected"
 msgstr "頁面\"%(title)s\"被駁回"
 
 #, python-format
-msgid "The page \"%(page)s\" has been submitted for moderation by %(editor)s."
-msgstr "頁面 “%(page)s” 已由 “%(editor)s” 提交審核"
-
-msgid "You can preview the page here:"
-msgstr "在此預覽頁面："
-
-#, python-format
-msgid "The page \"%(page)s\" has been submitted for moderation"
-msgstr "頁面\"%(page)s\"已提交審核"
-
-#, python-format
 msgid ""
 "The page \"%(title)s\" has been approved in moderation stage \"%(task)s\"."
 msgstr "頁面 \"%(title)s\" 已於階段 \"%(task)s\" 核准"
@@ -660,6 +670,9 @@ msgid ""
 "The page \"%(title)s\" has been submitted for approval in moderation stage "
 "\"%(task)s\"."
 msgstr "頁面 \"%(title)s\" 已提交至審核階段 \"%(task)s\""
+
+msgid "You can preview the page here:"
+msgstr "在此預覽頁面："
 
 #, python-format
 msgid ""
@@ -736,24 +749,6 @@ msgid ""
 "\"%(workflow)s\"."
 msgstr "頁面 \"%(title)s\" 已提交至審核工作流程 \"%(workflow)s\" "
 
-msgid "Page privacy"
-msgstr "頁面隱蔽設置"
-
-msgid "This page has been made private by a parent page."
-msgstr "此頁面已被上階頁面設置為隱蔽。"
-
-msgid "You have <span>unsaved edits</span>"
-msgstr "你有<span>尚未儲存的編輯內容</span>"
-
-msgid "You have <span>unsaved comments</span>"
-msgstr "你有<span>尚未儲存的評論內容</span>"
-
-msgid "You have <span>unsaved edits</span> and <span>comments</span>"
-msgstr "你有<span>尚未儲存的編輯</span>以及<span>評論內容</span>"
-
-msgid "Save the page before leaving"
-msgstr "離開前儲存頁面"
-
 msgid "Publishing…"
 msgstr "正在發佈..."
 
@@ -800,9 +795,6 @@ msgid "You don't have permission to delete this page"
 msgid_plural "You don't have permission to delete these pages"
 msgstr[0] "您沒有刪除這些頁面的權限"
 
-msgid "No, don't delete"
-msgstr "否，不刪除"
-
 #, python-format
 msgid "Move 1 page"
 msgid_plural "Move %(counter)s pages"
@@ -814,8 +806,24 @@ msgstr "移動"
 msgid "Are you sure you want to move these pages?"
 msgstr "確定要搬移這些頁面？"
 
-msgid "No, don't unpublish"
-msgstr "否，不取消發佈"
+msgid "You don't have permission to move this page"
+msgid_plural "You don't have permission to move these pages"
+msgstr[0] "沒有移動這些頁面的權限"
+
+msgid "Yes, move these pages"
+msgstr "確認移動頁面"
+
+msgid "No, don't move"
+msgstr "取消移動"
+
+msgid "Yes, publish"
+msgstr "確認發佈"
+
+msgid "No, don't publish"
+msgstr "取消發佈"
+
+msgid "Yes, unpublish"
+msgstr "確認取消發佈"
 
 #, python-format
 msgid "Convert alias %(title)s"
@@ -884,16 +892,6 @@ msgstr "發佈此頁面將取消目前工作流程"
 msgid "Would you still like to publish this page?"
 msgstr "確定仍要發佈此頁面？"
 
-msgid "Cancel"
-msgstr "取消"
-
-#, python-format
-msgid "Pages using %(page_class_verbose_name)s"
-msgstr "使用%(page_class_verbose_name)s的頁面"
-
-msgid "Pages using"
-msgstr "頁面使用"
-
 #, python-format
 msgid "Copy %(title)s"
 msgstr "複製%(title)s"
@@ -904,73 +902,17 @@ msgstr "複製"
 msgid "Copy this page"
 msgstr "複製此頁"
 
-#, python-format
-msgid "New %(page_type)s"
-msgstr "新%(page_type)s頁面類型"
-
-msgid "Actions"
-msgstr "操作"
-
-msgid "This page has unsaved changes."
-msgstr "此頁面有未儲存的變更"
-
-#, python-format
-msgid "Editing %(page_type)s: %(title)s"
-msgstr "編輯 %(page_type)s: %(title)s"
-
 msgid "This page is an alias of another page."
 msgstr "此頁面為其它頁面之別名"
 
 msgid "Edit original page"
 msgstr "編輯原始面頁"
 
-#, python-format
-msgid "Page history for %(subtitle)s"
-msgstr "%(subtitle)s 頁面歷史"
-
-msgid "Action"
-msgstr "操作"
-
-msgid "User"
-msgstr "使用者"
-
-msgid "Date / Time"
-msgstr "日期/時間"
-
-msgid "Comment"
-msgstr "評論"
-
-msgid "Live version"
-msgstr "線上版本"
-
-msgid "Current draft"
-msgstr "當前草稿"
-
-msgid "No log entries found."
-msgstr "沒有發現任何記錄"
-
-#, python-format
-msgid "Exploring %(title)s"
-msgstr "瀏覽 %(title)s"
-
-msgid "Select all pages in listing"
-msgstr "選擇列表中的所有頁面"
-
-msgid "Select page"
-msgstr "選擇頁面"
-
-msgid "Drag"
-msgstr "拖曳"
-
 msgid "Configure a site now."
 msgstr "立即設定一個網站。"
 
-msgid "No pages have been created at this location."
-msgstr "這個位置還沒有創建頁面。"
-
-#, python-format
-msgid "Why not <a href=\"%(add_page_url)s\">create one</a>?"
-msgstr "要不<a href=\"%(add_page_url)s\">創建一個</a>?"
+msgid "Select all pages in listing"
+msgstr "選擇列表中的所有頁面"
 
 msgid "This page is locked to further editing"
 msgstr "此頁面已鎖定，無法編輯"
@@ -982,6 +924,18 @@ msgstr "查看'%(title)s'的子頁面"
 #, python-format
 msgid "Add a child page to '%(title)s'"
 msgstr "為'%(title)s'新增子頁面"
+
+msgid "Drag"
+msgstr "拖曳"
+
+msgid "Disable ordering of child pages"
+msgstr "禁用子頁面排序"
+
+msgid "Sort"
+msgstr "排序"
+
+msgid "Enable ordering of child pages"
+msgstr "啟用子頁面排序"
 
 msgid "Sites menu"
 msgstr "網站選單"
@@ -998,103 +952,17 @@ msgstr "下一個"
 msgid "This page is protected from public view"
 msgstr "此頁面已受保護，公眾不可見。"
 
-msgid "Disable ordering of child pages"
-msgstr "禁用子頁面排序"
-
-msgid "Sort"
-msgstr "排序"
-
-msgid "Enable ordering of child pages"
-msgstr "啟用子頁面排序"
-
-msgid "Updated"
-msgstr "已更新"
-
 msgid "Confirm"
 msgstr "確認"
 
-msgid "History"
-msgstr "歷史"
-
-msgid "Review this version"
-msgstr "審核此版本"
-
-msgid "Compare with previous version"
-msgstr "與前次版本進行比較"
-
-msgid "Compare with current version"
-msgstr "與目前版本進行比較"
-
-msgid "Cancel scheduled publish"
-msgstr "取消預定的發佈"
-
-#, python-format
-msgid "Unschedule Revision %(revision.id)s for %(title)s"
-msgstr "取消%(title)s修訂版本%(revision.id)s的預定發佈"
-
-msgid "Unschedule"
-msgstr "取消預定發佈"
-
-msgid "Are you sure you want to unschedule this revision?"
-msgstr "確定要取消這個修訂版本的預定發佈嗎？"
-
-msgid "Yes, unschedule"
-msgstr "是的，取消定時發佈"
-
-msgid "No, don't unschedule"
-msgstr "否，不取消預定發佈"
+msgid "Add child page"
+msgstr "新增子頁面"
 
 msgid "Page types"
 msgstr "頁面類型"
 
 msgid "Enter a search term above"
 msgstr "輸入上面的搜索條件"
-
-msgid "No pages use"
-msgstr "沒有頁面使用"
-
-msgid "Workflow progress"
-msgstr "工作流程進度"
-
-msgid "Edit / Review"
-msgstr "編輯 / 審核"
-
-msgid "Workflow history"
-msgstr "工作流程歷史"
-
-#, python-format
-msgid "Status <span class=\"status-tag primary\"> %(status)s</span>"
-msgstr "狀態 <span class=\"status-tag primary\">%(status)s</span>"
-
-msgid "Timeline"
-msgstr "時間軸"
-
-msgid "Initial Revision"
-msgstr "初始版本"
-
-msgid "Page edited"
-msgstr "已編輯頁面"
-
-msgid "with comment:"
-msgstr "意見："
-
-msgid "Workflow started"
-msgstr "已開始工作流程"
-
-msgid "Workflow completed"
-msgstr "已完成工作流程"
-
-msgid "Edit page"
-msgstr "編輯頁面"
-
-msgid "Started at"
-msgstr "開始於"
-
-msgid "Approved task"
-msgstr "已核准作業"
-
-msgid "Incomplete task"
-msgstr "未完成作業"
 
 #, python-format
 msgid "Add %(label)s"
@@ -1106,11 +974,20 @@ msgstr "上移"
 msgid "Move down"
 msgstr "下移"
 
-msgid "Download XLSX"
-msgstr "下載 XLSX"
+msgid "Save schedule"
+msgstr "儲存排程"
 
-msgid "Download CSV"
-msgstr "下載 CSV"
+msgid "Last published"
+msgstr "最後發佈"
+
+msgid "Type"
+msgstr "類型"
+
+msgid "Updated"
+msgstr "已更新"
+
+msgid "Pages"
+msgstr "頁面"
 
 msgid "Locking status"
 msgstr "鎖定狀態"
@@ -1121,14 +998,32 @@ msgstr "已鎖定"
 msgid "No locked pages found."
 msgstr "沒有已被鎖定頁面"
 
+msgid "Name"
+msgstr "名稱"
+
+msgid "Action"
+msgstr "操作"
+
+msgid "User"
+msgstr "使用者"
+
+msgid "Date / Time"
+msgstr "日期/時間"
+
 msgid "Edit this item"
 msgstr "編輯此項"
+
+msgid "No log entries found."
+msgstr "沒有發現任何記錄"
 
 msgid "Workflow"
 msgstr "工作流程"
 
-msgid "Page"
-msgstr "頁面"
+msgid "Started at"
+msgstr "開始於"
+
+msgid "Incomplete task"
+msgstr "未完成作業"
 
 msgid "Completed at"
 msgstr "完成時間"
@@ -1137,18 +1032,17 @@ msgstr "完成時間"
 msgid "Page %(page_num)s of %(total_pages)s."
 msgstr "第 %(page_num)s 頁，共 %(total_pages)s 頁。"
 
-msgid "Root"
-msgstr "根"
+msgid "Close dialog"
+msgstr "關閉對話框"
 
-#, python-format
-msgid "Unpublish %(title)s"
-msgstr "取消發佈%(title)s"
+msgid "Continue"
+msgstr "繼續"
 
-msgid "Yes, unpublish it"
-msgstr "是，取消發佈"
+msgid "Download XLSX"
+msgstr "下載 XLSX"
 
-msgid "Add comment"
-msgstr "新增評論"
+msgid "Download CSV"
+msgstr "下載 CSV"
 
 msgid "Filter"
 msgstr "過濾"
@@ -1156,14 +1050,35 @@ msgstr "過濾"
 msgid "Apply filters"
 msgstr "套用過濾"
 
-msgid "Visit the live page"
-msgstr "查看線上頁面"
+msgid "Add comment"
+msgstr "新增評論"
+
+msgid "History"
+msgstr "歷史"
 
 msgid "Current page status:"
 msgstr "目前頁面狀態："
 
+msgid "Visit the live page"
+msgstr "查看線上頁面"
+
+msgid "Are you sure you want to unschedule this revision?"
+msgstr "確定要取消這個修訂版本的預定發佈嗎？"
+
+msgid "Yes, unschedule"
+msgstr "是的，取消定時發佈"
+
+msgid "No, don't unschedule"
+msgstr "否，不取消預定發佈"
+
 msgid "Other searches"
 msgstr "其它搜索"
+
+msgid "Locale: "
+msgstr "語系："
+
+msgid "Switch locales"
+msgstr "切換語系"
 
 msgid "Unlocked"
 msgstr "已解鎖"
@@ -1174,11 +1089,67 @@ msgstr "鎖定"
 msgid "Privacy changes apply to all children of this page too."
 msgstr "隱蔽設置也會套用至所有子頁面。"
 
+msgid "Usage"
+msgstr "使用情況"
+
+#, python-format
+msgid "Used %(usage_count)s time"
+msgid_plural "Used %(usage_count)s times"
+msgstr[0] "已使用%(usage_count)s次"
+
+msgid "Status: "
+msgstr "狀態："
+
+msgid "Edit schedule"
+msgstr "編輯排程"
+
 msgid "View details"
 msgstr "檢視詳細資料"
 
 msgid "View history"
 msgstr "檢視歷史"
+
+msgid "Set schedule"
+msgstr "設定排程"
+
+msgid "Loading"
+msgstr "載入中..."
+
+msgid "Preview mode"
+msgstr "預覧模式"
+
+msgid "You have <span>unsaved edits</span>"
+msgstr "你有<span>尚未儲存的編輯內容</span>"
+
+msgid "You have <span>unsaved comments</span>"
+msgstr "你有<span>尚未儲存的評論內容</span>"
+
+msgid "You have <span>unsaved edits</span> and <span>comments</span>"
+msgstr "你有<span>尚未儲存的編輯</span>以及<span>評論內容</span>"
+
+msgid "Timeline"
+msgstr "時間軸"
+
+msgid "Initial Revision"
+msgstr "初始版本"
+
+msgid "Edited"
+msgstr "已編輯"
+
+msgid "with comment:"
+msgstr "意見："
+
+msgid "Workflow started"
+msgstr "已開始工作流程"
+
+msgid "Workflow completed"
+msgstr "已完成工作流程"
+
+msgid "Approved task"
+msgstr "已核准作業"
+
+msgid "Skip to main content"
+msgstr "略過至主要內容"
 
 msgid "Add a child page"
 msgstr "新增子頁面"
@@ -1201,12 +1172,6 @@ msgstr "確定禁用此項作業？"
 msgid "Assign your workflow to pages"
 msgstr "指派工作流程至頁面"
 
-msgid "Creating…"
-msgstr "建立中"
-
-msgid "Create"
-msgstr "建立"
-
 msgid "This workflow is disabled so it cannot be assigned to any pages."
 msgstr "已禁用此工作流程且無法指派至任何頁面。"
 
@@ -1219,17 +1184,11 @@ msgstr "未使用"
 msgid "Assigned pages"
 msgstr "已指派頁面"
 
+msgid "Page"
+msgstr "頁面"
+
 msgid "Assign to another page"
 msgstr "指派至其它頁面"
-
-msgid "Hide disabled workflows"
-msgstr "隱藏已禁用的工作流程"
-
-msgid "Show disabled workflows"
-msgstr "顯示已禁用之工作流程"
-
-msgid "Used by"
-msgstr "已使用"
 
 #, python-format
 msgid "Step %(step_number)s"
@@ -1250,6 +1209,12 @@ msgstr "現有"
 msgid "Choose a different task type"
 msgstr "選擇其它作業類型"
 
+msgid "Creating…"
+msgstr "建立中"
+
+msgid "Create"
+msgstr "建立"
+
 msgid "Task type"
 msgstr "作業類型"
 
@@ -1258,19 +1223,6 @@ msgstr "已用於"
 
 msgid "You haven't created any tasks."
 msgstr "尚未建立任何作業"
-
-msgid "Hide disabled tasks"
-msgstr "隱藏已禁用的作業"
-
-msgid "Show disabled tasks"
-msgstr "顯示已禁用的作業"
-
-#, python-format
-msgid "Pages that use workflow '%(name)s'"
-msgstr "使用工作流程 '%(name)s' 的頁面"
-
-msgid "Pages that use workflow"
-msgstr "使用工作流程的頁面"
 
 msgid "Submitted"
 msgstr "已提交"
@@ -1287,9 +1239,6 @@ msgstr "已發佈"
 msgid "See full history"
 msgstr "檢視完整歷史"
 
-msgid "Compare with live version"
-msgstr "與線上版本進行比較"
-
 msgid "More"
 msgstr "更多"
 
@@ -1303,20 +1252,41 @@ msgstr "%(time_period)s 前"
 msgid "Log out"
 msgstr "登出"
 
+msgid "Undo"
+msgstr "復原"
+
+msgid "Redo"
+msgstr "取消復原"
+
+msgid "Bold"
+msgstr "粗體"
+
+msgid "Italic"
+msgstr "斜體"
+
+msgid "Superscript"
+msgstr "上標"
+
+msgid "Subscript"
+msgstr "下標"
+
 msgid "Toggle status"
 msgstr "切換狀態"
 
-msgid "Comments"
-msgstr "評論"
-
 msgid "Toggle comments"
 msgstr "切換評論"
+
+msgid "Comments"
+msgstr "評論"
 
 msgid "Toggle preview"
 msgstr "切換預覽"
 
 msgid "Notifications"
 msgstr "通知"
+
+msgid "Name and Email"
+msgstr "姓名與電子郵件"
 
 msgid "Password"
 msgstr "密碼"
@@ -1333,29 +1303,79 @@ msgstr "新增一個集合"
 msgid "Add collection"
 msgstr "新增集合"
 
-#, python-brace-format
-msgid "Collection '{0}' created."
-msgstr "集合 '{0}' 已創建"
+#, python-format
+msgid "Collection '%(object)s' created."
+msgstr "集合 '%(object)s' 已創建"
 
-#, python-brace-format
-msgid "Collection '{0}' updated."
-msgstr "集合 '{0}' 已更新"
+#, python-format
+msgid "Collection '%(object)s' updated."
+msgstr "集合 '%(object)s' 已更新"
 
 msgid "The collection could not be saved due to errors."
 msgstr "發生錯誤，無法儲存集合。"
 
+#, python-format
+msgid "Collection '%(object)s' deleted."
+msgstr "集合 '%(object)s' 已刪除"
+
 msgid "Delete collection"
 msgstr "刪除集合"
-
-#, python-brace-format
-msgid "Collection '{0}' deleted."
-msgstr "集合 '{0}' 已刪除"
 
 msgid "Are you sure you want to delete this collection?"
 msgstr "確定刪除此集合？"
 
+msgid "Home"
+msgstr "首頁"
+
+msgid "Live version"
+msgstr "線上版本"
+
+msgid "Current draft"
+msgstr "當前草稿"
+
+msgid "Review this version"
+msgstr "審核此版本"
+
+msgid "Compare with current version"
+msgstr "與目前版本進行比較"
+
+msgid "Cancel scheduled publish"
+msgstr "取消預定的發佈"
+
+msgid "Workflow history"
+msgstr "工作流程歷史"
+
+msgid "Workflow progress"
+msgstr "工作流程進度"
+
+msgid "Edit / Review"
+msgstr "編輯 / 審核"
+
+#, python-format
+msgid "%(model_name)s '%(object)s' updated."
+msgstr "%(model_name)s '%(object)s' 已更新。"
+
+#, python-format
+msgid "%(model_name)s '%(object)s' created."
+msgstr "%(model_name)s '%(object)s' 已創建。"
+
+#, python-format
+msgid "Edit '%(title)s'"
+msgstr "編輯 '%(title)s'"
+
+msgid "Inspect"
+msgstr "檢查"
+
+#, python-format
+msgid "Delete '%(title)s'"
+msgstr "刪除 '%(title)s'"
+
 msgid "Editing"
 msgstr "正在編輯"
+
+#, python-format
+msgid "%(model_name)s '%(object)s' deleted."
+msgstr "%(model_name)s '%(object)s' 已刪除。"
 
 msgid "Earliest"
 msgstr "最早的"
@@ -1363,16 +1383,29 @@ msgstr "最早的"
 msgid "Latest"
 msgstr "最近的"
 
+msgid "Unschedule"
+msgstr "取消預定發佈"
+
+#, python-format
+msgid "Edit this %(object)s"
+msgstr "編輯此 %(object)s"
+
 msgid "Dashboard"
 msgstr "控制面板"
 
-#, python-brace-format
-msgid "Page '{0}' and {1} subpages copied."
-msgstr "頁面 '{0}' 和 {1} 個子頁面已複製。"
+msgid "Delete selected pages"
+msgstr "刪除選取頁面"
 
-#, python-brace-format
-msgid "Page '{0}' copied."
-msgstr "頁面'{0}'已複製。"
+msgid "Move selected pages"
+msgstr "移動選取頁面"
+
+#, python-format
+msgid "Page '%(page_title)s' and %(subpages_count)s subpages copied."
+msgstr "頁面 '%(page_title)s' 和 %(subpages_count)s 個子頁面已複製。"
+
+#, python-format
+msgid "Page '%(page_title)s' copied."
+msgstr "頁面'%(page_title)s'已複製。"
 
 msgid "View draft"
 msgstr "查看草稿"
@@ -1380,55 +1413,56 @@ msgstr "查看草稿"
 msgid "View live"
 msgstr "檢視線上版本"
 
-#, python-brace-format
-msgid "Page '{0}' created."
-msgstr "頁面'{0}'已創建"
+#, python-format
+msgid "Page '%(page_title)s' created."
+msgstr "頁面'%(page_title)s'已創建"
 
-#, python-brace-format
-msgid "Page '{0}' created and scheduled for publishing."
-msgstr "頁面 {0} 已創建並計劃發佈中。"
+#, python-format
+msgid "Page '%(page_title)s' created and scheduled for publishing."
+msgstr "頁面 %(page_title)s 已創建並計劃發佈中。"
 
-#, python-brace-format
-msgid "Page '{0}' created and published."
-msgstr "頁面'{0}'已創建並發佈。"
+#, python-format
+msgid "Page '%(page_title)s' created and published."
+msgstr "頁面'%(page_title)s'已創建並發佈。"
 
-#, python-brace-format
-msgid "Page '{0}' created and submitted for moderation."
-msgstr "頁面 '{0}' 已創建並提交審核。"
+#, python-format
+msgid "Page '%(page_title)s' created and submitted for moderation."
+msgstr "頁面 '%(page_title)s' 已創建並提交審核。"
 
 msgid "The page could not be created due to validation errors"
 msgstr "驗證錯誤，頁面無法創建。"
 
-#, python-brace-format
-msgid "Page '{0}' deleted."
-msgstr "頁面'{0}'已刪除"
+#, python-format
+msgid "Page '%(page_title)s' deleted."
+msgstr "頁面'%(page_title)s'已刪除"
 
-msgid "This page is currently awaiting moderation"
-msgstr "頁面等待審核中"
+#, python-format
+msgid "Editing %(page_type)s"
+msgstr "編輯 %(page_type)s"
 
-#, python-brace-format
-msgid "Page '{0}' has been updated."
-msgstr "頁面 '{0}' 已被更新。"
+#, python-format
+msgid "Page '%(page_title)s' has been updated."
+msgstr "頁面 '%(page_title)s' 已被更新。"
 
-#, python-brace-format
-msgid "Workflow on page '{0}' has been cancelled."
-msgstr "已取消頁面 '{0}' 之工作流程"
+#, python-format
+msgid "Workflow on page '%(page_title)s' has been cancelled."
+msgstr "已取消頁面 '%(page_title)s' 之工作流程"
 
-#, python-brace-format
-msgid "Page '{0}' has been scheduled for publishing."
-msgstr "頁面 {0} 已預定發佈時間。"
+#, python-format
+msgid "Page '%(page_title)s' has been scheduled for publishing."
+msgstr "頁面 %(page_title)s 已預定發佈時間。"
 
-#, python-brace-format
-msgid "Page '{0}' has been published."
-msgstr "頁面 '{0}' 已經發佈。"
+#, python-format
+msgid "Page '%(page_title)s' has been published."
+msgstr "頁面 '%(page_title)s' 已經發佈。"
 
-#, python-brace-format
-msgid "Page '{0}' has been submitted for moderation."
-msgstr "頁面 '{0}' 已提交審核。"
+#, python-format
+msgid "Page '%(page_title)s' has been submitted for moderation."
+msgstr "頁面 '%(page_title)s' 已提交審核。"
 
-#, python-brace-format
-msgid "Workflow on page '{0}' has been restarted."
-msgstr "已重啟頁面  '{0}' 之工作流程"
+#, python-format
+msgid "Workflow on page '%(page_title)s' has been restarted."
+msgstr "已重啟頁面  '%(page_title)s' 之工作流程"
 
 msgid "The page could not be saved as it is locked"
 msgstr "頁面已被鎖定，無法儲存。"
@@ -1436,42 +1470,30 @@ msgstr "頁面已被鎖定，無法儲存。"
 msgid "The page could not be saved due to validation errors"
 msgstr "驗證錯誤，無法儲存頁面。"
 
-msgid "Page history"
-msgstr "頁面歷史"
+msgid "Site"
+msgstr "網站"
 
-#, python-brace-format
-msgid "Page '{0}' is now unlocked."
-msgstr "頁面 '{0}'已解鎖。"
+msgid "Yes"
+msgstr "是"
 
-#, python-brace-format
-msgid "The page '{0}' is not currently awaiting moderation."
-msgstr "頁面 '{0}'目前不在等待審核。"
+#, python-format
+msgid "Page '%(page_title)s' is now unlocked."
+msgstr "頁面 '%(page_title)s'已解鎖。"
 
-#, python-brace-format
-msgid "Page '{0}' published."
-msgstr "頁面'{0}'已發佈"
+#, python-format
+msgid "Page '%(page_title)s' moved."
+msgstr "頁面 '%(page_title)s' 已移動。"
 
-msgid "Failed to send approval notifications"
-msgstr "發送批準通知失敗。"
+#, python-format
+msgid "Page '%(page_title)s' unpublished."
+msgstr "頁面'%(page_title)s'已取消發佈。"
 
-#, python-brace-format
-msgid "Page '{0}' rejected for publication."
-msgstr "頁面 '{0}'審核失敗"
+msgid "Pages using"
+msgstr "頁面使用"
 
-msgid "Failed to send rejection notifications"
-msgstr "發送駁回通知失敗。"
-
-#, python-brace-format
-msgid "Page '{0}' moved."
-msgstr "頁面 '{0}' 已移動。"
-
-#, python-brace-format
-msgid "revision {0} of \"{1}\""
-msgstr " \"{1}\"的修訂版本{0}"
-
-#, python-brace-format
-msgid "Page '{0}' unpublished."
-msgstr "頁面'{0}'已取消發佈。"
+#, python-format
+msgid "The page '%(page_title)s' is not currently awaiting moderation."
+msgstr "頁面 '%(page_title)s'目前不在等待審核。"
 
 msgid "Site history"
 msgstr "網站歷史"
@@ -1497,34 +1519,28 @@ msgstr "待審中"
 msgid "Workflows"
 msgstr "工作流程"
 
-msgid "Page ID"
-msgstr "頁面 ID"
-
-msgid "Page Type"
-msgstr "頁面類型"
-
-msgid "Page Title"
-msgstr "頁面標題"
-
 msgid "Workflow tasks"
 msgstr "工作流程作業"
 
 msgid "Add a workflow"
 msgstr "增加工作流程"
 
+msgid "Used by"
+msgstr "已使用"
+
 msgid "New workflow"
 msgstr "新增工作流程"
 
-#, python-brace-format
-msgid "Workflow '{0}' created."
-msgstr "已建立工作流程 '{0}'"
+#, python-format
+msgid "Workflow '%(object)s' created."
+msgstr "已建立工作流程 '%(object)s'"
 
 msgid "Editing workflow"
 msgstr "編輯工作流程"
 
-#, python-brace-format
-msgid "Workflow '{0}' updated."
-msgstr "已更新流程 '{0}'"
+#, python-format
+msgid "Workflow '%(object)s' updated."
+msgstr "已更新流程 '%(object)s'"
 
 msgid "Disable"
 msgstr "禁用"
@@ -1535,31 +1551,31 @@ msgstr "啟用"
 msgid "Disable workflow"
 msgstr "禁用工作流程"
 
-#, python-brace-format
-msgid "Workflow '{0}' disabled."
-msgstr "已禁用工作流程 '{0}'"
+#, python-format
+msgid "Workflow '%(object)s' disabled."
+msgstr "已禁用工作流程 '%(object)s'"
 
-#, python-brace-format
-msgid "Workflow '{0}' enabled."
-msgstr "已啟用流程 '{0}'"
+#, python-format
+msgid "Workflow '%(workflow_name)s' enabled."
+msgstr "已啟用流程 '%(workflow_name)s'"
 
-#, python-brace-format
-msgid "Workflow removed from Page '{0}'."
-msgstr "已移除頁面 '{0}' 之工作流程"
+#, python-format
+msgid "Workflow removed from Page '%(page_title)s'."
+msgstr "已移除頁面 '%(page_title)s' 之工作流程"
 
 msgid "New workflow task"
 msgstr "新增工作流程作業"
 
-#, python-brace-format
-msgid "Task '{0}' created."
-msgstr "已建立作業 '{0}'"
+#, python-format
+msgid "Task '%(object)s' created."
+msgstr "已建立作業 '%(object)s'"
 
 msgid "Editing workflow task"
 msgstr "編輯工作流程作業"
 
-#, python-brace-format
-msgid "Task '{0}' updated."
-msgstr "已更新作業 '{0}'"
+#, python-format
+msgid "Task '%(object)s' updated."
+msgstr "已更新作業 '%(object)s'"
 
 #, python-format
 msgid "Editing %(task_type)s"
@@ -1568,38 +1584,32 @@ msgstr "編輯 %(task_type)s"
 msgid "Disable task"
 msgstr "禁用作業"
 
-#, python-brace-format
-msgid "Task '{0}' disabled."
-msgstr "已禁用作業 '{0}'"
-
-#, python-brace-format
-msgid "Task '{0}' enabled."
-msgstr "已啟用作業 '{0}'"
-
-msgid "Change"
-msgstr "更改"
-
-msgid "Pages"
-msgstr "頁面"
+#, python-format
+msgid "Task '%(object)s' disabled."
+msgstr "已禁用作業 '%(object)s'"
 
 #, python-format
-msgid "Edit '%(title)s'"
-msgstr "編輯 '%(title)s'"
+msgid "Task '%(task_name)s' enabled."
+msgstr "已啟用作業 '%(task_name)s'"
+
+msgid "Choose another"
+msgstr "選擇其他"
 
 #, python-format
 msgid "Preview draft version of '%(title)s'"
 msgstr "預覽草稿版本 '%(title)s'"
 
-msgid "Add child page"
-msgstr "新增子頁面"
-
-#, python-format
-msgid "Add a child page to '%(title)s' "
-msgstr "新增子頁面至 '%(title)s'"
-
 #, python-format
 msgid "Move page '%(title)s'"
 msgstr "移動頁面 '%(title)s'"
+
+#, python-format
+msgid "Copy page '%(title)s'"
+msgstr "複製頁面 '%(title)s'"
+
+#, python-format
+msgid "Delete page '%(title)s'"
+msgstr "刪除頁面 '%(title)s'"
 
 #, python-format
 msgid "Unpublish page '%(title)s'"
@@ -1621,20 +1631,8 @@ msgstr "編號列表"
 msgid "Blockquote"
 msgstr "區塊引言"
 
-msgid "Bold"
-msgstr "粗體"
-
-msgid "Italic"
-msgstr "斜體"
-
 msgid "Link"
 msgstr "超連接"
-
-msgid "Superscript"
-msgstr "上標"
-
-msgid "Subscript"
-msgstr "下標"
 
 msgid "Strikethrough"
 msgstr "刪除線"
@@ -1642,14 +1640,26 @@ msgstr "刪除線"
 msgid "Code"
 msgstr "程式碼"
 
-msgid "Locked Pages"
-msgstr "已被鎖定頁面"
-
 msgid "Reports"
 msgstr "報表"
 
-msgid "Yes"
-msgstr "是"
+msgid "Editor Guide"
+msgstr "編輯指南"
 
 msgid "Choose an item"
 msgstr "選擇一項"
+
+msgid "Choose another item"
+msgstr "選擇其它項"
+
+msgid "Clear choice"
+msgstr "清除選擇"
+
+msgid "Choose another page"
+msgstr "選擇其它頁面"
+
+msgid "Choose another task"
+msgstr "選擇其它作業"
+
+msgid "Edit this task"
+msgstr "編輯此作業"

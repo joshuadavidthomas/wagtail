@@ -4,6 +4,7 @@
 #
 # Translators:
 # Amir Mahmoodi, 2022
+# Amir Mahmoodi, 2022
 # pyzenberg <pyzenberg@gmail.com>, 2017
 # pyzenberg <pyzenberg@gmail.com>, 2017
 # pyzenberg <pyzenberg@gmail.com>, 2017
@@ -11,10 +12,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
-"Last-Translator: Amir Mahmoodi, 2022\n"
-"Language-Team: Persian (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: pyzenberg <pyzenberg@gmail.com>, 2017\n"
+"Language-Team: Persian (http://app.transifex.com/torchbox/wagtail/language/"
 "fa/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -23,18 +24,21 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 #, python-format
-msgid "The minimum number of items is %d"
-msgstr "کمترین تعداد آیتم ها %d مورد است"
+msgid "The minimum number of items is %(min_num)d"
+msgstr "کمترین تعداد آیتم ها %(min_num)d مورد است"
 
 #, python-format
-msgid "The maximum number of items is %d"
-msgstr "حداکثر تعداد آیتم ها %d مورد میباشد"
+msgid "The maximum number of items is %(max_num)d"
+msgstr "حداکثر تعداد آیتم ها %(max_num)d مورد میباشد"
 
 msgid "Move up"
 msgstr "حرکت به بالا"
 
 msgid "Move down"
 msgstr "حرکت به پایین"
+
+msgid "Drag"
+msgstr "کشیدن"
 
 msgid "Delete"
 msgstr "حذف"
@@ -54,17 +58,14 @@ msgstr "رمزعبور"
 msgid "The password you have entered is not correct. Please try again."
 msgstr "رمزعبور وارد شده درست نیست. لطفا مجددا سعی کنید."
 
-msgid "<b>Page '{}' was locked</b> by <b>you</b> on <b>{}</b>."
-msgstr "<b>صفحه {} توسط <b>شما</b> در <b>{}</b> قفل شد."
+msgid "Comment"
+msgstr "نظر"
 
-msgid "<b>Page '{}' is locked</b> by <b>you</b>."
-msgstr "<b>صفحه {} توسط <b>شما</b> قفل شد."
+msgid "Locked"
+msgstr "قفل شده"
 
-msgid "<b>Page '{}' was locked</b> by <b>{}</b> on <b>{}</b>."
-msgstr "<b>صفحه {} توسط <b>{}</b> در <b>{}</b> قفل شد."
-
-msgid "<b>Page '{}' is locked</b>."
-msgstr "<b>صفحه '{}' قفل شده است.</b>"
+msgid "Unlocked"
+msgstr "گشوده"
 
 msgid "live"
 msgstr "زنده"
@@ -87,6 +88,9 @@ msgstr "تاریخ/ساعت انقضا"
 msgid "expired"
 msgstr "انقضا یافته"
 
+msgid "scheduled"
+msgstr "برنامه‌ریزی شده"
+
 msgid "draft"
 msgstr "پیشنویس"
 
@@ -98,6 +102,33 @@ msgstr "پیشفرض"
 
 msgid "locked"
 msgstr "قفل شده"
+
+msgid "Add/edit pages you own"
+msgstr "افزودن/ویرایش صفحه های خودتان"
+
+msgid "Bulk delete"
+msgstr "حذف فله‌ای"
+
+msgid "Delete pages with children"
+msgstr "حذف صفحه ها با زیرصفحه ها"
+
+msgid "Edit"
+msgstr "ویرایش"
+
+msgid "Edit any page"
+msgstr "ویرایش صفحه"
+
+msgid "Lock"
+msgstr "قفل"
+
+msgid "Publish"
+msgstr "انتشار"
+
+msgid "Publish any page"
+msgstr "انتشار هر صفحه ای"
+
+msgid "Unlock"
+msgstr "حذف قفل"
 
 msgid "title"
 msgstr "عنوان"
@@ -135,20 +166,17 @@ msgstr ""
 msgid "latest revision created at"
 msgstr "آخرین بازبینی ایجاد شده در"
 
-msgid "This slug is already in use"
-msgstr "این اسلاگ در حال استفاده است"
+msgid "For search engines"
+msgstr "برای موتور های جست و جو"
 
-msgid "scheduled"
-msgstr "برنامه‌ریزی شده"
+msgid "For site menus"
+msgstr "برای منو های سایت"
 
 msgid "page"
 msgstr "صفحه"
 
 msgid "pages"
 msgstr "صفحه ها"
-
-msgid "submitted for moderation"
-msgstr "فرستاده شده برای نظارت"
 
 msgid "created at"
 msgstr "ایجادشده در"
@@ -162,38 +190,11 @@ msgstr "محتوای JSON"
 msgid "approved go live at"
 msgstr "تایید انتقال به حالت زنده در"
 
-msgid "Add/edit pages you own"
-msgstr "افزودن/ویرایش صفحه های خودتان"
-
-msgid "Edit"
-msgstr "ویرایش"
-
-msgid "Edit any page"
-msgstr "ویرایش صفحه"
-
-msgid "Publish"
-msgstr "انتشار"
-
-msgid "Publish any page"
-msgstr "انتشار هر صفحه ای"
-
-msgid "Bulk delete"
-msgstr "حذف فله‌ای"
-
-msgid "Delete pages with children"
-msgstr "حذف صفحه ها با زیرصفحه ها"
-
-msgid "Lock"
-msgstr "قفل"
-
-msgid "Unlock"
-msgstr "حذف قفل"
-
 msgid "group"
 msgstr "گروه"
 
-msgid "permission type"
-msgstr "نوع مجوز"
+msgid "permission"
+msgstr "مجوز"
 
 msgid "group page permission"
 msgstr "مجوز گروه صفحه"
@@ -219,9 +220,6 @@ msgstr "تایید"
 msgid "Not started"
 msgstr "شروع نشده"
 
-msgid "page revision"
-msgstr "بازبینی صفحه"
-
 msgid "comments"
 msgstr "نظر ها"
 
@@ -240,11 +238,11 @@ msgstr "محدودیت‌های دیدن مجموعه"
 msgid "collections"
 msgstr "مجموعه ها"
 
-msgid "permission"
-msgstr "مجوز"
-
 msgid "group collection permission"
 msgstr "مجوز مجموعه گروه"
+
+msgid "uploaded by user"
+msgstr "آپلود‌شده توسط کاربر"
 
 msgid "hostname"
 msgstr "نام میزبان"
@@ -300,17 +298,8 @@ msgstr ""
 msgid "Public"
 msgstr "عمومی"
 
-msgid "Private, accessible to logged-in users"
-msgstr "خصوصی، تنها برای اعضای وارد شده قابل دسترسی است"
-
-msgid "Private, accessible with the following password"
-msgstr "خصوصی، تنها با رمزعبور قابل دسترسی است"
-
 msgid "Private, accessible to users in specific groups"
 msgstr "خصوصی، تنها برای اعضای گروه های خاصی قابل دسترسی است"
-
-msgid "password"
-msgstr "رمزعبور"
 
 msgid "view restriction"
 msgstr "دیدن محدودیت"
@@ -348,12 +337,6 @@ msgstr "تصحیح شده"
 
 msgid "Unpublish"
 msgstr "لغو انتشار"
-
-msgid "Locked"
-msgstr "قفل شده"
-
-msgid "Unlocked"
-msgstr "گشوده"
 
 msgid "Reject"
 msgstr "رد"

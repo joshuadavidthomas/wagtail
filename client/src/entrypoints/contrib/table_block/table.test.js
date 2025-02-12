@@ -33,15 +33,19 @@ const TEST_OPTIONS = {
 };
 
 const TEST_STRINGS = {
-  'Row header': 'Row header',
-  'Display the first row as a header.': 'Display the first row as a header.',
-  'Column header': 'Column header',
-  'Display the first column as a header.':
-    'Display the first column as a header.',
+  'Table headers': 'Table headers',
+  'Display the first row as a header': 'Display the first row as a header',
+  'Display the first column as a header':
+    'Display the first column as a header',
+  'Display the first row AND first column as headers':
+    'Display the first row AND first column as headers',
+  'No headers': 'No headers',
+  'Which cells should be displayed as headers?':
+    'Which cells should be displayed as headers?',
   'Table caption': 'Table caption',
 
-  'A heading that identifies the overall topic of the table, and is useful for screen reader users':
-    'A heading that identifies the overall topic of the table, and is useful for screen reader users',
+  'A heading that identifies the overall topic of the table, and is useful for screen reader users.':
+    'A heading that identifies the overall topic of the table, and is useful for screen reader users.',
   'Table': 'Table',
 };
 
@@ -66,6 +70,8 @@ describe('telepath: wagtail.widgets.TableInput', () => {
   let testStrings;
   let testValue;
   let handsontableConstructorMock;
+  let renderMock;
+  let updateSettingsMock;
 
   // Call this to render the table block with the current settings
   const render = () => {
@@ -82,10 +88,24 @@ describe('telepath: wagtail.widgets.TableInput', () => {
 
   beforeEach(() => {
     handsontableConstructorMock = jest.fn();
-    window.Handsontable = (...args) => {
-      handsontableConstructorMock(...args);
-    };
-    window.Handsontable.prototype.render = jest.fn();
+    renderMock = jest.fn();
+    updateSettingsMock = jest.fn();
+
+    class HandsontableMock {
+      constructor(...args) {
+        handsontableConstructorMock(...args);
+      }
+
+      render() {
+        renderMock();
+      }
+
+      updateSettings(opts) {
+        updateSettingsMock(opts);
+      }
+    }
+
+    window.Handsontable = HandsontableMock;
 
     // Reset options, strings, and value for each test
     testOptions = JSON.parse(JSON.stringify(TEST_OPTIONS));
@@ -129,23 +149,29 @@ describe('telepath: wagtail.widgets.TableInput', () => {
     expect(handsontableConstructorMock.mock.calls[0][1].stretchH).toBe('all');
   });
 
-  test('Handsontable.render is called', () => {
-    render();
-    expect(window.Handsontable.prototype.render.mock.calls.length).toBe(1);
-    expect(window.Handsontable.prototype.render.mock.calls[0].length).toBe(0);
+  test('Handsontable.render is called on window.load', () => {
+    window.dispatchEvent(new Event('load'));
+    // Note: checking that render() was called, rather that it was called once
+    // dispatchEvent seems to trigger the 'load' event twice.
+    expect(renderMock).toHaveBeenCalled();
+    expect(renderMock.mock.calls[0].length).toBe(0);
   });
 
   test('translation', () => {
     testStrings = {
-      'Row header': 'En-tête de ligne',
-      'Display the first row as a header.':
-        "Affichez la première ligne sous forme d'en-tête.",
-      'Column header': 'En-tête de colonne',
-      'Display the first column as a header.':
-        "Affichez la première colonne sous forme d'en-tête.",
+      'Table headers': 'En-têtes de tableau',
+      'Display the first row as a header':
+        "Afficher la première ligne sous forme d'en-tête",
+      'Display the first column as a header':
+        "Afficher la première colonne sous forme d'en-tête",
+      'Display the first row AND first column as headers':
+        "Afficher la première ligne ET la première colonne sous forme d'en-têtes",
+      'No headers': "Pas d'en-têtes",
+      'Which cells should be displayed as headers?':
+        "Quelles cellules doivent être affichées en tant qu'en-têtes?",
       'Table caption': 'Légende du tableau',
 
-      'A heading that identifies the overall topic of the table, and is useful for screen reader users':
+      'A heading that identifies the overall topic of the table, and is useful for screen reader users.':
         "Un en-tête qui identifie le sujet général du tableau et qui est utile pour les utilisateurs de lecteurs d'écran",
       'Table': 'Tableau',
     };

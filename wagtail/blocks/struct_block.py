@@ -11,41 +11,63 @@ from django.utils.safestring import mark_safe
 from wagtail.admin.staticfiles import versioned_static
 from wagtail.telepath import Adapter, register
 
-from .base import Block, BoundBlock, DeclarativeSubBlocksMetaclass, get_help_icon
+from .base import (
+    Block,
+    BoundBlock,
+    DeclarativeSubBlocksMetaclass,
+    get_error_json_data,
+    get_error_list_json_data,
+    get_help_icon,
+)
 
-__all__ = ["BaseStructBlock", "StructBlock", "StructValue"]
+__all__ = [
+    "BaseStructBlock",
+    "StructBlock",
+    "StructValue",
+    "StructBlockValidationError",
+]
 
 
 class StructBlockValidationError(ValidationError):
-    def __init__(self, block_errors=None):
-        self.block_errors = block_errors
-        super().__init__("Validation error in StructBlock", params=block_errors)
+    def __init__(self, block_errors=None, non_block_errors=None):
+        # non_block_errors may be passed here as an ErrorList, a plain list (of strings or
+        # ValidationErrors), or None.
+        # Normalise it to be an ErrorList, which provides an as_data() method that consistently
+        # returns a flat list of ValidationError objects.
+        self.non_block_errors = ErrorList(non_block_errors)
 
-
-class StructBlockValidationErrorAdapter(Adapter):
-    js_constructor = "wagtail.blocks.StructBlockValidationError"
-
-    def js_args(self, error):
-        if error.block_errors is None:
-            return [None]
+        # block_errors may be passed here as None, or a dict keyed by the names of the child blocks
+        # with errors.
+        # Items in this list / dict may be:
+        #  - a ValidationError instance (potentially a subclass such as StructBlockValidationError)
+        #  - an ErrorList containing a single ValidationError
+        #  - a plain list containing a single ValidationError
+        # All representations will be normalised to a dict of ValidationError instances,
+        # which is also the preferred format for the original argument to be in.
+        self.block_errors = {}
+        if block_errors is None:
+            pass
         else:
-            return [
-                {
-                    name: error_list.as_data()
-                    for name, error_list in error.block_errors.items()
-                }
-            ]
+            for name, val in block_errors.items():
+                if isinstance(val, ErrorList):
+                    self.block_errors[name] = val.as_data()[0]
+                elif isinstance(val, list):
+                    self.block_errors[name] = val[0]
+                else:
+                    self.block_errors[name] = val
 
-    @cached_property
-    def media(self):
-        return forms.Media(
-            js=[
-                versioned_static("wagtailadmin/js/telepath/blocks.js"),
-            ]
-        )
+        super().__init__("Validation error in StructBlock")
 
-
-register(StructBlockValidationErrorAdapter(), StructBlockValidationError)
+    def as_json_data(self):
+        result = {}
+        if self.non_block_errors:
+            result["messages"] = get_error_list_json_data(self.non_block_errors)
+        if self.block_errors:
+            result["blockErrors"] = {
+                name: get_error_json_data(error)
+                for (name, error) in self.block_errors.items()
+            }
+        return result
 
 
 class StructValue(collections.OrderedDict):
@@ -70,6 +92,9 @@ class StructValue(collections.OrderedDict):
             ]
         )
 
+    def __reduce__(self):
+        return (self.__class__, (self.block,), None, None, iter(self.items()))
+
 
 class PlaceholderBoundBlock(BoundBlock):
     """
@@ -81,8 +106,9 @@ class PlaceholderBoundBlock(BoundBlock):
 
 
 class BaseStructBlock(Block):
-    def __init__(self, local_blocks=None, **kwargs):
+    def __init__(self, local_blocks=None, search_index=True, **kwargs):
         self._constructor_kwargs = kwargs
+        self.search_index = search_index
 
         super().__init__(**kwargs)
 
@@ -93,48 +119,55 @@ class BaseStructBlock(Block):
                 block.set_name(name)
                 self.child_blocks[name] = block
 
+    @classmethod
+    def construct_from_lookup(cls, lookup, child_blocks, **kwargs):
+        if child_blocks:
+            child_blocks = [
+                (name, lookup.get_block(index)) for name, index in child_blocks
+            ]
+        return cls(child_blocks, **kwargs)
+
     def get_default(self):
         """
         Any default value passed in the constructor or self.meta is going to be a dict
         rather than a StructValue; for consistency, we need to convert it to a StructValue
         for StructBlock to work with
         """
-        return self._to_struct_value(
-            [
-                (
-                    name,
-                    self.meta.default[name]
-                    if name in self.meta.default
-                    else block.get_default(),
-                )
+
+        return self.normalize(
+            {
+                name: self.meta.default[name]
+                if name in self.meta.default
+                else block.get_default()
                 for name, block in self.child_blocks.items()
-            ]
+            }
         )
 
     def value_from_datadict(self, data, files, prefix):
         return self._to_struct_value(
             [
-                (name, block.value_from_datadict(data, files, "%s-%s" % (prefix, name)))
+                (
+                    name,
+                    block.value_from_datadict(data, files, f"{prefix}-{name}"),
+                )
                 for name, block in self.child_blocks.items()
             ]
         )
 
     def value_omitted_from_data(self, data, files, prefix):
         return all(
-            block.value_omitted_from_data(data, files, "%s-%s" % (prefix, name))
+            block.value_omitted_from_data(data, files, f"{prefix}-{name}")
             for name, block in self.child_blocks.items()
         )
 
     def clean(self, value):
-        result = (
-            []
-        )  # build up a list of (name, value) tuples to be passed to the StructValue constructor
+        result = []  # build up a list of (name, value) tuples to be passed to the StructValue constructor
         errors = {}
         for name, val in value.items():
             try:
                 result.append((name, self.child_blocks[name].clean(val)))
             except ValidationError as e:
-                errors[name] = ErrorList([e])
+                errors[name] = e
 
         if errors:
             raise StructBlockValidationError(errors)
@@ -151,7 +184,7 @@ class BaseStructBlock(Block):
                         child_block.to_python(value[name])
                         if name in value
                         else child_block.get_default()
-                    )
+                    ),
                     # NB the result of get_default is NOT passed through to_python, as it's expected
                     # to be in the block's native type already
                 )
@@ -211,6 +244,14 @@ class BaseStructBlock(Block):
             for name, val in value.items()
         }
 
+    def normalize(self, value):
+        if isinstance(value, self.meta.value_class):
+            return value
+
+        return self._to_struct_value(
+            {k: self.child_blocks[k].normalize(v) for k, v in value.items()}
+        )
+
     def get_form_state(self, value):
         return {
             name: self.child_blocks[name].get_form_state(val)
@@ -225,6 +266,8 @@ class BaseStructBlock(Block):
         }
 
     def get_searchable_content(self, value):
+        if not self.search_index:
+            return []
         content = []
 
         for name, block in self.child_blocks.items():
@@ -233,6 +276,35 @@ class BaseStructBlock(Block):
             )
 
         return content
+
+    def extract_references(self, value):
+        for name, block in self.child_blocks.items():
+            for model, object_id, model_path, content_path in block.extract_references(
+                value.get(name, block.get_default())
+            ):
+                model_path = f"{name}.{model_path}" if model_path else name
+                content_path = f"{name}.{content_path}" if content_path else name
+                yield model, object_id, model_path, content_path
+
+    def get_block_by_content_path(self, value, path_elements):
+        """
+        Given a list of elements from a content path, retrieve the block at that path
+        as a BoundBlock object, or None if the path does not correspond to a valid block.
+        """
+        if path_elements:
+            name, *remaining_elements = path_elements
+            try:
+                child_block = self.child_blocks[name]
+            except KeyError:
+                return None
+
+            child_value = value.get(name, child_block.get_default())
+            return child_block.get_block_by_content_path(
+                child_value, remaining_elements
+            )
+        else:
+            # an empty path refers to the struct as a whole
+            return self.bind(value)
 
     def deconstruct(self):
         """
@@ -245,6 +317,17 @@ class BaseStructBlock(Block):
         """
         path = "wagtail.blocks.StructBlock"
         args = [list(self.child_blocks.items())]
+        kwargs = self._constructor_kwargs
+        return (path, args, kwargs)
+
+    def deconstruct_with_lookup(self, lookup):
+        path = "wagtail.blocks.StructBlock"
+        args = [
+            [
+                (name, lookup.add_block(block))
+                for name, block in self.child_blocks.items()
+            ]
+        ]
         kwargs = self._constructor_kwargs
         return (path, args, kwargs)
 
@@ -277,6 +360,9 @@ class BaseStructBlock(Block):
         )
         return mark_safe(render_to_string(self.meta.form_template, context))
 
+    def get_description(self):
+        return super().get_description() or getattr(self.meta, "help_text", "")
+
     def get_form_context(self, value, prefix="", errors=None):
         return {
             "children": collections.OrderedDict(
@@ -284,7 +370,7 @@ class BaseStructBlock(Block):
                     (
                         name,
                         PlaceholderBoundBlock(
-                            block, value.get(name), prefix="%s-%s" % (prefix, name)
+                            block, value.get(name), prefix=f"{prefix}-{name}"
                         ),
                     )
                     for name, block in self.child_blocks.items()
@@ -295,6 +381,10 @@ class BaseStructBlock(Block):
             "block_definition": self,
             "prefix": prefix,
         }
+
+    @cached_property
+    def _has_default(self):
+        return self.meta.default is not BaseStructBlock._meta_class.default
 
     class Meta:
         default = {}
@@ -318,8 +408,11 @@ class StructBlockAdapter(Adapter):
     def js_args(self, block):
         meta = {
             "label": block.label,
+            "description": block.get_description(),
             "required": block.required,
             "icon": block.meta.icon,
+            "blockDefId": block.definition_prefix,
+            "isPreviewable": block.is_previewable,
             "classname": block.meta.form_classname,
         }
 

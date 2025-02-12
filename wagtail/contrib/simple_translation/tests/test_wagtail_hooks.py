@@ -66,10 +66,6 @@ class TestWagtailHooksPermission(Utils):
 
 
 class TestWagtailHooksButtons(Utils):
-    class PagePerms:
-        def __init__(self, user):
-            self.user = user
-
     def test_page_listing_more_buttons(self):
         # Root, no button
         root_page = self.en_blog_index.get_root()
@@ -78,11 +74,11 @@ class TestWagtailHooksButtons(Utils):
             user = get_user_model().objects.create_user(email="jos@example.com")
         else:
             user = get_user_model().objects.create_user(username="jos")
-        assert list(page_listing_more_buttons(root_page, self.PagePerms(user))) == []
+        assert list(page_listing_more_buttons(root_page, user)) == []
 
         # No permissions, no button
         home_page = self.en_homepage
-        assert list(page_listing_more_buttons(root_page, self.PagePerms(user))) == []
+        assert list(page_listing_more_buttons(root_page, user)) == []
 
         # Homepage is translated to all languages, no button
         perm = Permission.objects.get(codename="submit_translation")
@@ -96,13 +92,12 @@ class TestWagtailHooksButtons(Utils):
         user.user_permissions.add(perm)
         group = Group.objects.get(name="Editors")
         user.groups.add(group)
-        page_perms = self.PagePerms(user)
-        assert list(page_listing_more_buttons(home_page, page_perms)) == []
+        assert list(page_listing_more_buttons(home_page, user)) == []
 
         # Page does not have translations yet... button!
         blog_page = self.en_blog_post
         assert isinstance(
-            list(page_listing_more_buttons(blog_page, page_perms))[0],
+            list(page_listing_more_buttons(blog_page, user))[0],
             wagtailadmin_widgets.Button,
         )
 
@@ -165,7 +160,7 @@ class TestConstructSyncedPageTreeListHook(Utils):
         # Login to access the admin
         self.login()
 
-        # Make sur the French homepage is published/live
+        # Make sure the French homepage is published/live
         self.fr_homepage.live = True
         self.fr_homepage.save()
         self.assertTrue(self.en_homepage.live)
@@ -264,7 +259,7 @@ class TestMovingTranslatedPages(Utils):
         self.assertEqual(self.en_blog_post.get_parent().id, self.en_blog_index.id)
 
         # Confirm the fr and de blog post pages are under the blog index page
-        # We'll confirm these have not moved after ther POST request.
+        # We'll confirm these have not moved after the POST request.
         original_translated_parent_ids = [
             p.id for p in self.en_blog_index.get_translations()
         ]

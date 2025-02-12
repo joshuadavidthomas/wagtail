@@ -8,7 +8,7 @@ method. See [](image_renditions).
 If you need to be able to generate image versions for an _external_ system such as a blog or mobile app,
 Wagtail provides a view for dynamically generating renditions of images by calling a unique URL.
 
-The view takes an image id, filter spec and security signature in the URL. If
+The view takes an image id, filter spec, and security signature in the URL. If
 these parameters are valid, it serves an image file matching that criteria.
 
 Like the `{% image %}` tag, the rendition is generated on the first call and
@@ -42,6 +42,8 @@ interface becomes available automatically. This can be accessed through the edit
 page of any image by clicking the "URL generator" button on the right hand side.
 
 This interface allows editors to generate URLs to cropped versions of the image.
+
+(dynamic_image_urls)=
 
 ### Generating dynamic image URLs in Python
 
@@ -97,8 +99,8 @@ You can pass an optional view name that will be used to serve the image through.
 
 ### Making the view redirect instead of serve
 
-By default, the view will serve the image file directly. This behaviour can be
-changed to a 301 redirect instead which may be useful if you host your images
+By default, the view will serve the image file directly. This behavior can be
+changed to a 301 redirect instead, which may be useful if you host your images
 externally.
 
 To enable this, pass `action='redirect'` into the `ServeView.as_view()`
@@ -121,9 +123,9 @@ urlpatterns = [
 [django-sendfile](https://github.com/johnsensible/django-sendfile) offloads the job of transferring the image data to the web
 server instead of serving it directly from the Django application. This could
 greatly reduce server load in situations where your site has many images being
-downloaded but you're unable to use a [](caching_proxy) or a CDN.
+downloaded but you're unable to use a [caching proxy](performance_frontend_caching) or a CDN.
 
-You firstly need to install and configure django-sendfile and configure your
+You first need to install and configure django-sendfile and configure your
 web server to use it. If you haven't done this already, please refer to the
 [installation docs](https://github.com/johnsensible/django-sendfile#django-sendfile).
 
@@ -140,7 +142,7 @@ urlpatterns = [
 ]
 ```
 
-You can customise it to override the backend defined in the `SENDFILE_BACKEND`
+You can customize it to override the backend defined in the `SENDFILE_BACKEND`
 setting:
 
 ```python
@@ -151,7 +153,7 @@ class MySendFileView(SendFileView):
     backend = MyCustomBackend
 ```
 
-You can also customise it to serve private files. For example, if the only need
+You can also customize it to serve private files. For example, if the only need
 is to be authenticated (Django >= 1.9):
 
 ```python

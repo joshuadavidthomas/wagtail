@@ -1,11 +1,19 @@
-import logging
+from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 
 from wagtail.log_actions import log
 from wagtail.permission_policies.base import ModelPermissionPolicy
 from wagtail.signals import published
+from wagtail.utils.timestamps import ensure_utc
+
+if TYPE_CHECKING:
+    from wagtail.models import Revision
 
 logger = logging.getLogger("wagtail")
 
@@ -34,7 +42,12 @@ class PublishRevisionAction:
     """
 
     def __init__(
-        self, revision, user=None, changed=True, log_action=True, previous_revision=None
+        self,
+        revision: Revision,
+        user=None,
+        changed: bool = True,
+        log_action: bool = True,
+        previous_revision: Revision | None = None,
     ):
         self.revision = revision
         self.object = self.revision.as_object()
@@ -62,8 +75,8 @@ class PublishRevisionAction:
             data={
                 "revision": {
                     "id": self.revision.id,
-                    "created": self.revision.created_at.strftime("%d %b %Y %H:%M"),
-                    "go_live_at": self.object.go_live_at.strftime("%d %b %Y %H:%M"),
+                    "created": ensure_utc(self.revision.created_at),
+                    "go_live_at": ensure_utc(self.object.go_live_at),
                     "has_live_version": self.object.live,
                 }
             },
@@ -72,14 +85,28 @@ class PublishRevisionAction:
         )
 
     def _after_publish(self):
+        from wagtail.models import WorkflowMixin
+
         published.send(
             sender=type(self.object),
             instance=self.object,
             revision=self.revision,
         )
 
+        if isinstance(self.object, WorkflowMixin):
+            if getattr(settings, "WAGTAIL_WORKFLOW_CANCEL_ON_PUBLISH", True) and (
+                workflow_state := self.object.current_workflow_state
+            ):
+                workflow_state.cancel(user=self.user)
+
     def _publish_revision(
-        self, revision, object, user, changed, log_action, previous_revision
+        self,
+        revision: Revision,
+        object,
+        user,
+        changed,
+        log_action: bool,
+        previous_revision: Revision | None = None,
     ):
         from wagtail.models import Revision
 
@@ -87,11 +114,11 @@ class PublishRevisionAction:
             object.has_unpublished_changes = True
             # Instead set the approved_go_live_at of this revision
             revision.approved_go_live_at = object.go_live_at
-            revision.save()
-            # And clear the the approved_go_live_at of any other revisions
+            revision.save(update_fields=["approved_go_live_at"])
+            # And clear the approved_go_live_at of any other revisions
             object.revisions.exclude(id=revision.id).update(approved_go_live_at=None)
             # if we are updating a currently live object skip the rest
-            if object.live_revision:
+            if object.live_revision_id:
                 # Log scheduled publishing
                 if log_action:
                     self.log_scheduling_action()
@@ -140,9 +167,6 @@ class PublishRevisionAction:
 
         object.save()
 
-        revision.submitted_for_moderation = False
-        object.revisions.update(submitted_for_moderation=False)
-
         self._after_publish()
 
         if object.live:
@@ -152,9 +176,7 @@ class PublishRevisionAction:
                     data = {
                         "revision": {
                             "id": previous_revision.id,
-                            "created": previous_revision.created_at.strftime(
-                                "%d %b %Y %H:%M"
-                            ),
+                            "created": ensure_utc(previous_revision.created_at),
                         }
                     }
 

@@ -1,14 +1,11 @@
-import json
-
 from django import forms
-from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.views.generic.base import View
 
 from wagtail.admin.staticfiles import versioned_static
-from wagtail.admin.ui.tables import Column, DateColumn
+from wagtail.admin.ui.tables import Column, DateColumn, DownloadColumn
 from wagtail.admin.views.generic.chooser import (
     BaseChooseView,
     ChooseResultsViewMixin,
@@ -59,15 +56,6 @@ class DocumentCreationFormMixin(CreationFormMixin):
         return kwargs
 
 
-class DownloadColumn(Column):
-    cell_template_name = "wagtaildocs/tables/download_cell.html"
-
-    def get_cell_context_data(self, instance, parent_context):
-        context = super().get_cell_context_data(instance, parent_context)
-        context["download_url"] = instance.url
-        return context
-
-
 class BaseDocumentChooseView(BaseChooseView):
     results_template_name = "wagtaildocs/chooser/results.html"
     per_page = 10
@@ -116,11 +104,6 @@ class DocumentChooseViewMixin(ChooseViewMixin):
         context["collections"] = self.collections
         return context
 
-    def get_response_json_data(self):
-        json_data = super().get_response_json_data()
-        json_data["tag_autocomplete_url"] = reverse("wagtailadmin_tag_autocomplete")
-        return json_data
-
 
 class DocumentChooseView(
     DocumentChooseViewMixin, DocumentCreationFormMixin, BaseDocumentChooseView
@@ -150,13 +133,11 @@ class DocumentChooserUploadView(
 
 class BaseAdminDocumentChooser(BaseChooser):
     classname = "document-chooser"
+    js_constructor = "DocumentChooser"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.model = get_document_model_string()
-
-    def render_js_init(self, id_, name, value_data):
-        return "new DocumentChooser({0});".format(json.dumps(id_))
 
     @property
     def media(self):
@@ -164,6 +145,7 @@ class BaseAdminDocumentChooser(BaseChooser):
             js=[
                 versioned_static("wagtaildocs/js/document-chooser-modal.js"),
                 versioned_static("wagtaildocs/js/document-chooser.js"),
+                versioned_static("wagtaildocs/js/document-chooser-telepath.js"),
             ]
         )
 
@@ -175,6 +157,7 @@ class DocumentChooserAdapter(BaseChooserAdapter):
     def media(self):
         return forms.Media(
             js=[
+                versioned_static("wagtaildocs/js/document-chooser-modal.js"),
                 versioned_static("wagtaildocs/js/document-chooser-telepath.js"),
             ]
         )
@@ -202,6 +185,8 @@ class DocumentChooserViewSet(ChooserViewSet):
     choose_one_text = _("Choose a document")
     create_action_label = _("Upload")
     create_action_clicked_label = _("Uploading…")
+    choose_another_text = _("Choose another document")
+    edit_item_text = _("Edit this document")
 
 
 viewset = DocumentChooserViewSet(

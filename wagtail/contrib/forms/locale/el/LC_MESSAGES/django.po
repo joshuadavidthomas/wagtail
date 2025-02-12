@@ -3,6 +3,7 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# 79353a696ad19dc202b261b3067b7640_bec941e, 2015
 # George Giannoulopoulos <vdotoree@yahoo.gr>, 2015
 # Nick Mavrakis <mavrakis.n@gmail.com>, 2017
 # serafeim <serafeim@torchbox.com>, 2016
@@ -14,10 +15,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-09-11 15:42+0000\n"
-"Last-Translator: Wasilis Mandratzis-Walz, 2015\n"
-"Language-Team: Greek (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: 79353a696ad19dc202b261b3067b7640_bec941e, 2015\n"
+"Language-Team: Greek (http://app.transifex.com/torchbox/wagtail/language/"
 "el/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -32,8 +33,12 @@ msgid "Date to"
 msgstr "Ημερομηνία έως"
 
 #, python-format
-msgid "There is another field with the label %s, please change one of them."
-msgstr "Υπάρχει ήδη ένα πεδίο με label %s, παρακαλούμε αλλάξτε ένα από αυτά."
+msgid ""
+"There is another field with the label %(label_name)s, please change one of "
+"them."
+msgstr ""
+"Υπάρχει ήδη ένα πεδίο με label %(label_name)s, παρακαλούμε αλλάξτε ένα από "
+"αυτά."
 
 msgid "Single line text"
 msgstr "Ενιαίο κείμενο γραμμής"
@@ -128,17 +133,9 @@ msgstr "Διαγραφή δεδομένων φόρμας"
 msgid "Delete"
 msgstr "Διαγραφή"
 
-msgid "Forms"
-msgstr "Φόρμες"
-
-msgid "Pages"
-msgstr "Σελίδες "
-
-msgid "Title"
-msgstr "Τίτλος"
-
-msgid "Origin"
-msgstr "Προέλευση"
+#, python-format
+msgid "There have been no submissions of the '%(title)s' form."
+msgstr "Δεν υπήρξαν υποβολες του '%(title)s' μορφής."
 
 msgid "Total submissions"
 msgstr "Συνολικές υποβολές"
@@ -146,22 +143,21 @@ msgstr "Συνολικές υποβολές"
 msgid "Latest submission"
 msgstr "Τελευταίες υποβολές"
 
-msgid "No form pages have been created."
-msgstr "Δεν έχουν δημιουργηθεί σελίδες μορφής. "
-
 #, python-format
 msgid "Submissions of %(form_title)s"
 msgstr "Υποβολές του %(form_title)s"
 
-msgid "Download CSV"
-msgstr "Ληψη CSV"
+msgid "Forms"
+msgstr "Φόρμες"
 
-#, python-format
-msgid "There have been no submissions of the '%(title)s' form."
-msgstr "Δεν υπήρξαν υποβολες του '%(title)s' μορφής."
+msgid "Title"
+msgstr "Τίτλος"
 
-msgid "Filter"
-msgstr "Φίλτρο"
+msgid "Origin"
+msgstr "Προέλευση"
+
+msgid "Pages"
+msgstr "Σελίδες "
 
 #, python-format
 msgid "One submission has been deleted."

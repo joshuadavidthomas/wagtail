@@ -7,10 +7,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Welsh (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Welsh (http://app.transifex.com/torchbox/wagtail/language/"
 "cy/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -40,14 +40,32 @@ msgstr "Cyfrinair"
 msgid "Comment"
 msgstr "Sylw"
 
+msgid "Locked"
+msgstr "Wedi' gloi"
+
 msgid "Default"
 msgstr "Diofyn"
+
+msgid "Edit"
+msgstr "Golygu"
+
+msgid "Lock"
+msgstr "Clo"
+
+msgid "Publish"
+msgstr "Cyhoeddi"
+
+msgid "Unlock"
+msgstr "Datgloi"
 
 msgid "title"
 msgstr "teitl"
 
-msgid "This slug is already in use"
-msgstr "Mae'r wlithen hon eisoes yn cael ei defnyddio"
+msgid "For search engines"
+msgstr "Ar gyfer peiriannau chwilio"
+
+msgid "For site menus"
+msgstr "Ar gyfer ddewislen safle"
 
 msgid "page"
 msgstr "tudalen"
@@ -55,23 +73,14 @@ msgstr "tudalen"
 msgid "created at"
 msgstr "creu yn"
 
-msgid "Edit"
-msgstr "Golygu"
-
-msgid "Publish"
-msgstr "Cyhoeddi"
-
-msgid "Lock"
-msgstr "Clo"
-
-msgid "Unlock"
-msgstr "Datgloi"
-
 msgid "name"
 msgstr "enw"
 
 msgid "groups"
 msgstr "grwpiau"
+
+msgid "uploaded by user"
+msgstr "wedi'i uwchlwytho gan ddefnyddiwr"
 
 msgid "site"
 msgstr "safle"

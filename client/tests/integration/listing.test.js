@@ -1,3 +1,5 @@
+jest.setTimeout(30000);
+
 describe('Listing', () => {
   beforeAll(async () => {
     await page.goto(`${TEST_ORIGIN}/admin/pages/2/`);
@@ -5,7 +7,7 @@ describe('Listing', () => {
 
   it('has the right heading', async () => {
     expect(await page.title()).toContain(
-      'Exploring Welcome to your new Wagtail site! - Wagtail',
+      'Exploring: Welcome to your new Wagtail site! - Wagtail',
     );
   });
 

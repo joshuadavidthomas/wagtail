@@ -1,13 +1,22 @@
 import os
 import unittest
+from io import BytesIO
 
+import willow
 from django import forms, template
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.test import TestCase, override_settings
 from django.test.signals import setting_changed
 from django.urls import reverse
 from taggit.forms import TagField, TagWidget
+from willow.image import (
+    AvifImageFile,
+    PNGImageFile,
+    SvgImageFile,
+)
+from willow.image import ImageFile as WillowImageFile
 
 from wagtail.images import get_image_model, get_image_model_string
 from wagtail.images.fields import WagtailImageField
@@ -20,11 +29,17 @@ from wagtail.images.utils import generate_signature, verify_signature
 from wagtail.images.views.serve import ServeView
 from wagtail.test.testapp.models import CustomImage, CustomImageFilePath
 from wagtail.test.utils import WagtailTestUtils, disconnect_signal_receiver
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
 
-from .utils import Image, get_test_image_file
+from .utils import (
+    Image,
+    get_test_image_file,
+    get_test_image_file_avif,
+    get_test_image_file_svg,
+)
 
 try:
-    import sendfile  # noqa
+    import sendfile  # noqa: F401
 
     sendfile_mod = True
 except ImportError:
@@ -227,10 +242,10 @@ class TestMissingImage(TestCase):
         )
 
 
-class TestFormat(TestCase, WagtailTestUtils):
+class TestFormat(WagtailTestUtils, TestCase):
     def setUp(self):
         # test format
-        self.format = Format("test name", "test label", "test classnames", "original")
+        self.format = Format("test name", "test label", "test is-primary", "original")
         # test image
         self.image = Image.objects.create(
             title="Test image",
@@ -253,7 +268,7 @@ class TestFormat(TestCase, WagtailTestUtils):
         result = self.format.image_to_editor_html(self.image, "test alt text")
         self.assertTagInHTML(
             '<img data-embedtype="image" data-id="%d" data-format="test name" '
-            'data-alt="test alt text" class="test classnames" '
+            'data-alt="test alt text" class="test is-primary" '
             'width="640" height="480" alt="test alt text" >' % self.image.pk,
             result,
             allow_extra_attrs=True,
@@ -265,26 +280,28 @@ class TestFormat(TestCase, WagtailTestUtils):
         )
         expected_html = (
             '<img data-embedtype="image" data-id="%d" data-format="test name" '
-            'data-alt="Arthur &quot;two sheds&quot; Jackson" class="test classnames" '
+            'data-alt="Arthur &quot;two sheds&quot; Jackson" class="test is-primary" '
             'width="640" height="480" alt="Arthur &quot;two sheds&quot; Jackson" >'
             % self.image.pk
         )
         self.assertTagInHTML(expected_html, result, allow_extra_attrs=True)
 
     def test_image_to_html_no_classnames(self):
-        self.format.classnames = None
+        self.format.classname = None
         result = self.format.image_to_html(self.image, "test alt text")
         self.assertTagInHTML(
             '<img width="640" height="480" alt="test alt text">',
             result,
             allow_extra_attrs=True,
         )
-        self.format.classnames = "test classnames"
+        self.format.classname = (
+            "test is-primary"  # reset to original value for other tests
+        )
 
     def test_image_to_html_with_quoting(self):
         result = self.format.image_to_html(self.image, 'Arthur "two sheds" Jackson')
         self.assertTagInHTML(
-            '<img class="test classnames" width="640" height="480" '
+            '<img class="test is-primary" width="640" height="480" '
             'alt="Arthur &quot;two sheds&quot; Jackson">',
             result,
             allow_extra_attrs=True,
@@ -294,6 +311,11 @@ class TestFormat(TestCase, WagtailTestUtils):
         register_image_format(self.format)
         result = get_image_format("test name")
         self.assertEqual(result, self.format)
+
+    def test_deprecated_classnames_property_access(self):
+        with self.assertWarns(RemovedInWagtail70Warning):
+            classname = self.format.classnames
+        self.assertEqual(classname, "test is-primary")
 
 
 class TestSignatureGeneration(TestCase):
@@ -344,6 +366,52 @@ class TestFrontendServeView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.streaming)
         self.assertEqual(response["Content-Type"], "image/png")
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        # Ensure the file can actually be read
+        image = willow.Image.open(b"".join(response.streaming_content))
+        self.assertIsInstance(image, PNGImageFile)
+
+    def test_get_svg(self):
+        image = Image.objects.create(title="Test SVG", file=get_test_image_file_svg())
+
+        # Generate signature
+        signature = generate_signature(image.id, "fill-800x600")
+
+        # Get the image
+        response = self.client.get(
+            reverse("wagtailimages_serve", args=(signature, image.id, "fill-800x600"))
+        )
+
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertEqual(response["Content-Type"], "image/svg+xml")
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        # Ensure the file can actually be read
+        image = willow.Image.open(BytesIO(b"".join(response.streaming_content)))
+        self.assertIsInstance(image, SvgImageFile)
+
+    @override_settings(WAGTAILIMAGES_FORMAT_CONVERSIONS={"avif": "avif"})
+    def test_get_avif(self):
+        image = Image.objects.create(title="Test AVIF", file=get_test_image_file_avif())
+
+        # Generate signature
+        signature = generate_signature(image.id, "fill-800x600")
+
+        # Get the image
+        response = self.client.get(
+            reverse("wagtailimages_serve", args=(signature, image.id, "fill-800x600"))
+        )
+
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertEqual(response["Content-Type"], "image/avif")
+        # Ensure the file can actually be read
+        image = willow.Image.open(b"".join(response.streaming_content))
+        self.assertIsInstance(image, AvifImageFile)
 
     def test_get_with_extra_component(self):
         """
@@ -364,6 +432,9 @@ class TestFrontendServeView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.streaming)
         self.assertEqual(response["Content-Type"], "image/png")
+        # Ensure the file can actually be read
+        image = willow.Image.open(b"".join(response.streaming_content))
+        self.assertIsInstance(image, PNGImageFile)
 
     def test_get_with_too_many_extra_components(self):
         """
@@ -395,6 +466,11 @@ class TestFrontendServeView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.streaming)
         self.assertEqual(response["Content-Type"], "image/png")
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        # Ensure the file can actually be read
+        image = willow.Image.open(b"".join(response.streaming_content))
+        self.assertIsInstance(image, PNGImageFile)
 
     def test_get_with_redirect_action(self):
         signature = generate_signature(self.image.id, "fill-800x600")
@@ -414,7 +490,7 @@ class TestFrontendServeView(TestCase):
         self.assertRedirects(
             response,
             expected_redirect_url,
-            status_code=301,
+            status_code=302,
             fetch_redirect_response=False,
         )
 
@@ -424,7 +500,7 @@ class TestFrontendServeView(TestCase):
 
     def test_get_with_custom_key(self):
         """
-        Test that that the key can be changed on the view
+        Test that the key can be changed on the view
         """
         # Generate signature
         signature = generate_signature(self.image.id, "fill-800x600", key="custom")
@@ -440,10 +516,13 @@ class TestFrontendServeView(TestCase):
 
         # Check response
         self.assertEqual(response.status_code, 200)
+        # Ensure the file can actually be read
+        image = willow.Image.open(b"".join(response.streaming_content))
+        self.assertIsInstance(image, PNGImageFile)
 
     def test_get_with_custom_key_using_default_key(self):
         """
-        Test that that the key can be changed on the view
+        Test that the key can be changed on the view
 
         This tests that the default key no longer works when the key is changed on the view
         """
@@ -523,6 +602,16 @@ class TestFrontendServeView(TestCase):
         # Check response
         self.assertEqual(response.status_code, 410)
 
+    def test_get_cache_control(self):
+        signature = generate_signature(self.image.id, "fill-800x600")
+        response = self.client.get(
+            reverse(
+                "wagtailimages_serve_action_serve",
+                args=(signature, self.image.id, "fill-800x600"),
+            )
+        )
+        self.assertEqual(response["Cache-Control"], "max-age=3600, public")
+
 
 class TestFrontendSendfileView(TestCase):
     def setUp(self):
@@ -544,6 +633,8 @@ class TestFrontendSendfileView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/png")
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
 
     @override_settings(SENDFILE_BACKEND="sendfile.backends.development")
     def test_sendfile_dummy_backend(self):
@@ -556,7 +647,9 @@ class TestFrontendSendfileView(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.content, "Dummy backend response")
+        self.assertTrue(response.content, msg="Dummy backend response")
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
 
 
 class TestRect(TestCase):
@@ -630,7 +723,7 @@ class TestRect(TestCase):
         self.assertEqual(rect, Rect(75, 190, 125, 210))
 
 
-class TestGetImageForm(TestCase, WagtailTestUtils):
+class TestGetImageForm(WagtailTestUtils, TestCase):
     def test_fields(self):
         form = get_image_form(Image)
 
@@ -639,6 +732,7 @@ class TestGetImageForm(TestCase, WagtailTestUtils):
             [
                 "title",
                 "file",
+                "description",
                 "collection",
                 "tags",
                 "focal_point_x",
@@ -656,6 +750,7 @@ class TestGetImageForm(TestCase, WagtailTestUtils):
             [
                 "title",
                 "file",
+                "description",
                 "collection",
                 "tags",
                 "focal_point_x",
@@ -761,11 +856,13 @@ class TestDifferentUpload(TestCase):
     def test_upload_path(self):
         image = CustomImageFilePath.objects.create(
             title="Test image",
+            description="A test description",
             file=get_test_image_file(),
         )
 
         second_image = CustomImageFilePath.objects.create(
             title="Test Image",
+            description="A test description",
             file=get_test_image_file(colour="black"),
         )
 
@@ -816,3 +913,60 @@ class TestGetImageModel(WagtailTestUtils, TestCase):
         """Test get_image_model with an invalid model string"""
         with self.assertRaises(ImproperlyConfigured):
             get_image_model()
+
+
+class TestWagtailImageField(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.filename = "wagtailimagefield.png"
+        cls.image = get_test_image_file(filename=cls.filename).file
+        cls.image_size = cls.image.getbuffer().nbytes
+
+    def test_to_python_with_inmemoryfile(self):
+        f = WagtailImageField()
+        self.image.seek(0)
+        file = InMemoryUploadedFile(
+            self.image, "", self.filename, "image/png", self.image_size, None
+        )
+        to_python = f.to_python(file)
+        self.assertIsInstance(to_python.image, WillowImageFile)
+        self.assertEqual(to_python.content_type, "image/png")
+
+    def test_to_python_gets_content_type_from_willow(self):
+        f = WagtailImageField()
+        self.image.seek(0)
+        file = InMemoryUploadedFile(
+            self.image, "", self.filename, "image/jpeg", self.image_size, None
+        )
+        to_python = f.to_python(file)
+        self.assertIsInstance(to_python.image, WillowImageFile)
+        self.assertEqual(to_python.content_type, "image/png")
+
+    def test_to_python_with_temporary_file(self):
+        f = WagtailImageField()
+        with TemporaryUploadedFile(
+            "test_temp.png", "image/png", self.image_size, None
+        ) as tmp_file:
+            self.image.seek(0)
+            tmp_file.write(self.image.read())
+            tmp_file.seek(0)
+
+            to_python = f.to_python(tmp_file)
+            self.assertIsInstance(to_python.image, WillowImageFile)
+            self.assertEqual(to_python.content_type, "image/png")
+
+    def test_to_python_raises_error_with_invalid_image_file(self):
+        msg = (
+            "Upload a valid image. The file you uploaded was either not an "
+            "image or a corrupted image."
+        )
+        f = WagtailImageField()
+        with TemporaryUploadedFile("test_temp.png", "image/png", 32, None) as tmp_file:
+            with self.assertRaisesMessage(ValidationError, msg):
+                f.to_python(tmp_file)
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "No file was submitted. Check the encoding type on the form.",
+        ):
+            f.to_python(self.image)

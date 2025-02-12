@@ -1,14 +1,18 @@
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import get_messages
 from django.contrib.messages.constants import ERROR
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from wagtail import hooks
 from wagtail.admin.admin_url_finder import AdminURLFinder
 from wagtail.models import Locale, Page
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
 
 
-class TestLocaleIndexView(TestCase, WagtailTestUtils):
+class TestLocaleIndexView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
@@ -19,9 +23,13 @@ class TestLocaleIndexView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailadmin/generic/index.html")
+        self.assertBreadcrumbsItemsRendered(
+            [{"url": "", "label": "Locales"}],
+            response.content,
+        )
 
 
-class TestLocaleCreateView(TestCase, WagtailTestUtils):
+class TestLocaleCreateView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
         self.english = Locale.objects.get()
@@ -41,6 +49,13 @@ class TestLocaleCreateView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtaillocales/create.html")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"label": "Locales", "url": "/admin/locales/"},
+                {"label": "New: Locale", "url": ""},
+            ],
+            response.content,
+        )
 
         self.assertEqual(
             response.context["form"].fields["language_code"].choices, [("fr", "French")]
@@ -69,8 +84,7 @@ class TestLocaleCreateView(TestCase, WagtailTestUtils):
         # Should return the form with errors
         self.assertEqual(response.status_code, 200)
         self.assertFormError(
-            response,
-            "form",
+            response.context["form"],
             "language_code",
             ["Select a valid choice. en is not one of the available choices."],
         )
@@ -85,14 +99,13 @@ class TestLocaleCreateView(TestCase, WagtailTestUtils):
         # Should return the form with errors
         self.assertEqual(response.status_code, 200)
         self.assertFormError(
-            response,
-            "form",
+            response.context["form"],
             "language_code",
             ["Select a valid choice. ja is not one of the available choices."],
         )
 
 
-class TestLocaleEditView(TestCase, WagtailTestUtils):
+class TestLocaleEditView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.user = self.login()
         self.english = Locale.objects.get()
@@ -115,6 +128,13 @@ class TestLocaleEditView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtaillocales/edit.html")
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"url": "/admin/locales/", "label": "Locales"},
+                {"url": "", "label": str(self.english)},
+            ],
+            response.content,
+        )
 
         self.assertEqual(
             response.context["form"].fields["language_code"].choices,
@@ -128,7 +148,7 @@ class TestLocaleEditView(TestCase, WagtailTestUtils):
         )
 
         url_finder = AdminURLFinder(self.user)
-        expected_url = "/admin/locales/%d/" % self.english.id
+        expected_url = "/admin/locales/edit/%d/" % self.english.id
         self.assertEqual(url_finder.get_edit_url(self.english), expected_url)
 
     def test_invalid_language(self):
@@ -177,8 +197,7 @@ class TestLocaleEditView(TestCase, WagtailTestUtils):
         # Should return the form with errors
         self.assertEqual(response.status_code, 200)
         self.assertFormError(
-            response,
-            "form",
+            response.context["form"],
             "language_code",
             ["Select a valid choice. en is not one of the available choices."],
         )
@@ -193,14 +212,13 @@ class TestLocaleEditView(TestCase, WagtailTestUtils):
         # Should return the form with errors
         self.assertEqual(response.status_code, 200)
         self.assertFormError(
-            response,
-            "form",
+            response.context["form"],
             "language_code",
             ["Select a valid choice. ja is not one of the available choices."],
         )
 
 
-class TestLocaleDeleteView(TestCase, WagtailTestUtils):
+class TestLocaleDeleteView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
         self.english = Locale.objects.get()
@@ -221,6 +239,7 @@ class TestLocaleDeleteView(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailadmin/generic/confirm_delete.html")
+        self.assertBreadcrumbsNotRendered(response.content)
 
     def test_delete_locale(self):
         french = Locale.objects.create(language_code="fr")
@@ -270,7 +289,7 @@ class TestLocaleDeleteView(TestCase, WagtailTestUtils):
         for lang in ("fr", "de", "pl", "ja"):
             Locale.objects.create(language_code=lang)
 
-        self.assertTrue(Page.get_first_root_node().locale.language_code, "en")
+        self.assertEqual(Page.get_first_root_node().locale.language_code, "en")
         Page.objects.filter(depth__gt=1).delete()
         response = self.post()
 
@@ -282,7 +301,7 @@ class TestLocaleDeleteView(TestCase, WagtailTestUtils):
 
         # root node's locale should now have been reassigned to the one matching the current
         # LANGUAGE_CODE
-        self.assertTrue(Page.get_first_root_node().locale.language_code, "de")
+        self.assertEqual(Page.get_first_root_node().locale.language_code, "de")
 
     @override_settings(
         LANGUAGE_CODE="de-at",
@@ -297,7 +316,7 @@ class TestLocaleDeleteView(TestCase, WagtailTestUtils):
     def test_can_delete_default_locale_when_language_code_has_no_locale(self):
         Locale.objects.create(language_code="fr")
 
-        self.assertTrue(Page.get_first_root_node().locale.language_code, "en")
+        self.assertEqual(Page.get_first_root_node().locale.language_code, "en")
         Page.objects.filter(depth__gt=1).delete()
         response = self.post()
 
@@ -309,7 +328,7 @@ class TestLocaleDeleteView(TestCase, WagtailTestUtils):
 
         # root node's locale should now have been reassigned to 'fr' despite that not matching
         # LANGUAGE_CODE (because it's the only remaining Locale record)
-        self.assertTrue(Page.get_first_root_node().locale.language_code, "fr")
+        self.assertEqual(Page.get_first_root_node().locale.language_code, "fr")
 
     def test_cannot_delete_last_remaining_locale(self):
         Page.objects.filter(depth__gt=1).delete()
@@ -328,3 +347,16 @@ class TestLocaleDeleteView(TestCase, WagtailTestUtils):
 
         # Check that the locale was not deleted
         self.assertTrue(Locale.objects.filter(language_code="en").exists())
+
+
+class TestAdminPermissions(WagtailTestUtils, TestCase):
+    def test_registered_permissions(self):
+        locale_ct = ContentType.objects.get_for_model(Locale)
+        qs = Permission.objects.none()
+        for fn in hooks.get_hooks("register_permissions"):
+            qs |= fn()
+        registered_permissions = qs.filter(content_type=locale_ct)
+        self.assertEqual(
+            set(registered_permissions.values_list("codename", flat=True)),
+            {"add_locale", "change_locale", "delete_locale"},
+        )

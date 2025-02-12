@@ -40,22 +40,22 @@ Set `WAGTAILFRONTENDCACHE_LANGUAGES` to a list of languages (typically equal to 
 
 Finally, make sure you have configured your frontend cache to accept PURGE requests:
 
--   [Varnish](https://www.varnish-cache.org/docs/3.0/tutorial/purging.html)
--   [Squid](https://wiki.squid-cache.org/SquidFaq/OperatingSquid#How_can_I_purge_an_object_from_my_cache.3F)
+-   [Varnish](https://varnish-cache.org/docs/3.0/tutorial/purging.html)
+-   [Squid](https://wiki.squid-cache.org/SquidFaq/OperatingSquid#how-can-i-purge-an-object-from-my-cache)
 
 (frontendcache_cloudflare)=
 
 ### Cloudflare
 
-Firstly, you need to register an account with Cloudflare if you haven't already got one. You can do this here: [Cloudflare Sign up](https://www.cloudflare.com/sign-up).
+Firstly, you need to register an account with Cloudflare if you haven't already got one. You can do this here: [Cloudflare Sign up](https://dash.cloudflare.com/sign-up).
 
 Add an item into the `WAGTAILFRONTENDCACHE` and set the `BACKEND` parameter to `wagtail.contrib.frontend_cache.backends.CloudflareBackend`.
 
 This backend can be configured to use an account-wide API key, or an API token with restricted access.
 
-To use an account-wide API key, find the key [as described in the Cloudflare documentation](https://support.cloudflare.com/hc/en-us/articles/200167836-Managing-API-Tokens-and-Keys#12345682) and specify `EMAIL` and `API_KEY` parameters.
+To use an account-wide API key, find the key [as described in the Cloudflare documentation](https://developers.cloudflare.com/fundamentals/api/get-started/keys/#view-your-global-api-key) and specify `EMAIL` and `API_KEY` parameters.
 
-To use a limited API token, [create a token](https://support.cloudflare.com/hc/en-us/articles/200167836-Managing-API-Tokens-and-Keys#12345680) configured with the 'Zone, Cache Purge' permission and specify the `BEARER_TOKEN` parameter.
+To use a limited API token, [create a token](https://developers.cloudflare.com/api/get-started/create-token/) configured with the 'Zone, Cache Purge' permission and specify the `BEARER_TOKEN` parameter.
 
 A `ZONEID` parameter will need to be set for either option. To find the `ZONEID` for your domain, read the [Cloudflare API Documentation](https://developers.cloudflare.com/fundamentals/get-started/basic-tasks/find-account-and-zone-ids/).
 
@@ -105,37 +105,51 @@ WAGTAILFRONTENDCACHE = {
 }
 ```
 
-Configuration of credentials can done in multiple ways. You won't need to store them in your Django settings file. You can read more about this here: [Boto 3 Docs](https://boto3.readthedocs.org/en/latest/guide/configuration.html).
+```{versionchanged} 6.2
+Previous versions allowed passing a dict for `DISTRIBUTION_ID` to allow specifying different distribution IDs for different hostnames. This is now deprecated; instead, multiple distribution IDs should be defined as [multiple backends](frontendcache_multiple_backends), with a `HOSTNAMES` parameter to define the hostnames associated with each one.
+```
 
-In case you run multiple sites with Wagtail and each site has its CloudFront distribution, provide a mapping instead of a single distribution. Make sure the mapping matches with the hostnames provided in your site settings.
+`boto3` will attempt to discover credentials itself. You can read more about this here: [Boto 3 Docs](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html). The user will need a policy similar to:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowWagtailFrontendInvalidation",
+            "Effect": "Allow",
+            "Action": "cloudfront:CreateInvalidation",
+            "Resource": "arn:aws:cloudfront::<account id>:distribution/<distribution id>"
+        }
+    ]
+}
+```
+
+To specify credentials manually, pass them as additional parameters:
 
 ```python
 WAGTAILFRONTENDCACHE = {
     'cloudfront': {
         'BACKEND': 'wagtail.contrib.frontend_cache.backends.CloudfrontBackend',
-        'DISTRIBUTION_ID': {
-            'www.wagtail.org': 'your-distribution-id',
-            'www.madewithwagtail.org': 'your-distribution-id',
-        },
+        'DISTRIBUTION_ID': 'your-distribution-id',
+        'AWS_ACCESS_KEY_ID': os.environ['FRONTEND_CACHE_AWS_ACCESS_KEY_ID'],
+        'AWS_SECRET_ACCESS_KEY': os.environ['FRONTEND_CACHE_AWS_SECRET_ACCESS_KEY'],
+        'AWS_SESSION_TOKEN': os.environ['FRONTEND_CACHE_AWS_SESSION_TOKEN']
     },
 }
 ```
 
-```{note}
-In most cases, absolute URLs with ``www`` prefixed domain names should be used in your mapping. Only drop the ``www`` prefix if you're absolutely sure you're not using it (for example a subdomain).
-```
-
 ### Azure CDN
 
-With [Azure CDN](https://azure.microsoft.com/en-gb/services/cdn/) you will need a CDN profile with an endpoint configured.
+With [Azure CDN](https://azure.microsoft.com/en-gb/products/cdn/) you will need a CDN profile with an endpoint configured.
 
 The third-party dependencies of this backend are:
 
-| PyPI Package                                                           | Essential | Reason                                                                                                                              |
-| ---------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [`azure-mgmt-cdn`](https://pypi.org/project/azure-mgmt-cdn/)           | Yes       | Interacting with the CDN service.                                                                                                   |
-| [`azure-identity`](https://pypi.org/project/azure-identity/)           | No        | Obtaining credentials. It's optional if you want to specify your own credential using a `CREDENTIALS` setting (more details below). |
-| [`azure-mgmt-resource`](https://pypi.org/project/azure-mgmt-resource/) | No        | For obtaining the subscription ID. Redundant if you want to explicitly specify a `SUBSCRIPTION_ID` setting (more details below).    |
+| PyPI Package                                                           | Essential            | Reason                                                                                                                              |
+| ---------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [`azure-mgmt-cdn`](https://pypi.org/project/azure-mgmt-cdn/)           | Yes (v10.0 or above) | Interacting with the CDN service.                                                                                                   |
+| [`azure-identity`](https://pypi.org/project/azure-identity/)           | No                   | Obtaining credentials. It's optional if you want to specify your own credential using a `CREDENTIALS` setting (more details below). |
+| [`azure-mgmt-resource`](https://pypi.org/project/azure-mgmt-resource/) | No                   | For obtaining the subscription ID. Redundant if you want to explicitly specify a `SUBSCRIPTION_ID` setting (more details below).    |
 
 Add an item into the `WAGTAILFRONTENDCACHE` and set the `BACKEND` parameter to `wagtail.contrib.frontend_cache.backends.AzureCdnBackend`. This backend requires the following settings to be set:
 
@@ -154,7 +168,7 @@ Add an item into the `WAGTAILFRONTENDCACHE` and set the `BACKEND` parameter to `
     }
 ```
 
-By default the credentials will use `azure.identity.DefaultAzureCredential`. To modify the credential object used, please use `CREDENTIALS` setting. Read about your options on the [Azure documentation](https://docs.microsoft.com/en-us/azure/developer/python/azure-sdk-authenticate).
+By default the credentials will use `azure.identity.DefaultAzureCredential`. To modify the credential object used, please use `CREDENTIALS` setting. Read about your options on the [Azure documentation](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication-overview).
 
 ```python
 from azure.common.credentials import ServicePrincipalCredentials
@@ -177,15 +191,15 @@ Another option that can be set is `SUBSCRIPTION_ID`. By default the first encoun
 
 ### Azure Front Door
 
-With [Azure Front Door](https://azure.microsoft.com/en-gb/services/frontdoor/) you will need a Front Door instance with caching enabled.
+With [Azure Front Door](https://azure.microsoft.com/en-gb/products/frontdoor/) you will need a Front Door instance with caching enabled.
 
 The third-party dependencies of this backend are:
 
-| PyPI Package                                                             | Essential | Reason                                                                                                                              |
-| ------------------------------------------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [`azure-mgmt-frontdoor`](https://pypi.org/project/azure-mgmt-frontdoor/) | Yes       | Interacting with the Front Door service.                                                                                            |
-| [`azure-identity`](https://pypi.org/project/azure-identity/)             | No        | Obtaining credentials. It's optional if you want to specify your own credential using a `CREDENTIALS` setting (more details below). |
-| [`azure-mgmt-resource`](https://pypi.org/project/azure-mgmt-resource/)   | No        | For obtaining the subscription ID. Redundant if you want to explicitly specify a `SUBSCRIPTION_ID` setting (more details below).    |
+| PyPI Package                                                             | Essential           | Reason                                                                                                                              |
+| ------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [`azure-mgmt-frontdoor`](https://pypi.org/project/azure-mgmt-frontdoor/) | Yes (v1.0 or above) | Interacting with the Front Door service.                                                                                            |
+| [`azure-identity`](https://pypi.org/project/azure-identity/)             | No                  | Obtaining credentials. It's optional if you want to specify your own credential using a `CREDENTIALS` setting (more details below). |
+| [`azure-mgmt-resource`](https://pypi.org/project/azure-mgmt-resource/)   | No                  | For obtaining the subscription ID. Redundant if you want to explicitly specify a `SUBSCRIPTION_ID` setting (more details below).    |
 
 Add an item into the `WAGTAILFRONTENDCACHE` and set the `BACKEND` parameter to `wagtail.contrib.frontend_cache.backends.AzureFrontDoorBackend`. This backend requires the following settings to be set:
 
@@ -202,7 +216,7 @@ WAGTAILFRONTENDCACHE = {
 }
 ```
 
-By default the credentials will use `azure.identity.DefaultAzureCredential`. To modify the credential object used, please use `CREDENTIALS` setting. Read about your options on the [Azure documentation](https://docs.microsoft.com/en-us/azure/developer/python/azure-sdk-authenticate).
+By default the credentials will use `azure.identity.DefaultAzureCredential`. To modify the credential object used, please use `CREDENTIALS` setting. Read about your options on the [Azure documentation](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication-overview).
 
 ```python
 from azure.common.credentials import ServicePrincipalCredentials
@@ -221,6 +235,56 @@ WAGTAILFRONTENDCACHE = {
 ```
 
 Another option that can be set is `SUBSCRIPTION_ID`. By default the first encountered subscription will be used, but if your credential has access to more subscriptions, you should set this to an explicit value.
+
+(frontendcache_multiple_backends)=
+
+## Multiple backends
+
+Multiple backends can be configured by adding multiple entries in `WAGTAILFRONTENDCACHE`.
+
+By default, a backend will attempt to invalidate all invalidation requests. To only invalidate certain hostnames, specify them in `HOSTNAMES`:
+
+```python
+WAGTAILFRONTENDCACHE = {
+    'main-site': {
+        'BACKEND': 'wagtail.contrib.frontend_cache.backends.HTTPBackend',
+        'LOCATION': 'http://localhost:8000',
+        'HOSTNAMES': ['example.com']
+    },
+    'cdn': {
+        'BACKEND': 'wagtail.contrib.frontend_cache.backends.CloudflareBackend',
+        'BEARER_TOKEN': 'your cloudflare bearer token',
+        'ZONEID': 'your cloudflare domain zone id',
+        'HOSTNAMES': ['cdn.example.com']
+    },
+}
+```
+
+In the above example, invalidations for `cdn.example.com/foo` will be invalidated by Cloudflare, whilst `example.com/foo` will be invalidated with the `main-site` backend. This allows different configuration to be used for each backend, for example by changing the `ZONEID` for the Cloudflare backend:
+
+```python
+
+WAGTAILFRONTENDCACHE = {
+    'main-site': {
+        'BACKEND': 'wagtail.contrib.frontend_cache.backends.CloudflareBackend',
+        'BEARER_TOKEN': os.environ["CLOUDFLARE_BEARER_TOKEN"],
+        'ZONEID': 'example.com zone id',
+        'HOSTNAMES': ['example.com']
+    },
+    'other-site': {
+        'BACKEND': 'wagtail.contrib.frontend_cache.backends.CloudflareBackend',
+        'BEARER_TOKEN': os.environ["CLOUDFLARE_BEARER_TOKEN"],
+        'ZONEID': 'example.net zone id',
+        'HOSTNAMES': ['example.net']
+    },
+}
+```
+
+```{note}
+In most cases, absolute URLs with ``www`` prefixed domain names should be used in your mapping. Only drop the ``www`` prefix if you're absolutely sure you're not using it (for example a subdomain).
+```
+
+Much like Django's `ALLOWED_HOSTS`, values in `HOSTNAMES` starting with a `.` can be used as a subdomain wildcard.
 
 ## Advanced usage
 

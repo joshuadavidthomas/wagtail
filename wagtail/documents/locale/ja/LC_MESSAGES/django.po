@@ -5,6 +5,7 @@
 # Translators:
 # Daigo Shitara <stain.witness@gmail.com>, 2014,2016
 # shuhei hirota, 2019
+# shuhei hirota, 2019
 # Tetsuya Morimoto <tetsuya.morimoto@gmail.com>, 2020
 # 小口英昭 <oguchi@bluff-lab.com>, 2019
 # 山本 卓也 <takuya.miraidenshi@gmail.com>, 2019
@@ -13,10 +14,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:06+0000\n"
-"Last-Translator: Tetsuya Morimoto <tetsuya.morimoto@gmail.com>, 2020\n"
-"Language-Team: Japanese (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: 石田秀 <ishidashu@gmail.com>, 2015\n"
+"Language-Team: Japanese (http://app.transifex.com/torchbox/wagtail/language/"
 "ja/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -92,31 +93,11 @@ msgstr "ドキュメントを変更"
 msgid "Add a document"
 msgstr "ドキュメントを追加"
 
-msgid "Add document"
-msgstr "ドキュメントを追加"
-
 msgid "Uploading…"
 msgstr "アップロード中…"
 
 msgid "Upload"
 msgstr "アップロード"
-
-#, python-format
-msgid "Delete %(title)s"
-msgstr "%(title)s を削除"
-
-msgid "Delete document"
-msgstr "ドキュメントを削除"
-
-#, python-format
-msgid "Editing %(title)s"
-msgstr "%(title)s を編集"
-
-msgid "Editing"
-msgstr "編集中"
-
-msgid "Save"
-msgstr "保存"
 
 msgid "Filesize"
 msgstr "ファイルサイズ"
@@ -127,62 +108,28 @@ msgstr "ファイルは見つかりませんでした"
 msgid "Usage"
 msgstr "使用法"
 
-msgid "Documents"
-msgstr "ドキュメント"
-
-msgid "Title"
-msgstr "タイトル"
-
-msgid "File"
-msgstr "ファイル"
-
-msgid "Created"
-msgstr "作成"
-
 #, python-format
 msgid "Sorry, no documents match \"<em>%(query_string)s</em>\""
 msgstr "\"<em>%(query_string)s</em>\" に一致するドキュメントはありません"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents in this collection. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents in this collection. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"まだこのコレクションにはドキュメントがアップロードされていません。<a href="
-"\"%(wagtaildocs_add_document_url)s\">ドキュメントを追加</a>しますか？"
+"まだこのコレクションにはドキュメントがアップロードされていません。<a "
+"href=\"%(wagtaildocs_add_document_url)s\">ドキュメントを追加</a>しますか？"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"まだドキュメントがアップロードされていません。<a href="
-"\"%(wagtaildocs_add_document_url)s\">ドキュメントを追加</a>しますか？"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "%(title)sを使用"
-
-msgid "Usage of"
-msgstr "使用"
-
-msgid "Parent"
-msgstr "上位階層"
-
-msgid "Type"
-msgstr "タイプ"
-
-msgid "Status"
-msgstr "ステータス"
-
-msgid "Edit this page"
-msgstr "ページを編集"
+"まだドキュメントがアップロードされていません。<a "
+"href=\"%(wagtaildocs_add_document_url)s\">ドキュメントを追加</a>しますか？"
 
 msgid "Add multiple documents"
 msgstr "複数のドキュメントを追加"
-
-msgid "Add documents"
-msgstr "ドキュメントを追加"
 
 msgid "Drag and drop documents into this area to upload immediately."
 msgstr ""
@@ -214,25 +161,43 @@ msgstr "ドキュメント権限"
 msgid "Add a document permission"
 msgstr "ドキュメント権限を追加"
 
+msgid "Tags"
+msgstr "タグ"
+
 msgid "Delete"
 msgstr "削除"
+
+msgid "File"
+msgstr "ファイル"
+
+msgid "Created"
+msgstr "作成"
 
 msgid "Choose a document"
 msgstr "ドキュメントを選択"
 
-msgid "Search documents"
-msgstr "ドキュメントを検索"
+msgid "Choose another document"
+msgstr "別のドキュメントを選択"
 
-#, python-brace-format
-msgid "Document '{0}' added."
-msgstr "'{0}' が追加されました"
+msgid "Edit this document"
+msgstr "ドキュメントを編集"
+
+msgid "Documents"
+msgstr "ドキュメント"
+
+msgid "Title"
+msgstr "タイトル"
+
+#, python-format
+msgid "Document '%(document_title)s' added."
+msgstr "'%(document_title)s' が追加されました"
 
 msgid "The document could not be saved due to errors."
 msgstr "エラーが発生したため、ドキュメントを保存できませんでした。"
 
-#, python-brace-format
-msgid "Document '{0}' updated"
-msgstr "'{0}'のドキュメントが更新されました。"
+#, python-format
+msgid "Document '%(document_title)s' updated"
+msgstr "'%(document_title)s'のドキュメントが更新されました。"
 
 msgid ""
 "The file could not be found. Please change the source or delete the document"
@@ -240,9 +205,15 @@ msgstr ""
 "ファイルが見つかりませんでした。ソースを変更するかドキュメントを削除してくだ"
 "さい。"
 
-#, python-brace-format
-msgid "Document '{0}' deleted."
-msgstr "'{0}'のドキュメントを削除しました。"
+msgid "Delete document"
+msgstr "ドキュメントを削除"
+
+#, python-format
+msgid "Document '%(document_title)s' deleted."
+msgstr "'%(document_title)s'のドキュメントを削除しました。"
+
+msgid "Add documents"
+msgstr "ドキュメントを追加"
 
 msgid "Document"
 msgstr "ドキュメント"

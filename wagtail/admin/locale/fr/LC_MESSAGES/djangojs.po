@@ -1,21 +1,48 @@
 #
 # Translators:
 # nahuel, 2022
-# Karl Hobley <karl@torchbox.com>, 2022
 # Benoît Vogel <contact@spicy-informatique.com>, 2022
 # incognitae <pierre@onoffdesign.com>, 2022
 # Bertrand Bordage <bordage.bertrand@gmail.com>, 2022
 # Aurélien Debord <contact@aureliendebord.com>, 2022
-# Loic Teixeira, 2022
+# Sébastien Corbin <seb.corbin@gmail.com>, 2024
+# Loic Teixeira, 2025
 #
 msgid ""
 msgstr ""
-"Last-Translator: Loic Teixeira, 2022\n"
-"Language-Team: French (https://www.transifex.com/torchbox/teams/8009/fr/)\n"
+"Last-Translator: Loic Teixeira, 2025\n"
+"Language-Team: French (https://app.transifex.com/torchbox/teams/8009/fr/)\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: fr\n"
 "Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % "
 "1000000 == 0 ? 1 : 2;\n"
+
+msgid "(%(number)s new items in this menu)"
+msgstr "(%(number)s  nouvel élément dans ce menu)"
+
+msgid "(1 new item in this menu)"
+msgstr "(1 nouvel élément dans ce menu)"
+
+msgid "(New)"
+msgstr "(Nouveau)"
+
+msgid "%(num)s error"
+msgid_plural "%(num)s errors"
+msgstr[0] "%(num)s erreur"
+msgstr[1] "%(num)s erreurs"
+msgstr[2] "%(num)s erreurs"
+
+msgid "%(num)s min"
+msgid_plural "%(num)s mins"
+msgstr[0] "%(num)s min"
+msgstr[1] "%(num)s mins"
+msgstr[2] "%(num)s mins"
+
+msgid "%(num)s pixel"
+msgid_plural "%(num)s pixels"
+msgstr[0] "%(num)s pixel"
+msgstr[1] "%(num)s pixels"
+msgstr[2] "%(num)s pixels"
 
 msgid "Add a comment"
 msgstr "Ajouter un commentaire"
@@ -41,6 +68,9 @@ msgstr "Nombre de caractères  :"
 msgid "Close"
 msgstr "Fermer"
 
+msgid "Collapse all"
+msgstr "Tout replier"
+
 msgid "Comment"
 msgstr "Commenter"
 
@@ -62,11 +92,8 @@ msgstr "Suppression…"
 msgid "Edit"
 msgstr "Modifier"
 
-msgid "Edit '{title}'"
-msgstr "Modifier '{title}'"
-
-msgid "Edit your account"
-msgstr "Modifiez votre compte"
+msgid "Edit '%(title)s'"
+msgstr "Modifier '%(title)s'"
 
 msgid "Enter your comments..."
 msgstr "Entrez votre commentaire…"
@@ -77,6 +104,9 @@ msgstr "Entrez votre réponse…"
 msgid "Error while sending preview data."
 msgstr ""
 "Une erreur est survenue lors de l'envoi des données de prévisualisation."
+
+msgid "Expand all"
+msgstr "Tout déplier"
 
 msgid "Focus comment"
 msgstr "Mettre le commentaire au premier-plan"
@@ -114,8 +144,14 @@ msgstr "Explorateur"
 msgid "Pages"
 msgstr "Pages"
 
+msgid "Pin toolbar"
+msgstr "Épingler la barre d'outils"
+
+msgid "Preview"
+msgstr "Prévisualiser"
+
 msgid "Reload saved content"
-msgstr "Recharger le contenu sauvegardé"
+msgstr "Recharger le contenu enregistré"
 
 msgid "Reload the page"
 msgstr "Recharger la page"
@@ -134,9 +170,6 @@ msgstr "Archiver"
 
 msgid "Retry"
 msgstr "Réessayer"
-
-msgid "Rich text"
-msgstr "Texte riche"
 
 msgid "Save"
 msgstr "Enregistrer"
@@ -159,8 +192,8 @@ msgstr "Enregistrement…"
 msgid "Search"
 msgstr "Rechercher"
 
-msgid "Search blocks"
-msgstr "Blocs de recherche"
+msgid "Search options…"
+msgstr "Options de recherche…"
 
 msgid "See all"
 msgstr "Tout voir"
@@ -180,11 +213,20 @@ msgstr "Scinder le bloc"
 msgid ""
 "The editor just crashed. Content has been reset to the last saved version."
 msgstr ""
-"L’éditeur a rencontré un problème. Le dernier contenu sauvegardé a été "
-"restauré."
+"L’éditeur a rencontré un problème. Le contenu a été réinitialisé à la "
+"dernière version enregistrée."
+
+msgid "The maximum number of items is %(max_num)d"
+msgstr "Le nombre maximum d'éléments est %(max_num)d"
+
+msgid "The minimum number of items is %(min_num)d"
+msgstr "Le nombre minimum d'éléments est %(min_num)d"
 
 msgid "This field is required."
 msgstr "Ce champ est requis."
+
+msgid "Toggle side panel"
+msgstr "Afficher/masquer le panneau latéral"
 
 msgid "Toggle sidebar"
 msgstr "Afficher/masquer la barre latérale"
@@ -192,8 +234,11 @@ msgstr "Afficher/masquer la barre latérale"
 msgid "Unfocus comment"
 msgstr "Mettre le commentaire en arrière-plan"
 
-msgid "View child pages of '{title}'"
-msgstr "Voir les sous-pages de '{title}'"
+msgid "Unpin toolbar"
+msgstr "Désépingler la barre d'outils"
+
+msgid "View child pages of '%(title)s'"
+msgstr "Voir les sous-pages de '%(title)s'"
 
 msgid "Write something or type ‘/’ to insert a block"
 msgstr "Écrivez quelque chose ou tapez « / » pour insérer un bloc"

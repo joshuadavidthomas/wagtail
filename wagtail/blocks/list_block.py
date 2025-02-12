@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import MutableSequence
+from collections.abc import Mapping, MutableSequence
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -11,46 +11,76 @@ from django.utils.translation import gettext as _
 from wagtail.admin.staticfiles import versioned_static
 from wagtail.telepath import Adapter, register
 
-from .base import Block, BoundBlock, get_help_icon
+from .base import (
+    Block,
+    BoundBlock,
+    get_error_json_data,
+    get_error_list_json_data,
+    get_help_icon,
+)
 
 __all__ = ["ListBlock", "ListBlockValidationError"]
 
 
 class ListBlockValidationError(ValidationError):
     def __init__(self, block_errors=None, non_block_errors=None):
-        self.non_block_errors = non_block_errors or ErrorList()
-        self.block_errors = block_errors or []
+        # non_block_errors may be passed here as an ErrorList, a plain list (of strings or
+        # ValidationErrors), or None.
+        # Normalise it to be an ErrorList, which provides an as_data() method that consistently
+        # returns a flat list of ValidationError objects.
+        # (note: iterating over ErrorList itself appears to give a list of message strings,
+        # but doesn't correctly account for ValidationErrors containing multiple messages)
+        # (note 2: items in this list are expected to be plain ValidationError instances; there is
+        # no special treatment of subclasses such as StructBlockValidationError)
+        self.non_block_errors = ErrorList(non_block_errors)
 
-        params = {}
-        if block_errors:
-            params["block_errors"] = block_errors
-        if non_block_errors:
-            params["non_block_errors"] = non_block_errors
-        super().__init__("Validation error in ListBlock", params=params)
+        # block_errors may be passed here as a dict whose keys are the indexes of the child blocks
+        # with errors, or a list (corresponding to the block value's elements, with None for child
+        # blocks with no errors)
+        # Items in this list / dict may be:
+        #  - a ValidationError instance (potentially a subclass such as StructBlockValidationError)
+        #  - an ErrorList containing a single ValidationError
+        #  - a plain list containing a single ValidationError
+        # All representations will be normalised to a dict of ValidationError instances,
+        # which is also the preferred format for the original argument to be in.
 
+        # normalise to a dict
+        if block_errors is None:
+            block_errors_dict = {}
+        elif isinstance(block_errors, Mapping):
+            block_errors_dict = block_errors
+        elif isinstance(block_errors, list):
+            block_errors_dict = {
+                index: val for index, val in enumerate(block_errors) if val is not None
+            }
+        else:
+            raise ValueError(
+                "Expected dict or list for block_errors, got %r" % block_errors
+            )
 
-class ListBlockValidationErrorAdapter(Adapter):
-    js_constructor = "wagtail.blocks.ListBlockValidationError"
+        # normalise items to ValidationError instances
+        self.block_errors = {}
+        for index, val in block_errors_dict.items():
+            if isinstance(val, ErrorList):
+                self.block_errors[index] = val.as_data()[0]
+            elif isinstance(val, list):
+                self.block_errors[index] = val[0]
+            else:
+                self.block_errors[index] = val
 
-    def js_args(self, error):
-        return [
-            [
-                elist.as_data() if elist is not None else elist
-                for elist in error.block_errors
-            ],
-            error.non_block_errors.as_data(),
-        ]
+        super().__init__("Validation error in ListBlock")
 
-    @cached_property
-    def media(self):
-        return forms.Media(
-            js=[
-                versioned_static("wagtailadmin/js/telepath/blocks.js"),
-            ]
-        )
+    def as_json_data(self):
+        result = {}
+        if self.non_block_errors:
+            result["messages"] = get_error_list_json_data(self.non_block_errors)
+        if self.block_errors:
+            result["blockErrors"] = {
+                index: get_error_json_data(error)
+                for index, error in self.block_errors.items()
+            }
 
-
-register(ListBlockValidationErrorAdapter(), ListBlockValidationError)
+        return result
 
 
 class ListValue(MutableSequence):
@@ -62,7 +92,8 @@ class ListValue(MutableSequence):
     class ListChild(BoundBlock):
         # a wrapper for list values that keeps track of the associated block type and ID
         def __init__(self, *args, **kwargs):
-            self.id = kwargs.pop("id", None) or str(uuid.uuid4())
+            self.original_id = kwargs.pop("id", None)
+            self.id = self.original_id or str(uuid.uuid4())
             super().__init__(*args, **kwargs)
 
         def get_prep_value(self):
@@ -103,26 +134,43 @@ class ListValue(MutableSequence):
         )
 
     def __repr__(self):
-        return "<ListValue: %r>" % ([bb.value for bb in self.bound_blocks],)
+        return f"<ListValue: {[bb.value for bb in self.bound_blocks]!r}>"
 
 
 class ListBlock(Block):
-    def __init__(self, child_block, **kwargs):
+    def __init__(self, child_block, search_index=True, **kwargs):
         super().__init__(**kwargs)
-
+        self.search_index = search_index
         if isinstance(child_block, type):
             # child_block was passed as a class, so convert it to a block instance
             self.child_block = child_block()
         else:
             self.child_block = child_block
 
-        if not hasattr(self.meta, "default"):
+        self._has_default = hasattr(self.meta, "default")
+        if not self._has_default:
             # Default to a list consisting of one empty (i.e. default-valued) child item
             self.meta.default = [self.child_block.get_default()]
 
-    def get_default(self):
-        # wrap with list() so that each invocation of get_default returns a distinct instance
-        return ListValue(self, values=list(self.meta.default))
+    # If a subclass of ListBlock overrides __init__, we cannot assume that the first argument is
+    # the child block, and thus we cannot rely on the conversion applied in construct_from_lookup /
+    # deconstruct_with_lookup to be valid. We set a flag attribute on the __init__ method so that
+    # we can spot this case.
+    __init__.has_child_block_arg = True
+
+    @classmethod
+    def construct_from_lookup(cls, lookup, *args, **kwargs):
+        if getattr(cls.__init__, "has_child_block_arg", False):
+            if args and isinstance(args[0], int):
+                child_block = lookup.get_block(args[0])
+                args = (child_block, *args[1:])
+            else:
+                child_block_kwarg = kwargs.get("child_block")
+                if isinstance(child_block_kwarg, int):
+                    child_block = lookup.get_block(child_block_kwarg)
+                    kwargs["child_block"] = child_block
+
+        return cls(*args, **kwargs)
 
     def value_from_datadict(self, data, files, prefix):
         count = int(data["%s-count" % prefix])
@@ -152,13 +200,12 @@ class ListBlock(Block):
     def clean(self, value):
         # value is expected to be a ListValue, but if it's been assigned through external code it might
         # be a plain list; normalise it to a ListValue
-        if not isinstance(value, ListValue):
-            value = ListValue(self, values=value)
+        value = self.normalize(value)
 
         result = []
-        errors = []
+        block_errors = {}
         non_block_errors = ErrorList()
-        for bound_block in value.bound_blocks:
+        for index, bound_block in enumerate(value.bound_blocks):
             try:
                 result.append(
                     ListValue.ListChild(
@@ -168,30 +215,45 @@ class ListBlock(Block):
                     )
                 )
             except ValidationError as e:
-                errors.append(ErrorList([e]))
-            else:
-                errors.append(None)
+                block_errors[index] = e
 
         if self.meta.min_num is not None and self.meta.min_num > len(value):
             non_block_errors.append(
                 ValidationError(
-                    _("The minimum number of items is %d") % self.meta.min_num
+                    _("The minimum number of items is %(min_num)d")
+                    % {"min_num": self.meta.min_num}
                 )
             )
 
         if self.meta.max_num is not None and self.meta.max_num < len(value):
             non_block_errors.append(
                 ValidationError(
-                    _("The maximum number of items is %d") % self.meta.max_num
+                    _("The maximum number of items is %(max_num)d")
+                    % {"max_num": self.meta.max_num}
                 )
             )
 
-        if any(errors) or non_block_errors:
+        if block_errors or non_block_errors:
             raise ListBlockValidationError(
-                block_errors=errors, non_block_errors=non_block_errors
+                block_errors=block_errors, non_block_errors=non_block_errors
             )
 
         return ListValue(self, bound_blocks=result)
+
+    def normalize(self, value):
+        if isinstance(value, ListValue):
+            return value
+        elif isinstance(value, list):
+            return ListValue(
+                self, values=[self.child_block.normalize(x) for x in value]
+            )
+        else:
+            raise TypeError(
+                f"Cannot handle {value!r} (type {type(value)!r}) as a value of a ListBlock"
+            )
+
+    def empty_value(self):
+        return ListValue(self, values=[])
 
     def _item_is_in_block_format(self, item):
         # check a list item retrieved from the database JSON representation to see whether it follows
@@ -312,17 +374,62 @@ class ListBlock(Block):
         return format_html("<ul>{0}</ul>", children)
 
     def get_searchable_content(self, value):
+        if not self.search_index:
+            return []
         content = []
-
         for child_value in value:
             content.extend(self.child_block.get_searchable_content(child_value))
 
         return content
 
+    def extract_references(self, value):
+        for child in value.bound_blocks:
+            for (
+                model,
+                object_id,
+                model_path,
+                content_path,
+            ) in child.block.extract_references(child.value):
+                model_path = f"item.{model_path}" if model_path else "item"
+                content_path = (
+                    f"{child.id}.{content_path}" if content_path else child.id
+                )
+                yield model, object_id, model_path, content_path
+
+    def get_block_by_content_path(self, value, path_elements):
+        """
+        Given a list of elements from a content path, retrieve the block at that path
+        as a BoundBlock object, or None if the path does not correspond to a valid block.
+        """
+        if path_elements:
+            id, *remaining_elements = path_elements
+            for child in value.bound_blocks:
+                if child.id == id:
+                    return child.block.get_block_by_content_path(
+                        child.value, remaining_elements
+                    )
+        else:
+            # an empty path refers to the list as a whole
+            return self.bind(value)
+
     def check(self, **kwargs):
         errors = super().check(**kwargs)
         errors.extend(self.child_block.check(**kwargs))
         return errors
+
+    def deconstruct_with_lookup(self, lookup):
+        path, args, kwargs = super().deconstruct_with_lookup(lookup)
+        if getattr(self.__init__, "has_child_block_arg", False):
+            if args and isinstance(args[0], Block):
+                block_id = lookup.add_block(args[0])
+                args = (block_id, *args[1:])
+            else:
+                child_block = kwargs.get("child_block")
+                if isinstance(child_block, Block):
+                    block_id = lookup.add_block(child_block)
+                    kwargs["child_block"] = block_id
+
+        return path, args, kwargs
 
     class Meta:
         # No icon specified here, because that depends on the purpose that the
@@ -343,12 +450,16 @@ class ListBlockAdapter(Adapter):
     def js_args(self, block):
         meta = {
             "label": block.label,
+            "description": block.get_description(),
             "icon": block.meta.icon,
+            "blockDefId": block.definition_prefix,
+            "isPreviewable": block.is_previewable,
             "classname": block.meta.form_classname,
             "collapsed": block.meta.collapsed,
             "strings": {
                 "MOVE_UP": _("Move up"),
                 "MOVE_DOWN": _("Move down"),
+                "DRAG": _("Drag"),
                 "DUPLICATE": _("Duplicate"),
                 "DELETE": _("Delete"),
                 "ADD": _("Add"),

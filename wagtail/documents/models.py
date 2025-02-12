@@ -1,10 +1,10 @@
-import hashlib
 import os.path
 import urllib
 from contextlib import contextmanager
 from mimetypes import guess_type
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.dispatch import Signal
@@ -12,10 +12,10 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from taggit.managers import TaggableManager
 
-from wagtail.admin.models import get_object_usage
-from wagtail.models import CollectionMember
+from wagtail.models import CollectionMember, ReferenceIndex
 from wagtail.search import index
 from wagtail.search.queryset import SearchableQuerySetMixin
+from wagtail.utils.file import hash_filelike
 
 
 class DocumentQuerySet(SearchableQuerySetMixin, models.QuerySet):
@@ -34,27 +34,30 @@ class AbstractDocument(CollectionMember, index.Indexed, models.Model):
         editable=False,
         on_delete=models.SET_NULL,
     )
+    uploaded_by_user.wagtail_reference_index_ignore = True
 
     tags = TaggableManager(help_text=None, blank=True, verbose_name=_("tags"))
 
-    file_size = models.PositiveIntegerField(null=True, editable=False)
+    file_size = models.PositiveBigIntegerField(null=True, editable=False)
     # A SHA-1 hash of the file contents
     file_hash = models.CharField(max_length=40, blank=True, editable=False)
 
     objects = DocumentQuerySet.as_manager()
 
     search_fields = CollectionMember.search_fields + [
-        index.SearchField("title", partial_match=True, boost=10),
+        index.SearchField("title", boost=10),
         index.AutocompleteField("title"),
+        index.FilterField("id"),
         index.FilterField("title"),
         index.RelatedFields(
             "tags",
             [
-                index.SearchField("name", partial_match=True, boost=10),
+                index.SearchField("name", boost=10),
                 index.AutocompleteField("name"),
             ],
         ),
         index.FilterField("uploaded_by_user"),
+        index.FilterField("created_at"),
     ]
 
     def clean(self):
@@ -70,7 +73,10 @@ class AbstractDocument(CollectionMember, index.Indexed, models.Model):
         allowed_extensions = getattr(settings, "WAGTAILDOCS_EXTENSIONS", None)
         if allowed_extensions:
             validate = FileExtensionValidator(allowed_extensions)
-            validate(self.file)
+            try:
+                validate(self.file)
+            except ValidationError as e:
+                raise ValidationError({"file": e.messages[0]})
 
     def is_stored_locally(self):
         """
@@ -114,7 +120,7 @@ class AbstractDocument(CollectionMember, index.Indexed, models.Model):
         if self.file_size is None:
             try:
                 self.file_size = self.file.size
-            except Exception:
+            except Exception:  # noqa: BLE001
                 # File doesn't exist
                 return
 
@@ -122,14 +128,13 @@ class AbstractDocument(CollectionMember, index.Indexed, models.Model):
 
         return self.file_size
 
-    def _set_file_hash(self, file_contents):
-        self.file_hash = hashlib.sha1(file_contents).hexdigest()
+    def _set_file_hash(self):
+        with self.open_file() as f:
+            self.file_hash = hash_filelike(f)
 
     def get_file_hash(self):
         if self.file_hash == "":
-            with self.open_file() as f:
-                self._set_file_hash(f.read())
-
+            self._set_file_hash()
             self.save(update_fields=["file_hash"])
 
         return self.file_hash
@@ -141,7 +146,7 @@ class AbstractDocument(CollectionMember, index.Indexed, models.Model):
         self.file_size = self.file.size
 
         # Set new document file hash
-        self._set_file_hash(self.file.read())
+        self._set_file_hash()
         self.file.seek(0)
 
     def __str__(self):
@@ -167,7 +172,7 @@ class AbstractDocument(CollectionMember, index.Indexed, models.Model):
         return reverse("wagtaildocs_serve", args=[self.id, self.filename])
 
     def get_usage(self):
-        return get_object_usage(self)
+        return ReferenceIndex.get_grouped_references_to(self)
 
     @property
     def usage_url(self):
@@ -216,22 +221,3 @@ class Document(AbstractDocument):
 
 # provides args: request
 document_served = Signal()
-
-
-class UploadedDocument(models.Model):
-    """
-    Temporary storage for documents uploaded through the multiple doc uploader, when validation
-    rules (e.g. required metadata fields) prevent creating a Document object from the document file
-    alone. In this case, the document file is stored against this model, to be turned into a
-    Document object once the full form has been filled in.
-    """
-
-    file = models.FileField(upload_to="uploaded_documents", max_length=200)
-    uploaded_by_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        verbose_name=_("uploaded by user"),
-        null=True,
-        blank=True,
-        editable=False,
-        on_delete=models.SET_NULL,
-    )

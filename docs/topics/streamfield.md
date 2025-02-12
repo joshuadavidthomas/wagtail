@@ -2,11 +2,11 @@
 
 # How to use StreamField for mixed content
 
-StreamField provides a content editing model suitable for pages that do not follow a fixed structure -- such as blog posts or news stories -- where the text may be interspersed with subheadings, images, pull quotes and video. It's also suitable for more specialised content types, such as maps and charts (or, for a programming blog, code snippets). In this model, these different content types are represented as a sequence of 'blocks', which can be repeated and arranged in any order.
+StreamField provides a content editing model suitable for pages that do not follow a fixed structure -- such as blog posts or news stories -- where the text may be interspersed with subheadings, images, pull quotes and video. It's also suitable for more specialized content types, such as maps and charts (or, for a programming blog, code snippets). In this model, these different content types are represented as a sequence of 'blocks', which can be repeated and arranged in any order.
 
 For further background on StreamField, and why you would use it instead of a rich text field for the article body, see the blog post [Rich text fields and faster horses](https://torchbox.com/blog/rich-text-fields-and-faster-horses/).
 
-StreamField also offers a rich API to define your own block types, ranging from simple collections of sub-blocks (such as a 'person' block consisting of first name, surname and photograph) to completely custom components with their own editing interface. Within the database, the StreamField content is stored as JSON, ensuring that the full informational content of the field is preserved, rather than just an HTML representation of it.
+StreamField also offers a rich API to define your own block types, ranging from simple collections of sub-blocks (such as a 'person' block consisting of first name, surname, and photograph) to completely custom components with their own editing interface. Within the database, the StreamField content is stored as JSON, ensuring that the full informational content of the field is preserved, rather than just an HTML representation of it.
 
 ## Using StreamField
 
@@ -19,7 +19,7 @@ from wagtail.models import Page
 from wagtail.fields import StreamField
 from wagtail import blocks
 from wagtail.admin.panels import FieldPanel
-from wagtail.images.blocks import ImageChooserBlock
+from wagtail.images.blocks import ImageBlock
 
 class BlogPage(Page):
     author = models.CharField(max_length=255)
@@ -27,8 +27,8 @@ class BlogPage(Page):
     body = StreamField([
         ('heading', blocks.CharBlock(form_classname="title")),
         ('paragraph', blocks.RichTextBlock()),
-        ('image', ImageChooserBlock()),
-    ], use_json_field=True)
+        ('image', ImageBlock()),
+    ])
 
     content_panels = Page.content_panels + [
         FieldPanel('author'),
@@ -45,8 +45,8 @@ You can find the complete list of available block types in the [](streamfield_bl
    StreamField is not a direct replacement for other field types such as RichTextField. If you need to migrate an existing field to StreamField, refer to [](streamfield_migrating_richtext).
 ```
 
-```{versionchanged} 3.0
-The `use_json_field=True` argument was added. This indicates that the database's native JSONField support should be used for this field, and is a temporary measure to assist in migrating StreamFields created on earlier Wagtail versions; it will become the default in a future release.
+```{note}
+   While block definitions look similar to model fields, they are not the same thing. Blocks are only valid within a StreamField - using them in place of a model field will not work.
 ```
 
 (streamfield_template_rendering)=
@@ -118,13 +118,13 @@ body = StreamField([
     ('person', blocks.StructBlock([
         ('first_name', blocks.CharBlock()),
         ('surname', blocks.CharBlock()),
-        ('photo', ImageChooserBlock(required=False)),
+        ('photo', ImageBlock(required=False)),
         ('biography', blocks.RichTextBlock()),
     ])),
     ('heading', blocks.CharBlock(form_classname="title")),
     ('paragraph', blocks.RichTextBlock()),
-    ('image', ImageChooserBlock()),
-], use_json_field=True)
+    ('image', ImageBlock()),
+])
 ```
 
 When reading back the content of a StreamField (such as when rendering a template), the value of a StructBlock is a dict-like object with keys corresponding to the block names given in the definition:
@@ -153,7 +153,7 @@ Placing a StructBlock's list of child blocks inside a `StreamField` definition c
 class PersonBlock(blocks.StructBlock):
     first_name = blocks.CharBlock()
     surname = blocks.CharBlock()
-    photo = ImageChooserBlock(required=False)
+    photo = ImageBlock(required=False)
     biography = blocks.RichTextBlock()
 ```
 
@@ -164,9 +164,11 @@ body = StreamField([
     ('person', PersonBlock()),
     ('heading', blocks.CharBlock(form_classname="title")),
     ('paragraph', blocks.RichTextBlock()),
-    ('image', ImageChooserBlock()),
-], use_json_field=True)
+    ('image', ImageBlock()),
+])
 ```
+
+(block_icons)=
 
 ### Block icons
 
@@ -179,13 +181,13 @@ body = StreamField([
     ('person', blocks.StructBlock([
         ('first_name', blocks.CharBlock()),
         ('surname', blocks.CharBlock()),
-        ('photo', ImageChooserBlock(required=False)),
+        ('photo', ImageBlock(required=False)),
         ('biography', blocks.RichTextBlock()),
     ], icon='user')),
     ('heading', blocks.CharBlock(form_classname="title")),
     ('paragraph', blocks.RichTextBlock()),
-    ('image', ImageChooserBlock()),
-], use_json_field=True)
+    ('image', ImageBlock()),
+])
 ```
 
 ```{code-block} python
@@ -194,14 +196,14 @@ body = StreamField([
 class PersonBlock(blocks.StructBlock):
     first_name = blocks.CharBlock()
     surname = blocks.CharBlock()
-    photo = ImageChooserBlock(required=False)
+    photo = ImageBlock(required=False)
     biography = blocks.RichTextBlock()
 
     class Meta:
         icon = 'user'
 ```
 
-For a list of the recognised icon identifiers, see the [](styleguide).
+For a list of icons available out of the box, see our [icons overview](icons). Project-specific icons are also displayed in the [styleguide](styleguide).
 
 ### ListBlock
 
@@ -211,11 +213,11 @@ For a list of the recognised icon identifiers, see the [](styleguide).
 :emphasize-lines: 2
 
 body = StreamField([
-    ('gallery', blocks.ListBlock(ImageChooserBlock())),
+    ('gallery', blocks.ListBlock(ImageBlock())),
     ('heading', blocks.CharBlock(form_classname="title")),
     ('paragraph', blocks.RichTextBlock()),
-    ('image', ImageChooserBlock()),
-], use_json_field=True)
+    ('image', ImageBlock()),
+])
 ```
 
 When reading back the content of a StreamField (such as when rendering a template), the value of a ListBlock is a list of child values:
@@ -245,20 +247,20 @@ When reading back the content of a StreamField (such as when rendering a templat
 
 body = StreamField([
     ('carousel', blocks.StreamBlock([
-        ('image', ImageChooserBlock()),
+        ('image', ImageBlock()),
         ('video', EmbedBlock()),
     ])),
     ('heading', blocks.CharBlock(form_classname="title")),
     ('paragraph', blocks.RichTextBlock()),
-    ('image', ImageChooserBlock()),
-], use_json_field=True)
+    ('image', ImageBlock()),
+])
 ```
 
 `StreamBlock` can also be subclassed in the same way as `StructBlock`, with the child blocks being specified as attributes on the class:
 
 ```python
 class CarouselBlock(blocks.StreamBlock):
-    image = ImageChooserBlock()
+    image = ImageBlock()
     video = EmbedBlock()
 
     class Meta:
@@ -271,11 +273,11 @@ A StreamBlock subclass defined in this way can also be passed to a `StreamField`
 class CommonContentBlock(blocks.StreamBlock):
     heading = blocks.CharBlock(form_classname="title")
     paragraph = blocks.RichTextBlock()
-    image = ImageChooserBlock()
+    image = ImageBlock()
 
 
 class BlogPage(Page):
-    body = StreamField(CommonContentBlock(), use_json_field=True)
+    body = StreamField(CommonContentBlock())
 ```
 
 When reading back the content of a StreamField, the value of a StreamBlock is a sequence of block objects with `block_type` and `value` properties, just like the top-level value of the StreamField itself.
@@ -302,14 +304,14 @@ When reading back the content of a StreamField, the value of a StreamBlock is a 
 
 ### Limiting block counts
 
-By default, a StreamField can contain an unlimited number of blocks. The `min_num` and `max_num` options on `StreamField` or `StreamBlock` allow you to set a minimum or maximum number of blocks:
+By default, a StreamField can contain an unlimited number of blocks. The `min_num` and `max_num` options on `StreamField` or `StreamBlock` allow you to set a minimum or a maximum number of blocks:
 
 ```python
 body = StreamField([
     ('heading', blocks.CharBlock(form_classname="title")),
     ('paragraph', blocks.RichTextBlock()),
-    ('image', ImageChooserBlock()),
-], min_num=2, max_num=5, use_json_field=True)
+    ('image', ImageBlock()),
+], min_num=2, max_num=5)
 ```
 
 Or equivalently:
@@ -318,23 +320,23 @@ Or equivalently:
 class CommonContentBlock(blocks.StreamBlock):
     heading = blocks.CharBlock(form_classname="title")
     paragraph = blocks.RichTextBlock()
-    image = ImageChooserBlock()
+    image = ImageBlock()
 
     class Meta:
         min_num = 2
         max_num = 5
 ```
 
-The `block_counts` option can be used to set a minimum or maximum count for specific block types. This accepts a dict, mapping block names to a dict containing either or both of `min_num` and `max_num`. For example, to permit between 1 and 3 'heading' blocks:
+The `block_counts` option can be used to set a minimum or maximum count for specific block types. This accepts a dict, mapping block names to a dict containing either or both `min_num` and `max_num`. For example, to permit between 1 and 3 'heading' blocks:
 
 ```python
 body = StreamField([
     ('heading', blocks.CharBlock(form_classname="title")),
     ('paragraph', blocks.RichTextBlock()),
-    ('image', ImageChooserBlock()),
+    ('image', ImageBlock()),
 ], block_counts={
     'heading': {'min_num': 1, 'max_num': 3},
-}, use_json_field=True)
+})
 ```
 
 Or equivalently:
@@ -343,7 +345,7 @@ Or equivalently:
 class CommonContentBlock(blocks.StreamBlock):
     heading = blocks.CharBlock(form_classname="title")
     paragraph = blocks.RichTextBlock()
-    image = ImageChooserBlock()
+    image = ImageBlock()
 
     class Meta:
         block_counts = {
@@ -362,7 +364,7 @@ By default, each block is rendered using simple, minimal HTML markup, or no mark
     [
         ('first_name', blocks.CharBlock()),
         ('surname', blocks.CharBlock()),
-        ('photo', ImageChooserBlock(required=False)),
+        ('photo', ImageBlock(required=False)),
         ('biography', blocks.RichTextBlock()),
     ],
     template='myapp/blocks/person.html',
@@ -376,7 +378,7 @@ Or, when defined as a subclass of StructBlock:
 class PersonBlock(blocks.StructBlock):
     first_name = blocks.CharBlock()
     surname = blocks.CharBlock()
-    photo = ImageChooserBlock(required=False)
+    photo = ImageBlock(required=False)
     biography = blocks.RichTextBlock()
 
     class Meta:
@@ -396,7 +398,7 @@ Within the template, the block value is accessible as the variable `value`:
 </div>
 ```
 
-Since `first_name`, `surname`, `photo` and `biography` are defined as blocks in their own right, this could also be written as:
+Since `first_name`, `surname`, `photo`, and `biography` are defined as blocks in their own right, this could also be written as:
 
 ```html+django
 {% load wagtailcore_tags wagtailimages_tags %}
@@ -492,17 +494,121 @@ class EventBlock(blocks.StructBlock):
 
 In this example, the variable `is_happening_today` will be made available within the block template. The `parent_context` keyword argument is available when the block is rendered through an `{% include_block %}` tag, and is a dict of variables passed from the calling template.
 
+(streamfield_get_template)=
+
+Similarly, a `get_template` method can be defined to dynamically select a template based on the block value:
+
+```python
+import datetime
+
+class EventBlock(blocks.StructBlock):
+    title = blocks.CharBlock()
+    date = blocks.DateBlock()
+
+    def get_template(self, value, context=None):
+        if value["date"] > datetime.date.today():
+            return "myapp/blocks/future_event.html"
+        else:
+            return "myapp/blocks/event.html"
+```
+
 All block types, not just `StructBlock`, support the `template` property. However, for blocks that handle basic Python data types, such as `CharBlock` and `IntegerBlock`, there are some limitations on where the template will take effect. For further details, see [](boundblocks_and_values).
 
-## Customisations
+(configuring_block_previews)=
 
-All block types implement a common API for rendering their front-end and form representations, and storing and retrieving values to and from the database. By subclassing the various block classes and overriding these methods, all kinds of customisations are possible, from modifying the layout of StructBlock form fields to implementing completely new ways of combining blocks. For further details, see [](custom_streamfield_blocks).
+## Configuring block previews
+
+```{versionadded} 6.4
+The ability to have previews for StreamField blocks was added.
+```
+
+StreamField blocks can have previews that will be shown inside the block picker when you add a block in the editor. To enable this feature, you must configure the preview value and template. You can also add a description to help users pick the right block for their content.
+
+You can do so by [passing the keyword arguments](block_preview_arguments) `preview_value`, `preview_template`, and `description` when instantiating a block:
+
+```{code-block} python
+:emphasize-lines: 6-8
+
+("quote", blocks.StructBlock(
+    [
+        ("text", blocks.TextBlock()),
+        ("source", blocks.CharBlock()),
+    ],
+    preview_value={"text": "This is the coolest CMS ever.", "source": "Willie Wagtail"}
+    preview_template="myapp/previews/blocks/quote.html",
+    description="A quote with attribution to the source, rendered as a blockquote."
+))
+```
+
+You can also set `preview_value`, `preview_template`, and `description` as attributes in the `Meta` class of the block. For example:
+
+```{code-block} python
+:emphasize-lines: 6-8
+
+class QuoteBlock(blocks.StructBlock):
+    text = blocks.TextBlock()
+    source = blocks.CharBlock()
+
+    class Meta:
+        preview_value = {"text": "This is the coolest CMS ever.", "source": "Willie Wagtail"}
+        preview_template = "myapp/previews/blocks/quote.html"
+        description = "A quote with attribution to the source, rendered as a blockquote."
+```
+
+For more details on the preview options, see the corresponding {meth}`~wagtail.blocks.Block.get_preview_value`, {meth}`~wagtail.blocks.Block.get_preview_template`, and  {meth}`~wagtail.blocks.Block.get_description` methods, as well as the {meth}`~wagtail.blocks.Block.get_preview_context` method.
+
+In particular, the `get_preview_value()` method can be overridden to provide a dynamic preview value, such as from the database:
+
+```python
+from myapp.models import Quote
+
+
+class QuoteBlock(blocks.StructBlock):
+    ...
+
+    def get_preview_value(self, value):
+        quote = Quote.objects.first()
+        return {"text": quote.text, "source": quote.source}
+```
+
+(streamfield_global_preview_template)=
+
+### Overriding the global preview template
+
+In many cases, you likely want to use the block's real template that you already configure via `template` or `get_template` as described in [](streamfield_per_block_templates). However, such templates are only an HTML fragment for the block, whereas the preview requires a complete HTML document as the template.
+
+To avoid having to specify `preview_template` for each block, Wagtail provides a default preview template for all blocks. This template makes use of the `{% include_block %}` tag (as described in [](streamfield_template_rendering)), which will reuse your block's specific template.
+
+Note that the default preview template does not include any static assets that may be necessary to render your blocks properly. If you only need to add static assets to the default preview template, you can skip specifying `preview_template` for each block and instead override the default template globally. You can do so by creating a `wagtailcore/shared/block_preview.html` template inside one of your `templates` directories (with a higher precedence than the `wagtail` app) with the following content:
+
+```html+django
+{% extends "wagtailcore/shared/block_preview.html" %}
+{% load static %}
+
+{% block css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/my-styles.css' %}">
+{% endblock %}
+
+{% block js %}
+    {{ block.super }}
+    <script src="{% static 'js/my-script.js' %}"></script>
+{% endblock %}
+```
+
+For more details on overriding templates, see Django's guide on [](inv:django#howto/overriding-templates).
+
+The global `wagtailcore/shared/block_preview.html` override will be used for all blocks by default. If you want to use a different template for a particular block, you can still specify `preview_template`, which will take precedence.
+
+## Customizations
+
+All block types implement a common API for rendering their front-end and form representations, and storing and retrieving values to and from the database. By subclassing the various block classes and overriding these methods, all kinds of customizations are possible, from modifying the layout of StructBlock form fields to implementing completely new ways of combining blocks. For further details, see [](custom_streamfield_blocks).
 
 (modifying_streamfield_data)=
 
 ## Modifying StreamField data
 
-A StreamField's value behaves as a list, and blocks can be inserted, overwritten and deleted before saving the instance back to the database. A new item can be written to the list as a tuple of _(block_type, value)_ - when read back, it will be returned as a `BoundBlock` object.
+A StreamField's value behaves as a list, and blocks can be inserted, overwritten, and deleted before saving the instance back to the database. A new item can be written to the list as a tuple of _(block_type, value)_ - when read back, it will be returned as a `BoundBlock` object.
 
 ```python
 # Replace the first block with a new block of type 'heading'
@@ -512,20 +618,38 @@ my_page.body[0] = ('heading', "My story")
 del my_page.body[-1]
 
 # Append a rich text block to the stream
-from wagtail.rich_text import RichText
-my_page.body.append(('paragraph', RichText("<p>And they all lived happily ever after.</p>")))
+my_page.body.append(('paragraph', "<p>And they all lived happily ever after.</p>"))
 
 # Save the updated data back to the database
 my_page.save()
 ```
 
+If a block extending a StructBlock is to be used inside of the StreamField's value, the value of this block can be provided as a Python dict (similar to what is accepted by the block's `.to_python` method).
+
+```python
+
+from wagtail import blocks
+
+class UrlWithTextBlock(blocks.StructBlock):
+   url = blocks.URLBlock()
+   text = blocks.TextBlock()
+
+# using this block inside the content
+
+data = {
+    'url': 'https://github.com/wagtail/',
+    'text': 'A very interesting and useful repo'
+}
+
+# append the new block to the stream as a tuple with the defined index for this block type
+my_page.body.append(('url', data))
+my_page.save()
+
+```
+
 (streamfield_retrieving_blocks_by_name)=
 
 ## Retrieving blocks by name
-
-```{versionadded} 4.0
-The `blocks_by_name` and `first_block_by_name` methods were added.
-```
 
 StreamField values provide a `blocks_by_name` method for retrieving all blocks of a given name:
 
@@ -556,177 +680,24 @@ hero_image = my_page.body.first_block_by_name('image')
 <div class="hero-image">{{ page.body.first_block_by_name.image }}</div>
 ```
 
-(streamfield_migrating_richtext)=
+(streamfield_search)=
 
-## Migrating RichTextFields to StreamField
+## Search considerations
 
-If you change an existing RichTextField to a StreamField, the database migration will complete with no errors, since both fields use a text column within the database. However, StreamField uses a JSON representation for its data, so the existing text requires an extra conversion step in order to become accessible again. For this to work, the StreamField needs to include a RichTextBlock as one of the available block types. Create the migration as normal using `./manage.py makemigrations`, then edit it as follows (in this example, the 'body' field of the `demo.BlogPage` model is being converted to a StreamField with a RichTextBlock named `rich_text`):
-
-```{note}
-This migration cannot be used if the StreamField has the `use_json_field` argument set to `True`. To migrate, set the `use_json_field` argument to `False` first, migrate the data, then set it back to `True`.
-```
+Like any other field, content in a StreamField can be made searchable by adding the field to the model's search_fields definition - see {ref}`wagtailsearch_indexing_fields`. By default, all text content from the stream will be added to the search index. If you wish to exclude certain block types from being indexed, pass the keyword argument `search_index=False` as part of the block's definition. For example:
 
 ```python
-# -*- coding: utf-8 -*-
-from django.db import models, migrations
-from wagtail.rich_text import RichText
-
-
-def convert_to_streamfield(apps, schema_editor):
-    BlogPage = apps.get_model("demo", "BlogPage")
-    for page in BlogPage.objects.all():
-        if page.body.raw_text and not page.body:
-            page.body = [('rich_text', RichText(page.body.raw_text))]
-            page.save()
-
-
-def convert_to_richtext(apps, schema_editor):
-    BlogPage = apps.get_model("demo", "BlogPage")
-    for page in BlogPage.objects.all():
-        if page.body.raw_text is None:
-            raw_text = ''.join([
-                child.value.source for child in page.body
-                if child.block_type == 'rich_text'
-            ])
-            page.body = raw_text
-            page.save()
-
-
-class Migration(migrations.Migration):
-
-    dependencies = [
-        # leave the dependency line from the generated migration intact!
-        ('demo', '0001_initial'),
-    ]
-
-    operations = [
-        # leave the generated AlterField intact!
-        migrations.AlterField(
-            model_name='BlogPage',
-            name='body',
-            field=wagtail.fields.StreamField([('rich_text', wagtail.blocks.RichTextBlock())]),
-        ),
-
-        migrations.RunPython(
-            convert_to_streamfield,
-            convert_to_richtext,
-        ),
-    ]
+body = StreamField([
+    ('normal_text', blocks.RichTextBlock()),
+    ('pull_quote', blocks.RichTextBlock(search_index=False)),
+    ('footnotes', blocks.ListBlock(blocks.CharBlock(), search_index=False)),
+])
 ```
 
-Note that the above migration will work on published Page objects only. If you also need to migrate draft pages and page revisions, then edit the migration as in the following example instead:
+## Custom validation
 
-```python
-# -*- coding: utf-8 -*-
-import json
+Custom validation logic can be added to blocks by overriding the block's `clean` method. For more information, see [](streamfield_validation).
 
-from django.core.serializers.json import DjangoJSONEncoder
-from django.db import migrations, models
+## Migrations
 
-from wagtail.rich_text import RichText
-
-
-def page_to_streamfield(page):
-    changed = False
-    if page.body.raw_text and not page.body:
-        page.body = [('rich_text', {'rich_text': RichText(page.body.raw_text)})]
-        changed = True
-    return page, changed
-
-
-def pagerevision_to_streamfield(revision_data):
-    changed = False
-    body = revision_data.get('body')
-    if body:
-        try:
-            json.loads(body)
-        except ValueError:
-            revision_data['body'] = json.dumps(
-                [{
-                    "value": {"rich_text": body},
-                    "type": "rich_text"
-                }],
-                cls=DjangoJSONEncoder)
-            changed = True
-        else:
-            # It's already valid JSON. Leave it.
-            pass
-    return revision_data, changed
-
-
-def page_to_richtext(page):
-    changed = False
-    if page.body.raw_text is None:
-        raw_text = ''.join([
-            child.value['rich_text'].source for child in page.body
-            if child.block_type == 'rich_text'
-        ])
-        page.body = raw_text
-        changed = True
-    return page, changed
-
-
-def pagerevision_to_richtext(revision_data):
-    changed = False
-    body = revision_data.get('body', 'definitely non-JSON string')
-    if body:
-        try:
-            body_data = json.loads(body)
-        except ValueError:
-            # It's not apparently a StreamField. Leave it.
-            pass
-        else:
-            raw_text = ''.join([
-                child['value']['rich_text'] for child in body_data
-                if child['type'] == 'rich_text'
-            ])
-            revision_data['body'] = raw_text
-            changed = True
-    return revision_data, changed
-
-
-def convert(apps, schema_editor, page_converter, pagerevision_converter):
-    BlogPage = apps.get_model("demo", "BlogPage")
-    for page in BlogPage.objects.all():
-
-        page, changed = page_converter(page)
-        if changed:
-            page.save()
-
-        for revision in page.revisions.all():
-            revision_data = revision.content
-            revision_data, changed = pagerevision_converter(revision_data)
-            if changed:
-                revision.content = revision_data
-                revision.save()
-
-
-def convert_to_streamfield(apps, schema_editor):
-    return convert(apps, schema_editor, page_to_streamfield, pagerevision_to_streamfield)
-
-
-def convert_to_richtext(apps, schema_editor):
-    return convert(apps, schema_editor, page_to_richtext, pagerevision_to_richtext)
-
-
-class Migration(migrations.Migration):
-
-    dependencies = [
-        # leave the dependency line from the generated migration intact!
-        ('demo', '0001_initial'),
-    ]
-
-    operations = [
-        # leave the generated AlterField intact!
-        migrations.AlterField(
-            model_name='BlogPage',
-            name='body',
-            field=wagtail.fields.StreamField([('rich_text', wagtail.blocks.RichTextBlock())]),
-        ),
-
-        migrations.RunPython(
-            convert_to_streamfield,
-            convert_to_richtext,
-        ),
-    ]
-```
+Since StreamField data is stored as a single JSON field, rather than being arranged in a formal database structure, it will often be necessary to write data migrations when changing the data structure of a StreamField or converting to or from other field types. For more information on how StreamField interacts with Django's migration system, and a guide to migrating rich text to StreamFields, see [](streamfield_migrations).

@@ -1,16 +1,13 @@
-import warnings
-
 from django.db import models
 from django.utils.functional import cached_property
+from django.utils.translation import gettext as _
 
 from wagtail.coreutils import InvokeViaAttributeShortcut
 from wagtail.models import Site
-from wagtail.utils.deprecation import RemovedInWagtail50Warning
 
 from .registry import register_setting
 
 __all__ = [
-    "BaseSetting",  # RemovedInWagtail50Warning
     "BaseGenericSetting",
     "BaseSiteSetting",
     "register_setting",
@@ -54,7 +51,7 @@ class AbstractSetting(models.Model):
         Returns the name of the attribute that should be used to store
         a reference to the fetched/created object on a request.
         """
-        return "_{}.{}".format(cls._meta.app_label, cls._meta.model_name).lower()
+        return f"_{cls._meta.app_label}.{cls._meta.model_name}".lower()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -134,17 +131,28 @@ class BaseSiteSetting(AbstractSetting):
         setattr(request, attr_name, site_settings)
         return site_settings
 
+    def __getstate__(self):
+        # Leave out _request from the pickled state
+        state = super().__getstate__()
+        state.pop("_request", None)
+        return state
+
     @classmethod
     def for_site(cls, site):
         """
         Get or create an instance of this setting for the site.
         """
+        if site is None:
+            raise cls.DoesNotExist("%s does not exist for site None." % cls)
         queryset = cls.base_queryset()
         instance, created = queryset.get_or_create(site=site)
         return instance
 
     def __str__(self):
-        return "%s for %s" % (self._meta.verbose_name.capitalize(), self.site)
+        return _("%(site_setting)s for %(site)s") % {
+            "site_setting": self._meta.verbose_name,
+            "site": self.site,
+        }
 
 
 class BaseGenericSetting(AbstractSetting):
@@ -199,22 +207,4 @@ class BaseGenericSetting(AbstractSetting):
         return obj
 
     def __str__(self):
-        return self._meta.verbose_name.capitalize()
-
-
-class BaseSetting(BaseSiteSetting):
-    class Meta:
-        abstract = True
-
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            (
-                "`wagtail.contrib.settings.models.BaseSetting` "
-                "is obsolete and should be replaced by "
-                "`wagtail.contrib.settings.models.BaseSiteSetting` or "
-                "`wagtail.contrib.settings.models.BaseGenericSetting`"
-            ),
-            category=RemovedInWagtail50Warning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)
+        return str(self._meta.verbose_name)

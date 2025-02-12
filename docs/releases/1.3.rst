@@ -39,7 +39,7 @@ Fields on related objects can now be indexed in Elasticsearch using the new ``in
         ]
 
     # Search books where their author was born after 1950
-    # Both the book title and the authors name will be searched
+    # Both the book title and the author's name will be searched
     >>> Book.objects.filter(author__date_of_birth__gt=date(1950, 1, 1)).search("Hello")
 
 See: :ref:`wagtailsearch_index_relatedfields`
@@ -62,7 +62,7 @@ Minor features
 * Added ``.alt`` attribute to image renditions
 * The default ``src``, ``width``, ``height`` and ``alt`` attributes can now be overridden by attributes passed to the ``{% image %}`` tag
 * Added keyboard shortcuts for preview and save in the page editor
-* Added ``Page`` methods ``can_exist_under``, ``can_create_at``, ``can_move_to`` for customising page type business rules
+* Added ``Page`` methods ``can_exist_under``, ``can_create_at``, ``can_move_to`` for customizing page type business rules
 * ``wagtailadmin.utils.send_mail`` now passes extra keyword arguments to Django's ``send_mail`` function (Matthew Downey)
 * ``page_unpublish`` signal is now fired for each page that was unpublished by a call to ``PageQuerySet.unpublish()``
 * Add ``get_upload_to`` method to ``AbstractImage``, to allow overriding the default image upload path (Ben Emery)
@@ -93,7 +93,7 @@ Bug fixes
 * ``MenuItem`` ``url`` parameter can now take a lazy URL (Adon Metcalfe, rayrayndwiga)
 * Added missing translation tag to InlinePanel 'Add' button (jnns)
 * Added missing translation tag to 'Signing in...' button text (Eugene MechanisM)
-* Restored correct highlighting behaviour of rich text toolbar buttons
+* Restored correct highlighting behavior of rich text toolbar buttons
 * Rendering a missing image through ImageChooserBlock no longer breaks the whole page (Christian Peters)
 * Filtering by popular tag in the image chooser now works when using the database search backend
 

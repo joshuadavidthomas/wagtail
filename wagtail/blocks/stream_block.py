@@ -1,10 +1,13 @@
 import itertools
+import json
 import uuid
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping, MutableSequence
+from pickle import PickleError
 
 from django import forms
-from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.core.exceptions import ValidationError
+from django.db.models.fields import _load_field
 from django.forms.utils import ErrorList
 from django.utils.functional import cached_property
 from django.utils.html import format_html_join
@@ -13,7 +16,14 @@ from django.utils.translation import gettext as _
 from wagtail.admin.staticfiles import versioned_static
 from wagtail.telepath import Adapter, register
 
-from .base import Block, BoundBlock, DeclarativeSubBlocksMetaclass, get_help_icon
+from .base import (
+    Block,
+    BoundBlock,
+    DeclarativeSubBlocksMetaclass,
+    get_error_json_data,
+    get_error_list_json_data,
+    get_help_icon,
+)
 
 __all__ = [
     "BaseStreamBlock",
@@ -25,44 +35,50 @@ __all__ = [
 
 class StreamBlockValidationError(ValidationError):
     def __init__(self, block_errors=None, non_block_errors=None):
-        self.non_block_errors = non_block_errors
-        self.block_errors = block_errors
+        # non_block_errors may be passed here as an ErrorList, a plain list (of strings or
+        # ValidationErrors), or None.
+        # Normalise it to be an ErrorList, which provides an as_data() method that consistently
+        # returns a flat list of ValidationError objects.
+        self.non_block_errors = ErrorList(non_block_errors)
 
-        params = {}
-        if block_errors:
-            params.update(block_errors)
-        if non_block_errors:
-            params[NON_FIELD_ERRORS] = non_block_errors
-        super().__init__("Validation error in StreamBlock", params=params)
+        # block_errors may be passed here as None, or a dict keyed by the indexes of the child blocks
+        # with errors.
+        # Items in this list / dict may be:
+        #  - a ValidationError instance (potentially a subclass such as StructBlockValidationError)
+        #  - an ErrorList containing a single ValidationError
+        #  - a plain list containing a single ValidationError
+        # All representations will be normalised to a dict of ValidationError instances,
+        # which is also the preferred format for the original argument to be in.
+        self.block_errors = {}
+        if block_errors is None:
+            pass
+        else:
+            for index, val in block_errors.items():
+                if isinstance(val, ErrorList):
+                    self.block_errors[index] = val.as_data()[0]
+                elif isinstance(val, list):
+                    self.block_errors[index] = val[0]
+                else:
+                    self.block_errors[index] = val
 
+        super().__init__("Validation error in StreamBlock")
 
-class StreamBlockValidationErrorAdapter(Adapter):
-    js_constructor = "wagtail.blocks.StreamBlockValidationError"
-
-    def js_args(self, error):
-        return [
-            error.non_block_errors.as_data(),
-            {
-                block_id: child_errors.as_data()
-                for block_id, child_errors in error.block_errors.items()
-            },
-        ]
-
-    @cached_property
-    def media(self):
-        return forms.Media(
-            js=[
-                versioned_static("wagtailadmin/js/telepath/blocks.js"),
-            ]
-        )
-
-
-register(StreamBlockValidationErrorAdapter(), StreamBlockValidationError)
+    def as_json_data(self):
+        result = {}
+        if self.non_block_errors:
+            result["messages"] = get_error_list_json_data(self.non_block_errors)
+        if self.block_errors:
+            result["blockErrors"] = {
+                index: get_error_json_data(error)
+                for (index, error) in self.block_errors.items()
+            }
+        return result
 
 
 class BaseStreamBlock(Block):
-    def __init__(self, local_blocks=None, **kwargs):
+    def __init__(self, local_blocks=None, search_index=True, **kwargs):
         self._constructor_kwargs = kwargs
+        self.search_index = search_index
 
         super().__init__(**kwargs)
 
@@ -73,16 +89,16 @@ class BaseStreamBlock(Block):
                 block.set_name(name)
                 self.child_blocks[name] = block
 
-    def get_default(self):
-        """
-        Default values set on a StreamBlock should be a list of (type_name, value) tuples -
-        we can't use StreamValue directly, because that would require a reference back to
-        the StreamBlock that hasn't been built yet.
+    @classmethod
+    def construct_from_lookup(cls, lookup, child_blocks, **kwargs):
+        if child_blocks:
+            child_blocks = [
+                (name, lookup.get_block(index)) for name, index in child_blocks
+            ]
+        return cls(child_blocks, **kwargs)
 
-        For consistency, then, we need to convert it to a StreamValue here for StreamBlock
-        to work with.
-        """
-        return StreamValue(self, self.meta.default)
+    def empty_value(self, raw_text=None):
+        return StreamValue(self, [], raw_text=raw_text)
 
     def sorted_child_blocks(self):
         """Child blocks, sorted in to their groups."""
@@ -154,12 +170,13 @@ class BaseStreamBlock(Block):
                     (child.block.name, child.block.clean(child.value), child.id)
                 )
             except ValidationError as e:
-                errors[i] = ErrorList([e])
+                errors[i] = e
 
         if self.meta.min_num is not None and self.meta.min_num > len(value):
             non_block_errors.append(
                 ValidationError(
-                    _("The minimum number of items is %d") % self.meta.min_num
+                    _("The minimum number of items is %(min_num)d")
+                    % {"min_num": self.meta.min_num}
                 )
             )
         elif self.required and len(value) == 0:
@@ -168,7 +185,8 @@ class BaseStreamBlock(Block):
         if self.meta.max_num is not None and self.meta.max_num < len(value):
             non_block_errors.append(
                 ValidationError(
-                    _("The maximum number of items is %d") % self.meta.max_num
+                    _("The maximum number of items is %(max_num)d")
+                    % {"max_num": self.meta.max_num}
                 )
             )
 
@@ -187,7 +205,8 @@ class BaseStreamBlock(Block):
                         ValidationError(
                             "{}: {}".format(
                                 block.label,
-                                _("The minimum number of items is %d") % min_num,
+                                _("The minimum number of items is %(min_num)d")
+                                % {"min_num": min_num},
                             )
                         )
                     )
@@ -196,7 +215,8 @@ class BaseStreamBlock(Block):
                         ValidationError(
                             "{}: {}".format(
                                 block.label,
-                                _("The maximum number of items is %d") % max_num,
+                                _("The maximum number of items is %(max_num)d")
+                                % {"max_num": max_num},
                             )
                         )
                     )
@@ -211,19 +231,58 @@ class BaseStreamBlock(Block):
         return StreamValue(self, cleaned_data)
 
     def to_python(self, value):
-        # the incoming JSONish representation is a list of dicts, each with a 'type' and 'value' field
-        # (and possibly an 'id' too).
-        # This is passed to StreamValue to be expanded lazily - but first we reject any unrecognised
-        # block types from the list
-        return StreamValue(
-            self,
-            [
-                child_data
-                for child_data in value
-                if child_data["type"] in self.child_blocks
-            ],
-            is_lazy=True,
-        )
+        if isinstance(value, StreamValue):
+            return value
+        elif isinstance(value, str) and value:
+            try:
+                value = json.loads(value)
+            except ValueError:
+                # value is not valid JSON; most likely, this field was previously a
+                # rich text field before being migrated to StreamField, and the data
+                # was left intact in the migration. Return an empty stream instead
+                # (but keep the raw text available as an attribute, so that it can be
+                # used to migrate that data to StreamField)
+                return self.empty_value(raw_text=value)
+
+        if not value:
+            return self.empty_value()
+
+        # ensure value is a list and not some other kind of iterable
+        value = list(value)
+
+        if isinstance(value[0], dict):
+            # value is in JSONish representation - a dict with 'type' and 'value' keys.
+            # This is passed to StreamValue to be expanded lazily - but first we reject any unrecognised
+            # block types from the list
+            return StreamValue(
+                self,
+                [
+                    child_data
+                    for child_data in value
+                    if child_data["type"] in self.child_blocks
+                ],
+                is_lazy=True,
+            )
+        else:
+            # See if it looks like the standard non-smart representation of a
+            # StreamField value: a list of (block_name, value) tuples
+            try:
+                [None for (x, y) in value]
+            except (TypeError, ValueError) as exc:
+                # Give up trying to make sense of the value
+                raise TypeError(
+                    f"Cannot handle {value!r} (type {type(value)!r}) as a value of a StreamBlock"
+                ) from exc
+
+            # Test succeeded, so return as a StreamValue-ified version of that value
+            return StreamValue(
+                self,
+                [
+                    (k, self.child_blocks[k].normalize(v))
+                    for k, v in value
+                    if k in self.child_blocks
+                ],
+            )
 
     def bulk_to_python(self, values):
         # 'values' is a list of streams, each stream being a list of dicts with 'type', 'value' and
@@ -285,6 +344,9 @@ class BaseStreamBlock(Block):
             # round-trips to the full data representation and back)
             return value.get_prep_value()
 
+    def normalize(self, value):
+        return self.to_python(value)
+
     def get_form_state(self, value):
         if not value:
             return []
@@ -322,12 +384,48 @@ class BaseStreamBlock(Block):
         )
 
     def get_searchable_content(self, value):
+        if not self.search_index:
+            return []
         content = []
 
         for child in value:
             content.extend(child.block.get_searchable_content(child.value))
 
         return content
+
+    def extract_references(self, value):
+        for child in value:
+            for (
+                model,
+                object_id,
+                model_path,
+                content_path,
+            ) in child.block.extract_references(child.value):
+                model_path = (
+                    f"{child.block_type}.{model_path}"
+                    if model_path
+                    else child.block_type
+                )
+                content_path = (
+                    f"{child.id}.{content_path}" if content_path else child.id
+                )
+                yield model, object_id, model_path, content_path
+
+    def get_block_by_content_path(self, value, path_elements):
+        """
+        Given a list of elements from a content path, retrieve the block at that path
+        as a BoundBlock object, or None if the path does not correspond to a valid block.
+        """
+        if path_elements:
+            id, *remaining_elements = path_elements
+            for child in value:
+                if child.id == id:
+                    return child.block.get_block_by_content_path(
+                        child.value, remaining_elements
+                    )
+        else:
+            # an empty path refers to the stream as a whole
+            return self.bind(value)
 
     def deconstruct(self):
         """
@@ -343,6 +441,17 @@ class BaseStreamBlock(Block):
         kwargs = self._constructor_kwargs
         return (path, args, kwargs)
 
+    def deconstruct_with_lookup(self, lookup):
+        path = "wagtail.blocks.StreamBlock"
+        args = [
+            [
+                (name, lookup.add_block(block))
+                for name, block in self.child_blocks.items()
+            ]
+        ]
+        kwargs = self._constructor_kwargs
+        return (path, args, kwargs)
+
     def check(self, **kwargs):
         errors = super().check(**kwargs)
         for name, child_block in self.child_blocks.items():
@@ -350,6 +459,10 @@ class BaseStreamBlock(Block):
             errors.extend(child_block._check_name(**kwargs))
 
         return errors
+
+    @cached_property
+    def _has_default(self):
+        return self.meta.default is not BaseStreamBlock._meta_class.default
 
     class Meta:
         # No icon specified here, because that depends on the purpose that the
@@ -395,7 +508,7 @@ class StreamValue(MutableSequence):
 
         def __init__(self, *args, **kwargs):
             self.id = kwargs.pop("id")
-            super(StreamValue.StreamChild, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
         @property
         def block_type(self):
@@ -500,8 +613,7 @@ class StreamValue(MutableSequence):
             return result
 
         def __iter__(self):
-            for block_name in self.block_names:
-                yield block_name
+            yield from self.block_names
 
         def __len__(self):
             return len(self.block_names)
@@ -560,7 +672,9 @@ class StreamValue(MutableSequence):
             block_id = None
 
         block_def = self.stream_block.child_blocks[type_name]
-        return StreamValue.StreamChild(block_def, value, id=block_id)
+        return StreamValue.StreamChild(
+            block_def, block_def.normalize(value), id=block_id
+        )
 
     def __getitem__(self, i):
         if isinstance(i, slice):
@@ -602,7 +716,7 @@ class StreamValue(MutableSequence):
         raw_values = OrderedDict(
             (i, raw_item["value"])
             for i, raw_item in enumerate(self._raw_data)
-            if raw_item["type"] == type_name and self._bound_blocks[i] is None
+            if self._bound_blocks[i] is None and raw_item["type"] == type_name
         )
         # pass the raw block values to bulk_to_python as a list
         converted_values = child_block.bulk_to_python(raw_values.values())
@@ -676,7 +790,7 @@ class StreamValue(MutableSequence):
         return len(self._bound_blocks)
 
     def __repr__(self):
-        return "<%s %r>" % (type(self).__name__, list(self))
+        return f"<{type(self).__name__} {list(self)!r}>"
 
     def render_as_block(self, context=None):
         return self.stream_block.render(self, context=context)
@@ -687,6 +801,30 @@ class StreamValue(MutableSequence):
     def __str__(self):
         return self.__html__()
 
+    @staticmethod
+    def _deserialize_pickle_value(app_label, model_name, field_name, field_value):
+        """Returns StreamValue from pickled data"""
+        field = _load_field(app_label, model_name, field_name)
+        return field.to_python(field_value)
+
+    def __reduce__(self):
+        try:
+            stream_field = self._stream_field
+        except AttributeError:
+            raise PickleError(
+                "StreamValue can only be pickled if it is associated with a StreamField"
+            )
+
+        return (
+            self._deserialize_pickle_value,
+            (
+                stream_field.model._meta.app_label,
+                stream_field.model._meta.object_name,
+                stream_field.name,
+                self.get_prep_value(),
+            ),
+        )
+
 
 class StreamBlockAdapter(Adapter):
     js_constructor = "wagtail.blocks.StreamBlock"
@@ -694,8 +832,11 @@ class StreamBlockAdapter(Adapter):
     def js_args(self, block):
         meta = {
             "label": block.label,
+            "description": block.get_description(),
             "required": block.required,
             "icon": block.meta.icon,
+            "blockDefId": block.definition_prefix,
+            "isPreviewable": block.is_previewable,
             "classname": block.meta.form_classname,
             "maxNum": block.meta.max_num,
             "minNum": block.meta.min_num,
@@ -704,6 +845,7 @@ class StreamBlockAdapter(Adapter):
             "strings": {
                 "MOVE_UP": _("Move up"),
                 "MOVE_DOWN": _("Move down"),
+                "DRAG": _("Drag"),
                 "DUPLICATE": _("Duplicate"),
                 "DELETE": _("Delete"),
                 "ADD": _("Add"),

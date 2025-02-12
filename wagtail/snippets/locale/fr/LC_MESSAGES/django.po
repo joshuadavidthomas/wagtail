@@ -5,21 +5,24 @@
 # Translators:
 # Benoît Vogel <contact@spicy-informatique.com>, 2019
 # Bertrand Bordage <bordage.bertrand@gmail.com>, 2015,2017-2018
-# fpoulain <fpoulain@metrodore.fr>, 2018
+# 69c761fa404d2f74d5a7a2904d9e6f47_dc2dbc9 <f37077798760362881f9d396b6e22ec7_1878>, 2018
+# 69c761fa404d2f74d5a7a2904d9e6f47_dc2dbc9 <f37077798760362881f9d396b6e22ec7_1878>, 2018
 # Léo <leo@naeka.fr>, 2016
+# Loic Teixeira, 2018
 # Loic Teixeira, 2018,2020-2022
 # Loic Teixeira, 2018
 # nahuel, 2014
 # nahuel, 2014
 # Sebastien Andrivet <sebastien@andrivet.com>, 2016
+# Sébastien Corbin <seb.corbin@gmail.com>, 2023
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-19 19:01+0000\n"
-"Last-Translator: Loic Teixeira, 2018,2020-2022\n"
-"Language-Team: French (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Sébastien Corbin <seb.corbin@gmail.com>, 2023\n"
+"Language-Team: French (http://app.transifex.com/torchbox/wagtail/language/"
 "fr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -31,6 +34,23 @@ msgstr ""
 msgid "Publish"
 msgstr "Publier"
 
+msgid "Submit for moderation"
+msgstr "Soumettre pour modération"
+
+#, python-format
+msgid "Resubmit to %(task_name)s"
+msgstr "Resoumettre à %(task_name)s"
+
+#, python-format
+msgid "Submit to %(workflow_name)s"
+msgstr "Soumettre à %(workflow_name)s"
+
+msgid "Restart workflow "
+msgstr "Relancer le workflow"
+
+msgid "Cancel workflow "
+msgstr "Annuler le workflow"
+
 msgid "Unpublish"
 msgstr "Dépublier"
 
@@ -40,22 +60,29 @@ msgstr "Supprimer"
 msgid "Save"
 msgstr "Enregistrer"
 
+msgid "Locked"
+msgstr "Verrouillé(e)"
+
+#, python-format
+msgid "%(label)s and Publish"
+msgstr " %(label)s et Publier"
+
 msgid "Wagtail snippets"
-msgstr "Snippets Wagtail"
+msgstr "Fragments Wagtail"
 
 msgid "Delete selected snippets"
-msgstr "Supprimer les blocs sélectionnés"
+msgstr "Supprimer les fragments sélectionnés"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' deleted."
-msgstr "%(snippet_type)s '%(instance)s' supprimé(e)."
+msgid "%(model_name)s '%(object)s' deleted."
+msgstr "%(model_name)s « %(object)s » supprimé(e)."
 
 #, python-format
-msgid "%(count)d %(snippet_type)s deleted."
-msgid_plural "%(count)d %(snippet_type)s deleted."
-msgstr[0] "%(count)d %(snippet_type)s supprimé(e)"
-msgstr[1] "%(count)d %(snippet_type)s supprimé(e)s"
-msgstr[2] "%(count)d %(snippet_type)s supprimé(e)s"
+msgid "%(count)d %(model_name)s deleted."
+msgid_plural "%(count)d %(model_name)s deleted."
+msgstr[0] "%(count)d « %(model_name)s » supprimé(e)."
+msgstr[1] "%(count)d « %(model_name)s » supprimé(e)s."
+msgstr[2] "%(count)d « %(model_name)s » supprimé(e)s."
 
 #, python-format
 msgid "Delete %(snippet_type_name)s"
@@ -73,7 +100,7 @@ msgstr[2] "Utilisé(e) %(usage_count)s fois"
 
 #, python-format
 msgid "Are you sure you want to delete this %(snippet_type_name)s?"
-msgstr "Êtes-vous sûr(e) de vouloir supprimer ce %(snippet_type_name)s ?"
+msgstr "Êtes-vous sûr(e) de vouloir supprimer ce/cette %(snippet_type_name)s ?"
 
 #, python-format
 msgid "Are you sure you want to delete %(count)s %(snippet_type_name)s?"
@@ -97,23 +124,17 @@ msgstr "Non, ne pas supprimer"
 
 #, python-format
 msgid "Sorry, no snippets match \"<em>%(search_query)s</em>\""
-msgstr "Désolé, aucun snippet ne correspond à « <em>%(search_query)s</em> »"
+msgstr "Désolé, aucun fragment ne correspond à « <em>%(search_query)s</em> »"
 
 #, python-format
 msgid ""
-"You haven't created any %(snippet_type_name)s snippets. Why not <a href="
-"\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" rel=\"noreferrer"
-"\">create one now</a>?"
+"You haven't created any %(snippet_type_name)s snippets. Why not <a "
+"href=\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" "
+"rel=\"noreferrer\">create one now</a>?"
 msgstr ""
 "Vous n’avez pas encore créé d’objet %(snippet_type_name)s. Pourquoi ne pas "
-"<a href=\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" rel="
-"\"noreferrer\">en créer un maintenant</a> ?"
-
-msgid "Last updated"
-msgstr "Dernière mise à jour"
-
-msgid "History"
-msgstr "Historique"
+"<a href=\"%(wagtailsnippets_create_snippet_url)s\" target=\"_blank\" "
+"rel=\"noreferrer\">en créer un maintenant</a> ?"
 
 msgid "Publishing…"
 msgstr "Publication..."
@@ -133,140 +154,14 @@ msgstr "Remplacer la version actuelle"
 msgid "Save draft"
 msgstr "Enregistrer le brouillon"
 
-#, python-format
-msgid "New  %(snippet_type_name)s"
-msgstr "Nouveau %(snippet_type_name)s"
-
-msgid "New"
-msgstr "Nouveau"
-
-msgid "Actions"
-msgstr "Actions"
-
-#, python-format
-msgid "Editing %(snippet_type_name)s - %(object)s"
-msgstr "Modification de %(snippet_type_name)s - %(object)s"
-
-msgid "Usage"
-msgstr "Utilisation"
-
-msgid "Toggle breadcrumbs"
-msgstr "Afficher/masquer le fil d'Ariane"
-
-msgid "Breadcrumb"
-msgstr "Fil d'Ariane"
-
-msgid "Snippets"
-msgstr "Blocs"
-
-msgid "New: "
-msgstr "Nouveau :"
-
-#, python-format
-msgid "Editing %(snippet_type)s %(title)s"
-msgstr "Modification de %(snippet_type)s « %(title)s »"
-
-#, python-format
-msgid "Snippet history for %(subtitle)s"
-msgstr "Historique du snippet pour « %(subtitle)s »"
-
-msgid "Edit this snippet"
-msgstr "Modifier ce bloc"
-
-msgid "No log entries found."
-msgstr "Aucune entrée de journal trouvée."
-
-#, python-format
-msgid "There is %(counter)s match"
-msgid_plural "There are %(counter)s matches"
-msgstr[0] "Il y a %(counter)s correspondance"
-msgstr[1] "Il y a %(counter)s correspondances"
-msgstr[2] "Il y a %(counter)s correspondances"
-
-#, python-format
-msgid "Sorry, no %(snippet_type_name_plural)s match your query"
-msgstr ""
-"Désolé, aucun(e) %(snippet_type_name_plural)s ne correspond à votre recherche"
-
-#, python-format
-msgid ""
-"No %(snippet_type_name_plural)s have been created. Why not <a href="
-"\"%(wagtailsnippets_create_url)s\">add one</a>?"
-msgstr ""
-"Aucun %(snippet_type_name_plural)s n'a été créé. Pourquoi ne pas <a href="
-"\"%(wagtailsnippets_create_url)s\">en ajouter un</a> ?"
-
-msgid "Live version"
-msgstr "Version publiée"
-
-msgid "Current draft"
-msgstr "Brouillon actuel"
-
-msgid "Preview"
-msgstr "Prévisualiser"
-
-msgid "Edit"
-msgstr "Modifier"
-
-msgid "Review this version"
-msgstr "Passer en revue cette version"
-
-msgid "Compare with previous version"
-msgstr "Comparer avec la version précédente"
-
-msgid "Compare with current version"
-msgstr "Comparer avec la version actuelle"
-
-msgid "Status: "
-msgstr "Status :"
-
-msgid "Live"
-msgstr "Publié(e)"
-
-msgid "Draft"
-msgstr "Brouillon"
-
-msgid "View history"
-msgstr "Voir l'historique"
-
-msgid "This will publish at "
-msgstr "La publication aura lieu à"
-
-#, python-format
-msgid "Snippets %(snippet_type_name_plural)s"
-msgstr "Blocs %(snippet_type_name_plural)s"
-
-#, python-format
-msgid "Add %(snippet_type_name)s"
-msgstr "Ajouter un %(snippet_type_name)s"
-
 msgid "Select all snippets in listing"
-msgstr "Sélectionner tous les snippets dans la liste"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Utilisation de %(title)s"
-
-msgid "Usage of"
-msgstr "Utilisation de"
-
-msgid "Title"
-msgstr "Titre"
-
-msgid "Parent"
-msgstr "Parent"
-
-msgid "Type"
-msgstr "Type"
-
-msgid "Status"
-msgstr "Statut"
-
-msgid "Edit this page"
-msgstr "Modifier cette page"
+msgstr "Sélectionner tous les fragments dans la liste"
 
 msgid "Choose"
 msgstr "Choisir"
+
+msgid "Snippets"
+msgstr "Fragments"
 
 msgid "Name"
 msgstr "Nom"
@@ -274,53 +169,21 @@ msgstr "Nom"
 msgid "Instances"
 msgstr "Occurrences"
 
-msgid "The snippet could not be created due to errors."
-msgstr "Le bloc ne peut être créé du fait d'erreurs."
+#, python-format
+msgid "More options for '%(title)s'"
+msgstr "Plus d’options pour « %(title)s »"
+
+msgid "Home"
+msgstr "Accueil"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' created."
-msgstr "%(snippet_type)s '%(instance)s' créé(e)."
+msgid "Choose %(object)s"
+msgstr "Choisir %(object)s"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' created and published."
-msgstr "%(snippet_type)s « %(instance)s » créé(e) et publié(e)."
-
-msgid "The snippet could not be saved due to errors."
-msgstr "Le bloc ne peut être enregistré du fait d'erreurs."
+msgid "Choose another %(object)s"
+msgstr "Choisir un autre %(object)s"
 
 #, python-format
-msgid "%(snippet_type)s '%(instance)s' updated."
-msgstr "%(snippet_type)s '%(instance)s' modifié(e)."
-
-#, python-format
-msgid "%(snippet_type)s '%(instance)s' updated and published."
-msgstr "%(snippet_type)s « %(instance)s » modifié(e) et publié(e)."
-
-msgid "Date"
-msgstr "Date"
-
-msgid "Snippet history"
-msgstr "Historique du snippet"
-
-msgid "Action"
-msgstr "Action"
-
-#, python-brace-format
-msgid "Edit this {model_name}"
-msgstr "Modifier ce/cette {model_name}"
-
-#, python-brace-format
-msgid "{model_name} history"
-msgstr "Historique de {model_name}"
-
-#, python-format
-msgid "Edit '%(title)s'"
-msgstr "Modifier '%(title)s'"
-
-#, python-format
-msgid "Delete '%(title)s'"
-msgstr "Supprimer '%(title)s'"
-
-#, python-format
-msgid "Choose %s"
-msgstr "Choisir %s"
+msgid "Edit this %(object)s"
+msgstr "Modifier ce/cette %(object)s"

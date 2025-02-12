@@ -1,13 +1,17 @@
-.preview-panel {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+@use '../tools' as *;
+@use '../../src/components/CommentApp/main.scss' as *;
 
+.w-preview {
+  --w-preview-background-color: var(--w-color-white);
   --preview-width-ratio: min(
     1,
     var(--preview-panel-width, 450) / var(--preview-device-width, 375)
   );
   --preview-iframe-width: calc(1px * var(--preview-device-width, 375));
+
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 
   &__area {
     height: 100%;
@@ -19,6 +23,7 @@
   }
 
   &__wrapper {
+    position: relative;
     width: calc(var(--preview-iframe-width) * var(--preview-width-ratio));
     height: 100%;
     margin-inline-start: auto;
@@ -26,37 +31,62 @@
   }
 
   &__iframe {
-    transform-origin: 0 0;
+    transform-origin: top left;
     width: var(--preview-iframe-width);
     height: calc(100% / var(--preview-width-ratio));
     transform: scale(var(--preview-width-ratio));
     display: block;
+
+    &:empty {
+      // Ensure that sites without a background show with a fallback, only when iframe has loaded
+      background-color: var(--w-preview-background-color);
+    }
+
+    [dir='rtl'] & {
+      // Transform with the top-right physical corner as the origin since the layout is reversed.
+      transform-origin: top right;
+    }
+
+    // Prevent the iframe from capturing pointer events when resizing the panel, which
+    // would consume the pointerup event and leaving the panel stuck in a resizing state.
+    .side-panel-resizing & {
+      pointer-events: none;
+    }
   }
 
   &__sizes {
-    @apply w-border-grey-100 w-border-b;
+    @apply w-border-border-furniture w-border-b;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
     padding-bottom: 1rem;
     margin-bottom: 1rem;
+    padding-inline: 1rem;
+
+    @include more-contrast() {
+      border-color: theme('colors.border-furniture-more-contrast');
+    }
   }
 
   &__size-button {
-    @apply w-text-grey-400 w-transition hover:w-transform hover:w-scale-110 hover:w-text-primary focus:w-text-primary;
+    @apply w-text-text-meta w-transition hover:w-transform hover:w-scale-110 hover:w-text-text-label focus:w-text-text-label;
 
     width: 2rem;
     height: 2rem;
     background: transparent;
-    box-sizing: border-box;
     padding: 0;
     border-radius: 5px;
     display: grid;
     place-items: center;
     cursor: pointer;
 
-    &:focus-within {
+    &--selected,
+    &--selected:hover {
+      @apply w-bg-surface-menus w-text-text-button w-transform-none w-border w-border-transparent;
+    }
+
+    &:focus-within:has(:focus-visible) {
       @include focus-outline;
     }
 
@@ -72,25 +102,25 @@
         @include svg-icon(0.9rem);
       }
     }
-
-    input[type='radio'] {
-      position: absolute;
-      width: 0;
-      height: 0;
-      opacity: 0;
-    }
   }
 
   &__refresh-button.button--icon {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
     position: absolute;
-    top: 1.25rem;
+    top: 1rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
     inset-inline-end: 1.5rem;
 
-    .icon {
-      @include svg-icon(0.9rem);
+    // Use element and class selectors to beat .button-longrunning specificity
+    svg.icon,
+    svg.icon-spinner {
+      margin-inline-end: 0;
+      width: 1rem;
+      height: 1rem;
     }
   }
 
@@ -98,12 +128,6 @@
     position: absolute;
     top: 1.25rem;
     inset-inline-end: 1.5rem;
-  }
-
-  &--mobile &__size-button--mobile,
-  &--tablet &__size-button--tablet,
-  &--desktop &__size-button--desktop {
-    @apply w-bg-primary w-text-white w-transform-none w-border w-border-transparent;
   }
 
   &__controls {
@@ -114,16 +138,16 @@
 
     // Show the border only if there's an error,
     // but always show it if there are multiple preview modes
-    .preview-panel--has-errors &:not(&--multiple),
+    .w-preview--has-errors &:not(&--multiple),
     &--multiple {
-      @apply w-border-grey-100 w-border-t;
+      @apply w-border-border-furniture w-border-t;
       padding-top: 1rem;
       margin-top: 1rem;
     }
   }
 
   &__error-banner {
-    @apply w-text-grey-600 w-duration-1000 w-ease-in-out w-translate-y-20;
+    @apply w-text-text-context w-duration-1000 w-ease-in-out w-translate-y-20;
     transition-property: max-height, transform, visibility;
     visibility: hidden;
     max-height: 0;
@@ -156,19 +180,33 @@
   }
 
   &__modes {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
     margin-bottom: 0;
-    background-color: theme('colors.white.DEFAULT');
+    background-color: theme('colors.surface-page');
 
-    .w-field__label {
-      margin-bottom: 0;
+    .w-field__input {
+      padding-inline-end: 0;
     }
   }
 
   &__mode-select {
     @apply w-outline-offset-inside;
+  }
+
+  // A hidden element that is only rendered for functionality purposes,
+  // but is not visible to the user. Used by radio inputs for preview sizes and
+  // the iframe while it's loading. We nest the selector rather than suffixing
+  // the parent selector to beat the specificity of input[type="radio"] styles
+  .w-preview__proxy {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+
+    // Remove mask-image from radio inputs to avoid loading the default icon,
+    // use extra specificity to beat the default styles
+    &:is(input[type='radio'])::before {
+      content: none;
+      mask-image: none;
+    }
   }
 }

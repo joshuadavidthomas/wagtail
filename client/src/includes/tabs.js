@@ -1,7 +1,8 @@
+import { getElementByContentPath } from '../utils/contentPath';
 /**
  *  All tabs and tab content must be nested in an element with the data-tab attribute
  *  All tab buttons need the role="tab" attr and an href with the tab content ID
- *  Tab contents need to have the role="tabpanel" attribute and and ID attribute that matches the href of the tab link.
+ *  Tab contents need to have the role="tabpanel" attribute and ID attribute that matches the href of the tab link.
  *  Tab buttons should also be wrapped in an element with the role="tablist" attribute
  *  Use the attribute data-tab-trigger on an Anchor link and set the href to the #ID of the tab you would like to trigger
  */
@@ -152,13 +153,6 @@ class Tabs {
       tabContent.hidden = false;
     }
 
-    if (this.state.initialPageLoad) {
-      // On first load set the scroll to top to avoid scrolling to active section and header covering up tabs
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, this.state.transition * 2);
-    }
-
     // Dispatch tab selected event for the rest of the admin to hook into if needed
     // Trigger tab specific switch event
     this.tabList.dispatchEvent(
@@ -277,10 +271,11 @@ class Tabs {
 
   selectTabByURLHash() {
     if (window.location.hash) {
-      const cleanedHash = window.location.hash.replace(/[^\w\-#]/g, '');
+      const anchorId = window.location.hash.slice(1);
+      const anchoredElement =
+        document.getElementById(anchorId) || getElementByContentPath();
       // Support linking straight to a tab, or to an element within a tab.
-      const tabID = document
-        .querySelector(cleanedHash)
+      const tabID = anchoredElement
         ?.closest('[role="tabpanel"]')
         ?.getAttribute('aria-labelledby');
       const tab = document.getElementById(tabID);
@@ -294,7 +289,7 @@ class Tabs {
   }
 
   /**
-   * Set url to have tab an tab hash at the end
+   * Set url to have a tab hash at the end
    */
   setURLHash(tabId) {
     if (

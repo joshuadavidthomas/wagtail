@@ -1,15 +1,12 @@
-{% load i18n %}
-{% trans "Choose a task" as  choose_str %}
-{% include "wagtailadmin/shared/header.html" with title=choose_str merged=1 icon="thumbtack" %}
+{% load i18n wagtailadmin_tags %}
+{% include "wagtailadmin/shared/header.html" with title=_("Choose a task") merged=1 icon="thumbtack" %}
 
 {% if can_create %}
     <div class="w-tabs" data-tabs data-tabs-disable-url>
         <div class="w-tabs__wrapper w-overflow-hidden">
             <div role="tablist" class="w-tabs__list w-w-full">
-                {% trans "New" as new_text %}
-                {% include 'wagtailadmin/shared/tabs/tab_nav_link.html' with tab_id='new' title=new_text %}
-                {% trans "Existing" as existing_text %}
-                {% include 'wagtailadmin/shared/tabs/tab_nav_link.html' with tab_id='existing' title=existing_text %}
+                {% include 'wagtailadmin/shared/tabs/tab_nav_link.html' with tab_id='new' title=_("New") %}
+                {% include 'wagtailadmin/shared/tabs/tab_nav_link.html' with tab_id='existing' title=_("Existing") %}
             </div>
         </div>
 
@@ -30,10 +27,19 @@
                 aria-labelledby="tab-label-existing"
                 hidden
             >
-                <form class="task-search search-bar" action="{% url 'wagtailadmin_workflows:task_chooser_results' %}" method="GET" novalidate>
+                <form
+                    class="task-search"
+                    action="{% url 'wagtailadmin_workflows:task_chooser_results' %}"
+                    method="GET"
+                    novalidate
+                    data-controller="w-swap"
+                    data-action="navigate->w-swap#replace submit->w-swap#submit:stop:prevent input->w-swap#submitLazy"
+                    data-w-swap-target-value="#search-results"
+                    data-w-swap-wait-value="50"
+                >
                     <ul class="fields">
                         {% for field in search_form %}
-                            {% include "wagtailadmin/shared/field_as_li.html" with field=field %}
+                            <li>{% formattedfield field %}</li>
                         {% endfor %}
                     </ul>
                 </form>
@@ -45,10 +51,10 @@
     </div>
 {% else %}
     <div class="nice-padding">
-        <form class="task-search search-bar" action="{% url 'wagtailadmin_workflows:task_chooser_results' %}" method="GET" novalidate>
+        <form class="task-search" action="{% url 'wagtailadmin_workflows:task_chooser_results' %}" method="GET" novalidate>
             <ul class="fields">
                 {% for field in search_form %}
-                    {% include "wagtailadmin/shared/field_as_li.html" with field=field %}
+                    <li>{% formattedfield field %}</li>
                 {% endfor %}
             </ul>
         </form>

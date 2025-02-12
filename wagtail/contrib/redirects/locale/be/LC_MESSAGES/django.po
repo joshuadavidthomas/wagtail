@@ -3,22 +3,23 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# Andrei Satsevich, 2023-2024
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:04+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Belarusian (http://www.transifex.com/torchbox/wagtail/"
+"Last-Translator: Andrei Satsevich, 2023-2024\n"
+"Language-Team: Belarusian (http://app.transifex.com/torchbox/wagtail/"
 "language/be/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: be\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
-"%100>=11 && n%100<=14)? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
 
 msgid "Type"
 msgstr "Тып"
@@ -26,36 +27,50 @@ msgstr "Тып"
 msgid "All"
 msgstr "Усе"
 
+msgid "From site"
+msgstr "З сайта"
+
+msgid "All sites"
+msgstr "Усе сайты"
+
+msgid "From field"
+msgstr "З поля"
+
+msgid "To field"
+msgstr "На поле"
+
 msgid "site"
 msgstr "сайт"
 
 msgid "created at"
 msgstr "створана"
 
-msgid "Save"
-msgstr "Захаваць"
+msgid "temporary"
+msgstr "часовы"
 
-msgid "Delete"
-msgstr "Выдаліць"
+msgid "Import"
+msgstr "Імпарт"
 
-msgid "Yes, delete"
-msgstr "Так. Выдаліць"
+msgid "Confirm import"
+msgstr "Пацвярджэнне імпарту"
+
+msgid "Confirm"
+msgstr "Пацвярджаю"
+
+msgid "Cancel"
+msgstr "Адмена"
 
 msgid "Preview"
 msgstr "Папярэдні прагляд"
 
-#, python-format
-msgid "Editing %(title)s"
-msgstr "Рэдагаванне %(title)s"
+msgid "From"
+msgstr "Ад"
 
-msgid "Editing"
-msgstr "Рэдагаванне"
+msgid "Error"
+msgstr "Памылка"
 
 msgid "Continue"
 msgstr "Працягнуць"
 
 msgid "Site"
 msgstr "Сайт"
-
-msgid "Edit"
-msgstr "Рэдагаваць"

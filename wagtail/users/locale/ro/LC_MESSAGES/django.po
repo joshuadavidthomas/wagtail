@@ -3,18 +3,20 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# Alex Morega, 2023
+# Bogdan Mateescu, 2019
 # Bogdan Mateescu, 2019
 # Dan Braghis, 2014
-# Dan Braghis, 2014-2021
+# Dan Braghis, 2014-2022,2024
 # Dan Braghis, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-19 11:54+0000\n"
-"Last-Translator: Dan Braghis, 2014-2021\n"
-"Language-Team: Romanian (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Dan Braghis, 2014-2022,2024\n"
+"Language-Team: Romanian (http://app.transifex.com/torchbox/wagtail/language/"
 "ro/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -25,6 +27,9 @@ msgstr ""
 
 msgid "Wagtail users"
 msgstr "Utilizatori Wagtail"
+
+msgid "Required. Letters, digits and @/./+/-/_ only."
+msgstr "Obligatoriu. Numai litere, cifre și @/./+/-/_."
 
 msgid "This value may contain only letters, numbers and @/./+/-/_ characters."
 msgstr "Această valoare poate conține numai litere, numere și @/./+/-/_"
@@ -112,11 +117,41 @@ msgstr "Selectați fusul orar curent"
 msgid "profile picture"
 msgstr "poză profil"
 
+msgid "System default"
+msgstr "Opțiunea implicită a sistemului"
+
+msgid "Light"
+msgstr "Luminos"
+
+msgid "Dark"
+msgstr "Întunecat"
+
+msgid "admin theme"
+msgstr "temă pentru interfața de administrare"
+
+msgid "Default"
+msgstr "Implicit"
+
+msgid "Snug"
+msgstr "Confortabil"
+
+#. Translators: "Density" is the term used to describe the amount of space
+#. between elements in the user interface
+msgid "density"
+msgstr "densitate"
+
 msgid "user profile"
 msgstr "profil utilizator"
 
 msgid "user profiles"
 msgstr "profiluri utilizatori"
+
+#, python-format
+msgid "Assign role to 1 user"
+msgid_plural "Assign role to %(counter)s users"
+msgstr[0] "Adaugă rol la 1 utilizator"
+msgstr[1] "Adaugă rol la %(counter)s utilizatori"
+msgstr[2] "Adaugă rol la %(counter)s utilizatori"
 
 msgid "Assign role"
 msgstr "Adaugă rol"
@@ -136,6 +171,13 @@ msgstr "Da, atribuie"
 msgid "No, don't assign"
 msgstr "Nu, nu atribuie"
 
+#, python-format
+msgid "Delete 1 user"
+msgid_plural "Delete %(counter)s users"
+msgstr[0] "Șterge 1 utilizator"
+msgstr[1] "Șterge %(counter)s utilizatori"
+msgstr[2] "Șterge %(counter)s utilizatori"
+
 msgid "Delete"
 msgstr "Șterge"
 
@@ -154,6 +196,13 @@ msgstr "Da, șterge"
 msgid "No, don't delete"
 msgstr "Nu, nu șterge"
 
+#, python-format
+msgid "Change active state for 1 user"
+msgid_plural "Change active state for %(counter)s users"
+msgstr[0] "Schimbă starea activă pentru 1 utilizator"
+msgstr[1] "Schimbă starea activă pentru %(counter)s utilizatori"
+msgstr[2] "Schimbă starea activă pentru %(counter)s utilizatori"
+
 msgid "Set active state"
 msgstr "Setează stare activă"
 
@@ -169,8 +218,17 @@ msgstr "Da, schimbă stare"
 msgid "No, don't change state"
 msgstr "Nu, nu schimba stare"
 
-msgid "Delete group"
-msgstr "Șterge grup"
+#, python-format
+msgid ""
+"The group '%(group_name)s' has <strong>%(group_user_count)s</strong> member."
+msgid_plural ""
+"The group '%(group_name)s' has <strong>%(group_user_count)s</strong> members."
+msgstr[0] ""
+"Grupul '%(group_name)s' are <strong>%(group_user_count)s</strong> membru."
+msgstr[1] ""
+"Grupul '%(group_name)s' are <strong>%(group_user_count)s</strong> membri."
+msgstr[2] ""
+"Grupul '%(group_name)s' are <strong>%(group_user_count)s</strong> membri."
 
 msgid ""
 "Deleting this group will revoke this group's permissions from all member "
@@ -180,18 +238,6 @@ msgstr ""
 
 msgid "Are you sure you want to delete this group?"
 msgstr "Sigur doriți să ștergeți acest grup?"
-
-msgid "Add group"
-msgstr "Adaugă grup"
-
-msgid "Editing"
-msgstr "Editare"
-
-msgid "View users in this group"
-msgstr "Vezi utilizatorii în acest grup"
-
-msgid "Save"
-msgstr "Salvează"
 
 msgid "Object permissions"
 msgstr "Permisiuni obiecte"
@@ -207,6 +253,21 @@ msgstr "Modifică"
 
 msgid "Custom permissions"
 msgstr "Permisiuni personalizate"
+
+msgid "Toggle all"
+msgstr "Comută toate"
+
+msgid "Toggle all add permissions"
+msgstr "Comută toate permisiunile de adăugare"
+
+msgid "Toggle all change permissions"
+msgstr "Comută toate permisiunile de modificare"
+
+msgid "Toggle all delete permissions"
+msgstr "Comută toate permisiunile de ștergere"
+
+msgid "Toggle all custom permissions"
+msgstr "Comută toate permisiunile personalizate"
 
 msgid "Other permissions"
 msgstr "Alte permisiuni"
@@ -226,20 +287,14 @@ msgstr "Ne pare rău, \"%(query)s\" nu se potrivește cu nici un grup"
 
 #, python-format
 msgid ""
-"There are no groups configured. Why not <a href="
-"\"%(wagtailusers_create_group_url)s\">add some</a>?"
+"There are no groups configured. Why not <a "
+"href=\"%(wagtailusers_create_group_url)s\">add some</a>?"
 msgstr ""
-"Nu există nici un grup configurat. De ce să nu <a href="
-"\"%(wagtailusers_create_group_url)s\">adăugați câțiva</a>?"
-
-msgid "Delete user"
-msgstr "Șterge utilizator"
+"Nu există nici un grup configurat. De ce să nu <a "
+"href=\"%(wagtailusers_create_group_url)s\">adăugați câțiva</a>?"
 
 msgid "Are you sure you want to delete this user?"
 msgstr "Sigur doriți să ștergeți acest utilizator?"
-
-msgid "Add user"
-msgstr "Adaugă utilizator"
 
 msgid "Account"
 msgstr "Cont"
@@ -247,57 +302,23 @@ msgstr "Cont"
 msgid "Roles"
 msgstr "Roluri"
 
-msgid "Users"
-msgstr "Utilizatori"
-
-msgid "Add a user"
-msgstr "Adaugă un utilizator"
-
 msgid "Select all users in listing"
 msgstr "Selectează toți utilizatorii din listă"
 
-msgid "Username"
-msgstr "Nume utlizator"
-
-msgid "Level"
-msgstr "Nivel"
-
-msgid "Status"
-msgstr "Stare"
-
-msgid "Last Login"
-msgstr "Ultima logare"
-
-msgid "Admin"
-msgstr "Administrator"
-
-msgid "Active"
-msgstr "Activ"
-
-msgid "Inactive"
-msgstr "Inactiv"
-
-#, python-format
-msgid "Sorry, no users match \"<em>%(query_string)s</em>\""
-msgstr ""
-"Ne pare rău, \"<em>%(query_string)s</em>\" nu se potrivește cu nici un "
-"utilizator"
+msgid "Sorry, no users match your query"
+msgstr "Ne pare rău, niciun utlizator nu corespunde interogării"
 
 #, python-format
 msgid ""
-"The %(group_name)s group has no users configured. Why not <a href="
-"\"%(wagtailusers_add_url)s\">add some</a>?"
+"There are no users configured. Why not <a "
+"href=\"%(wagtailusers_add_url)s\">add some</a>?"
 msgstr ""
-"Grupul %(group_name)s nu conține nici un utilizator. De ce să nu <a href="
-"\"%(wagtailusers_add_url)s\">adăugați câțiva</a>?"
+"Nu există nici un utilizator. De ce să nu <a "
+"href=\"%(wagtailusers_add_url)s\">adăugați câțiva</a>?"
 
 #, python-format
-msgid ""
-"There are no users configured. Why not <a href=\"%(wagtailusers_add_url)s"
-"\">add some</a>?"
-msgstr ""
-"Nu există nici un utilizator. De ce să nu <a href=\"%(wagtailusers_add_url)s"
-"\">adăugați câțiva</a>?"
+msgid "user %(id)s (deleted)"
+msgstr "utilizator %(id)s (șters)"
 
 msgid "Assign role to selected users"
 msgstr "Adaugă rol la utilizatorii selectați"
@@ -318,6 +339,15 @@ msgid_plural "%(num_parent_objects)d users have been deleted"
 msgstr[0] "%(num_parent_objects)d utilizator a fost șters"
 msgstr[1] "%(num_parent_objects)d utilizatori au fost șterși"
 msgstr[2] "%(num_parent_objects)d utilizatori au fost șterși"
+
+msgid "Active"
+msgstr "Activ"
+
+msgid "Inactive"
+msgstr "Inactiv"
+
+msgid "Mark as active"
+msgstr "Marchează ca activ"
 
 msgid "Change the active state for selected users"
 msgstr "Schimbă starea activă pentru utilizatorii selectați"
@@ -345,47 +375,75 @@ msgstr "Adaugă un grup"
 msgid "Search groups"
 msgstr "Caută grupuri"
 
-#, python-brace-format
-msgid "Group '{0}' created."
-msgstr "Grupul '{0}' a fost creat."
+msgid "Add group"
+msgstr "Adaugă grup"
 
-#, python-brace-format
-msgid "Group '{0}' updated."
-msgstr "Grupul '{0}' a fost actualizat."
+#, python-format
+msgid "Group '%(object)s' created."
+msgstr "Grupul '%(object)s' a fost creat."
+
+#, python-format
+msgid "Group '%(object)s' updated."
+msgstr "Grupul '%(object)s' a fost actualizat."
 
 msgid "The group could not be saved due to errors."
 msgstr "Grupul nu a fost salvat din cauza erorilor."
 
-#, python-brace-format
-msgid "Group '{0}' deleted."
-msgstr "Grupul '{0}' a fost șters."
+msgid "View users in this group"
+msgstr "Vezi utilizatorii în acest grup"
 
-msgid "Search users"
-msgstr "Caută utilizatori"
+#, python-format
+msgid "Group '%(object)s' deleted."
+msgstr "Grupul '%(object)s' a fost șters."
 
-#, python-brace-format
-msgid "User '{0}' created."
-msgstr "Utilizatorul '{0}' a fost creat."
+msgid "Delete group"
+msgstr "Șterge grup"
 
-msgid "Edit"
-msgstr "Editează"
+msgid "Last login"
+msgstr "Ultima logare"
 
-msgid "The user could not be created due to errors."
-msgstr "Utilizatorul nu a fost creat din cauza erorilor."
+msgid "Group"
+msgstr "Grup"
 
-#, python-brace-format
-msgid "User '{0}' updated."
-msgstr "Utilizatorul '{0}' a fost actualizat."
+msgid "Add a user"
+msgstr "Adaugă un utilizator"
+
+msgid "Users"
+msgstr "Utilizatori"
+
+msgid "Username"
+msgstr "Nume utlizator"
+
+msgid "Admin"
+msgstr "Administrator"
+
+msgid "Access level"
+msgstr "Nivel de acces"
+
+msgid "Status"
+msgstr "Stare"
+
+#, python-format
+msgid "More options for '%(title)s'"
+msgstr "Mai multe opțiuni pentru '%(title)s'"
+
+#, python-format
+msgid "User '%(object)s' created."
+msgstr "Utilizatorul '%(object)s' a fost creat."
+
+msgid "Add user"
+msgstr "Adaugă utilizator"
+
+#, python-format
+msgid "User '%(object)s' updated."
+msgstr "Utilizatorul '%(object)s' a fost actualizat."
 
 msgid "The user could not be saved due to errors."
 msgstr "Utilizatorul nu a fost salvat din cauza erorilor."
 
-#, python-brace-format
-msgid "User '{0}' deleted."
-msgstr "Utilizatorul '{0}' a fost șters."
+msgid "Delete user"
+msgstr "Șterge utilizator"
 
-msgid "Edit this user"
-msgstr "Editează acest utlizator"
-
-msgid "Delete this user"
-msgstr "Șterge acest utlizator"
+#, python-format
+msgid "User '%(object)s' deleted."
+msgstr "Utilizatorul '%(object)s' a fost șters."

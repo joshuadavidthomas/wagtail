@@ -7,14 +7,16 @@
 # Delgermurun Purevkhuuu <info@delgermurun.com>, 2014
 # Matt Westcott <matthew@torchbox.com>, 2022
 # Myagmarjav Enkhbileg <miigaa.lucky@gmail.com>, 2019
+# Soft Exim, 2022
+# visual, 2022
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:05+0000\n"
-"Last-Translator: Matt Westcott <matthew@torchbox.com>, 2022\n"
-"Language-Team: Mongolian (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Soft Exim, 2022\n"
+"Language-Team: Mongolian (http://app.transifex.com/torchbox/wagtail/language/"
 "mn/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -24,6 +26,9 @@ msgstr ""
 
 msgid "Wagtail images"
 msgstr "Зургууд"
+
+msgid "Alt text"
+msgstr "Зургийн тайлбар текст"
 
 #, python-format
 msgid ""
@@ -38,20 +43,23 @@ msgid "Supported formats: %(supported_formats)s."
 msgstr "Дэмжигдсэн форматууд: %(supported_formats)s."
 
 #, python-format
-msgid "Not a supported image format. Supported formats: %s."
-msgstr "Дэмжигдээгүй зургийн формат байна. Дэмжигдсэн форматууд: %s."
+msgid "Not a supported image format. Supported formats: %(supported_formats)s."
+msgstr ""
+"Дэмжигдээгүй зургийн формат байна. Дэмжигдсэн форматууд: "
+"%(supported_formats)s."
 
 #, python-format
-msgid "Not a valid %s image."
-msgstr "%s алдаатай зураг байна."
+msgid ""
+"This file is too big (%(file_size)s). Maximum filesize %(max_filesize)s."
+msgstr ""
+"Энэ файл хэт том хэмжээтэй байна (%(file_size)s). Боломжтой дээд хэмжээ нь "
+"%(max_filesize)s."
 
 #, python-format
-msgid "This file is too big (%%s). Maximum filesize %s."
-msgstr "Энэ файл хэт том хэмжээтэй байна (%%s). Боломжтой дээд хэмжээ нь %s."
-
-#, python-format
-msgid "This file is too big. Maximum filesize %s."
-msgstr "Энэ файл хэтэрхий том хэмжээтэй байна. Боломжтой дээд хэмжээ нь %s."
+msgid "This file is too big. Maximum filesize %(max_filesize)s."
+msgstr ""
+"Энэ файл хэтэрхий том хэмжээтэй байна. Боломжтой дээд хэмжээ нь "
+"%(max_filesize)s."
 
 msgid "Full width"
 msgstr "Бүтэн өргөн"
@@ -65,14 +73,23 @@ msgstr "Баруун-зэрэгцүүлэх"
 msgid "Collection"
 msgstr "Цуглуулга"
 
-msgid "Alt text"
-msgstr "Зургийн тайлбар текст"
-
 msgid "Filter"
 msgstr "Шүүлтүүр"
 
 msgid "Original size"
 msgstr "Оригнал хэмжээ"
+
+msgid "Resize to width"
+msgstr "Өргөнийг өөрчлөх"
+
+msgid "Resize to height"
+msgstr "Өндрийг өөрчлөх"
+
+msgid "Resize to min"
+msgstr "Хамгийн багыг өөрчлөх"
+
+msgid "Resize to max"
+msgstr "Хамгийн ихийг өөрчлөх"
 
 msgid "Width"
 msgstr "Өргөн"
@@ -104,6 +121,9 @@ msgstr "гарчиг"
 msgid "file"
 msgstr "файл"
 
+msgid "description"
+msgstr "тайлбар"
+
 msgid "width"
 msgstr "өргөн"
 
@@ -134,6 +154,9 @@ msgstr[1] "Used %(usage_count)s times"
 msgid "Yes, delete"
 msgstr "Тийм, устга"
 
+msgid "No, don't delete"
+msgstr "Үгүй, устгахгүй"
+
 msgid "Popular tags"
 msgstr "Түгээмэл шошгууд"
 
@@ -155,21 +178,11 @@ msgstr "Зургийн файл солих:"
 msgid "Add an image"
 msgstr "Зураг нэмэх"
 
-msgid "Add image"
-msgstr "Зураг нэмэх"
+msgid "Uploading…"
+msgstr "Хуулж байна..."
 
-msgid "Save"
-msgstr "Хадгалах"
-
-msgid "Delete image"
-msgstr "Зургийг устгах"
-
-#, python-format
-msgid "Editing image %(title)s"
-msgstr "%(title)s зургийг засч байна"
-
-msgid "Editing"
-msgstr "Засч байна"
+msgid "Upload"
+msgstr "Хуулах"
 
 msgid "URL Generator"
 msgstr "URL Үүсгэгч"
@@ -203,50 +216,19 @@ msgstr "Файл олдсонгүй"
 msgid "Usage"
 msgstr "Хэрэглээ"
 
-msgid "Images"
-msgstr "Зургууд"
-
 #, python-format
 msgid "Sorry, no images match \"<em>%(query_string)s</em>\""
 msgstr ""
 "Уучлаарай, \"<em>%(query_string)s</em>\" хайлтад тохирох зураг олдсонгүй"
 
-msgid "Generating URL"
-msgstr "URL үүсгэж байна"
+msgid "Preview"
+msgstr "Урдчилж харах"
 
 msgid "URL"
 msgstr "URL хаяг"
 
-msgid "Preview"
-msgstr "Урдчилж харах"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "%(title)s-ын хэрэглээ"
-
-msgid "Usage of"
-msgstr "Хэрэглээ"
-
-msgid "Title"
-msgstr "Гарчиг"
-
-msgid "Parent"
-msgstr "Эцэг"
-
-msgid "Type"
-msgstr "Төрөл"
-
-msgid "Status"
-msgstr "Төлөв"
-
-msgid "Edit this page"
-msgstr "Энэ хуудсыг засах"
-
 msgid "Add multiple images"
 msgstr "Олон зураг нэмэх"
-
-msgid "Add images"
-msgstr "Зураг нэмэх"
 
 msgid "Drag and drop images into this area to upload immediately."
 msgstr "Энэ хэсэгт зургуудаа чирж оруулж сайт руу хуулна уу."
@@ -272,46 +254,55 @@ msgstr "Зургийн хандалтын эрх"
 msgid "Add an image permission"
 msgstr "Зургийн хандах эрх нэмэх"
 
+msgid "Tags"
+msgstr "Шошго"
+
 msgid "Delete"
 msgstr "Устгах"
-
-msgid "Upload"
-msgstr "Хуулах"
-
-msgid "Uploading…"
-msgstr "Хуулж байна..."
 
 msgid "Choose an image"
 msgstr "Зургаа сонгоно уу"
 
-msgid "Search images"
-msgstr "Зураг хайх"
+msgid "Choose another image"
+msgstr "Өөр зураг сонгох"
 
-#, python-brace-format
-msgid "Image '{0}' updated."
-msgstr "'{0}' зураг засагдлаа."
+msgid "Edit this image"
+msgstr "Энэ зургийг засах"
 
-msgid "Edit again"
-msgstr "Дахин засах"
+msgid "Images"
+msgstr "Зургууд"
 
 msgid "The image could not be saved due to errors."
 msgstr "Зураг энэ алдаануудаас шалтгаалан хадгалагдсангүй."
+
+#, python-format
+msgid "Image '%(image_title)s' updated."
+msgstr "'%(image_title)s' зураг засагдлаа."
 
 msgid ""
 "The source image file could not be found. Please change the source or delete "
 "the image."
 msgstr "Эх зураг олдсонгүй. Эх зургийг солих эсвэл устгана уу."
 
-#, python-brace-format
-msgid "Image '{0}' deleted."
-msgstr "'{0}' зураг устлаа."
+msgid "Delete image"
+msgstr "Зургийг устгах"
 
-#, python-brace-format
-msgid "Image '{0}' added."
-msgstr "'{0}' зураг нэмэгдлээ."
+#, python-format
+msgid "Image '%(image_title)s' deleted."
+msgstr "'%(image_title)s' зураг устлаа."
 
 msgid "The image could not be created due to errors."
 msgstr "Зураг энэ алдаануудаас шалтгаалан хадгалагдсангүй."
 
+#, python-format
+msgid "Image '%(image_title)s' added."
+msgstr "'%(image_title)s' зураг нэмэгдлээ."
+
+msgid "Add images"
+msgstr "Зураг нэмэх"
+
 msgid "Image"
 msgstr "Зураг"
+
+msgid "Change image"
+msgstr "Зураг солих"

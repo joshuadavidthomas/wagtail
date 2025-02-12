@@ -1,28 +1,39 @@
 import json
 from unittest import mock
-from urllib.parse import quote
 
 from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.test.utils import override_settings
 from django.urls import reverse
+from django.utils.html import escape
 from django.utils.http import urlencode
+from django.utils.text import capfirst
 
 from wagtail.admin.admin_url_finder import AdminURLFinder
 from wagtail.documents import get_document_model, models
 from wagtail.documents.tests.utils import get_test_document_file
-from wagtail.models import Collection, GroupCollectionPermission, Page
+from wagtail.models import (
+    Collection,
+    GroupCollectionPermission,
+    Page,
+    ReferenceIndex,
+    UploadedFile,
+)
 from wagtail.test.testapp.models import (
     CustomDocument,
     CustomDocumentWithAuthor,
     EventPage,
     EventPageRelatedLink,
+    VariousOnDeleteModel,
 )
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
+from wagtail.test.utils.timestamps import local_datetime
 
 
-class TestDocumentIndexView(TestCase, WagtailTestUtils):
+class TestDocumentIndexView(WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
@@ -30,15 +41,15 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
         return self.client.get(reverse("wagtaildocs:index"), params)
 
     def test_simple(self):
+        models.Document.objects.create(title="Hello document")
+        models.Document.objects.create(title="Bonjour document")
+
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtaildocs/documents/index.html")
         self.assertContains(response, "Add a document")
-
-    def test_search(self):
-        response = self.get({"q": "Hello"})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["query_string"], "Hello")
+        self.assertContains(response, "Hello document")
+        self.assertContains(response, "Bonjour document")
 
     def make_docs(self):
         for i in range(50):
@@ -55,7 +66,7 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
         self.assertTemplateUsed(response, "wagtaildocs/documents/index.html")
 
         # Check that we got the correct page
-        self.assertEqual(response.context["documents"].number, 2)
+        self.assertEqual(response.context["page_obj"].number, 2)
 
     def test_pagination_invalid(self):
         self.make_docs()
@@ -67,7 +78,7 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
         self.assertTemplateUsed(response, "wagtaildocs/documents/index.html")
 
         # Check that we got page one
-        self.assertEqual(response.context["documents"].number, 1)
+        self.assertEqual(response.context["page_obj"].number, 1)
 
     def test_pagination_out_of_range(self):
         self.make_docs()
@@ -80,12 +91,12 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
 
         # Check that we got the last page
         self.assertEqual(
-            response.context["documents"].number,
-            response.context["documents"].paginator.num_pages,
+            response.context["page_obj"].number,
+            response.context["paginator"].num_pages,
         )
 
     def test_ordering(self):
-        orderings = ["title", "-created_at"]
+        orderings = ["title", "created_at", "-created_at"]
         for ordering in orderings:
             response = self.get({"ordering": ordering})
             self.assertEqual(response.status_code, 200)
@@ -94,8 +105,11 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
         self.make_docs()
 
         response = self.get()
-        self.assertNotContains(response, "<th>Collection</th>")
-        self.assertNotContains(response, "<td>Root</td>")
+        self.assertNotContains(response, "<th>Collection</th>", html=True)
+        self.assertNotContains(response, "<td>Root</td>", html=True)
+        soup = self.get_soup(response.content)
+        collection_select = soup.select_one('select[name="collection_id"]')
+        self.assertIsNone(collection_select)
 
     def test_index_with_collection(self):
         root_collection = Collection.get_first_root_node()
@@ -105,11 +119,54 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
         self.make_docs()
 
         response = self.get()
-        self.assertContains(response, "<th>Collection</th>")
-        self.assertContains(response, "<td>Root</td>")
+        self.assertContains(response, "<th>Collection</th>", html=True)
+        self.assertContains(response, "<td>Root</td>", html=True)
+
+        response = self.get()
+        soup = self.get_soup(response.content)
+        collection_options = soup.select(
+            'select[name="collection_id"] option[value]:not(option[value=""])'
+        )
+
         self.assertEqual(
-            [collection.name for collection in response.context["collections"]],
+            [
+                collection.get_text(strip=True).lstrip("↳ ")
+                for collection in collection_options
+            ],
             ["Root", "Evil plans", "Good plans"],
+        )
+
+    def test_index_with_collection_filtered(self):
+        root_collection = Collection.get_first_root_node()
+        travel_plans = root_collection.add_child(name="Travel plans")
+        models.Document.objects.create(title="Itinerary", collection=travel_plans)
+
+        self.make_docs()
+
+        response = self.get({"collection_id": travel_plans.pk})
+        # should append the correct params to the add document button
+        url = reverse("wagtaildocs:add_multiple")
+        self.assertContains(
+            response, f'<a href="{url}?collection_id={travel_plans.pk}"'
+        )
+
+        # List should be filtered
+        self.assertEqual(len(response.context["page_obj"]), 1)
+        self.assertContains(response, "Itinerary")
+        self.assertNotContains(response, "Test 42")
+
+        # Should render the "Select all" with the correct collection ID
+        # twice, one for the column header and one in the footer.
+        self.assertContains(
+            response,
+            f"""
+            <input data-bulk-action-parent-id="{travel_plans.pk}"
+                   data-bulk-action-select-all-checkbox
+                   type="checkbox"
+                   aria-label="Select all"
+            />""",
+            html=True,
+            count=2,
         )
 
     def test_collection_nesting(self):
@@ -133,13 +190,13 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
 
         edit_url = reverse("wagtaildocs:edit", args=(doc.id,))
-        next_url = quote(response._request.get_full_path())
-        self.assertContains(response, "%s?next=%s" % (edit_url, next_url))
+        params = urlencode({"next": response._request.get_full_path()})
+        self.assertContains(response, f"{edit_url}?{params}")
 
     def test_search_form_rendered(self):
         response = self.get()
         html = response.content.decode()
-        search_url = reverse("wagtaildocs:index")
+        search_url = reverse("wagtaildocs:index_results")
 
         # Search form in the header should be rendered.
         self.assertTagInHTML(
@@ -149,27 +206,240 @@ class TestDocumentIndexView(TestCase, WagtailTestUtils):
             allow_extra_attrs=True,
         )
 
+    def test_tags(self):
+        document_two_tags = models.Document.objects.create(
+            title="Test document with two tags"
+        )
+        document_two_tags.tags.add("one", "two")
 
-class TestDocumentListingResultsView(TestCase, WagtailTestUtils):
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+
+        soup = self.get_soup(response.content)
+        current_tags = soup.select("input[name=tag][checked]")
+        self.assertFalse(current_tags)
+
+        tags = soup.select("#id_tag label")
+        self.assertCountEqual(
+            [tags.get_text(strip=True) for tags in tags],
+            ["one", "two"],
+        )
+
+    def test_tag_filtering(self):
+        models.Document.objects.create(title="Test document with no tags")
+
+        document_one_tag = models.Document.objects.create(
+            title="Test document with one tag"
+        )
+        document_one_tag.tags.add("one")
+
+        document_two_tags = models.Document.objects.create(
+            title="Test document with two tags"
+        )
+        document_two_tags.tags.add("one", "two")
+
+        document_unrelated_tag = models.Document.objects.create(
+            title="Test document with a different tag"
+        )
+        document_unrelated_tag.tags.add("unrelated")
+
+        # no filtering
+        response = self.get()
+        # four documents created above
+        self.assertEqual(response.context["page_obj"].paginator.count, 4)
+
+        # filter all documents with tag 'one'
+        response = self.get({"tag": "one"})
+        self.assertEqual(response.context["page_obj"].paginator.count, 2)
+
+        # filter all documents with tag 'two'
+        response = self.get({"tag": "two"})
+        self.assertEqual(response.context["page_obj"].paginator.count, 1)
+
+        # filter all documents with tag 'one' or 'unrelated'
+        response = self.get({"tag": ["one", "unrelated"]})
+        self.assertEqual(response.context["page_obj"].paginator.count, 3)
+
+        soup = self.get_soup(response.content)
+
+        # Should check the 'one' and 'unrelated' tags checkboxes
+        tags = soup.select("#id_tag label")
+        self.assertCountEqual(
+            [
+                tag.get_text(strip=True)
+                for tag in tags
+                if tag.select_one("input[checked]") is not None
+            ],
+            ["one", "unrelated"],
+        )
+
+        # Should render the active filter pills separately for each tag
+        active_filters = soup.select('[data-w-active-filter-id="id_tag"]')
+        self.assertCountEqual(
+            [filter.get_text(separator=" ", strip=True) for filter in active_filters],
+            ["Tag: one", "Tag: unrelated"],
+        )
+
+    def test_tag_filtering_preserves_other_params(self):
+        for i in range(1, 130):
+            document = models.Document.objects.create(title="Test document %i" % i)
+            if i % 2 != 0:
+                document.tags.add("even")
+                document.save()
+
+        response = self.get({"tag": "even", "p": 2})
+        self.assertEqual(response.status_code, 200)
+
+        response_body = response.content.decode("utf8")
+
+        # prev link should exist and include tag
+        self.assertTrue(
+            "?p=1&amp;tag=even" in response_body or "?tag=even&amp;p=1" in response_body
+        )
+        # next link should exist and include tag
+        self.assertTrue(
+            "?p=3&amp;tag=even" in response_body or "?tag=even&amp;p=3" in response_body
+        )
+
+
+class TestDocumentIndexViewSearch(WagtailTestUtils, TransactionTestCase):
     def setUp(self):
+        Collection.add_root(name="Root")
         self.login()
 
     def get(self, params={}):
-        return self.client.get(reverse("wagtaildocs:listing_results"), params)
+        return self.client.get(reverse("wagtaildocs:index"), params)
+
+    def make_docs(self):
+        for i in range(50):
+            document = models.Document(title="Test " + str(i))
+            document.save()
+
+    def test_search(self):
+        models.Document.objects.create(title="Hello document")
+        models.Document.objects.create(title="Bonjour document")
+
+        response = self.get({"q": "Hello"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["query_string"], "Hello")
+        self.assertContains(response, "Hello document")
+        self.assertNotContains(response, "Bonjour document")
+
+    def test_search_partial(self):
+        models.Document.objects.create(title="Hello document")
+        models.Document.objects.create(title="Bonjour document")
+
+        response = self.get({"q": "bonj"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["query_string"], "bonj")
+        self.assertNotContains(response, "Hello document")
+        self.assertContains(response, "Bonjour document")
+
+    def test_empty_q(self):
+        models.Document.objects.create(title="Hello document")
+        models.Document.objects.create(title="Bonjour document")
+
+        response = self.get({"q": ""})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "This field is required.")
+        self.assertContains(response, "Hello document")
+        self.assertContains(response, "Bonjour document")
+
+    def test_pagination_q(self):
+        self.make_docs()
+
+        response = self.get({"q": "Test"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtaildocs/documents/index.html")
+        self.assertContains(response, "There are 50 matches")
+
+    def test_tag_filtering_with_search_term(self):
+        models.Document.objects.create(title="Test document with no tags")
+
+        document_one_tag = models.Document.objects.create(
+            title="Test document with one tag"
+        )
+        document_one_tag.tags.add("one")
+
+        document_two_tags = models.Document.objects.create(
+            title="Test document with two tags"
+        )
+        document_two_tags.tags.add("one", "two")
+
+        # The tag shouldn't be ignored, so the result should be the documents
+        # that have the "one" tag and "test" in the title.
+        response = self.get({"tag": "one", "q": "test"})
+        self.assertEqual(response.context["page_obj"].paginator.count, 2)
+
+    def test_search_and_order_by_created_at(self):
+        # Create Documents, change their created_at dates after creation as
+        # the field has auto_now_add=True
+        doc1 = models.Document.objects.create(title="recent good Document")
+        doc1.created_at = local_datetime(2024, 1, 1)
+        doc1.save()
+
+        doc2 = models.Document.objects.create(title="latest ok Document")
+        doc2.created_at = local_datetime(2025, 1, 1)
+        doc2.save()
+
+        doc3 = models.Document.objects.create(title="oldest good document")
+        doc3.created_at = local_datetime(2023, 1, 1)
+        doc3.save()
+
+        cases = [
+            ("created_at", [doc3, doc1]),
+            ("-created_at", [doc1, doc3]),
+        ]
+
+        for ordering, expected_docs in cases:
+            with self.subTest(ordering=ordering):
+                response = self.get({"q": "good", "ordering": ordering})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context["query_string"], "good")
+
+                # Check that the documents are filtered by the search query
+                # and are in the correct order
+                documents = list(response.context["page_obj"].object_list)
+                self.assertEqual(documents, expected_docs)
+                self.assertIn("ordering", response.context)
+                self.assertEqual(response.context["ordering"], ordering)
+
+
+class TestDocumentIndexResultsView(WagtailTestUtils, TransactionTestCase):
+    def setUp(self):
+        Collection.add_root(name="Root")
+        self.login()
+
+    def get(self, params={}):
+        return self.client.get(reverse("wagtaildocs:index_results"), params)
 
     def test_search(self):
         doc = models.Document.objects.create(title="A boring report")
 
         response = self.get({"q": "boring"})
+        params = urlencode({"next": "/admin/documents/?q=boring"})
         self.assertEqual(response.status_code, 200)
         # 'next' param on edit page link should point back to the documents index, not the results view
-        self.assertContains(
-            response,
-            "/admin/documents/edit/%d/?next=/admin/documents/%%3Fq%%3Dboring" % doc.id,
-        )
+        self.assertContains(response, f"/admin/documents/edit/{doc.pk}/?{params}")
+        self.assertNotContains(response, "<th>Collection</th>", html=True)
+        self.assertNotContains(response, "<td>Root</td>", html=True)
+
+    def test_search_with_collection(self):
+        root_collection = Collection.get_first_root_node()
+        root_collection.add_child(name="Evil plans")
+        doc = models.Document.objects.create(title="A boring report")
+
+        response = self.get({"q": "boring"})
+        params = urlencode({"next": "/admin/documents/?q=boring"})
+        self.assertEqual(response.status_code, 200)
+        # 'next' param on edit page link should point back to the documents index, not the results view
+        self.assertContains(response, f"/admin/documents/edit/{doc.pk}/?{params}")
+        self.assertContains(response, "<th>Collection</th>", html=True)
+        self.assertContains(response, "<td>Root</td>", html=True)
 
 
-class TestDocumentAddView(TestCase, WagtailTestUtils):
+class TestDocumentAddView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
@@ -190,6 +460,14 @@ class TestDocumentAddView(TestCase, WagtailTestUtils):
 
         # draftail should NOT be a standard JS include on this page
         self.assertNotContains(response, "wagtailadmin/js/draftail.js")
+
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"url": reverse("wagtaildocs:index"), "label": "Documents"},
+                {"url": "", "label": "New: Document"},
+            ],
+            response.content,
+        )
 
     def test_get_with_collections(self):
         root_collection = Collection.get_first_root_node()
@@ -307,7 +585,7 @@ class TestDocumentAddView(TestCase, WagtailTestUtils):
         )
 
 
-class TestDocumentAddViewWithLimitedCollectionPermissions(TestCase, WagtailTestUtils):
+class TestDocumentAddViewWithLimitedCollectionPermissions(WagtailTestUtils, TestCase):
     def setUp(self):
         add_doc_permission = Permission.objects.get(
             content_type__app_label="wagtaildocs", codename="add_document"
@@ -383,7 +661,7 @@ class TestDocumentAddViewWithLimitedCollectionPermissions(TestCase, WagtailTestU
         )
 
 
-class TestDocumentEditView(TestCase, WagtailTestUtils):
+class TestDocumentEditView(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.user = self.login()
 
@@ -441,6 +719,14 @@ class TestDocumentEditView(TestCase, WagtailTestUtils):
         # (see TestDocumentEditViewWithCustomDocumentModel - this confirms that form media
         # definitions are being respected)
         self.assertNotContains(response, "wagtailadmin/js/draftail.js")
+
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"url": reverse("wagtaildocs:index"), "label": "Documents"},
+                {"url": "", "label": "Test document"},
+            ],
+            response.content,
+        )
 
         url_finder = AdminURLFinder(self.user)
         expected_url = "/admin/documents/edit/%d/" % self.document.id
@@ -544,7 +830,6 @@ class TestDocumentEditView(TestCase, WagtailTestUtils):
 
         self.assertContains(response, "File not found")
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_usage_link(self):
         response = self.client.get(
             reverse("wagtaildocs:edit", args=(self.document.id,))
@@ -604,9 +889,8 @@ class TestDocumentEditView(TestCase, WagtailTestUtils):
         )
         self.assertRedirects(response, reverse("wagtaildocs:index"))
         self.document.refresh_from_db()
-        self.assertFalse(self.document.file.storage.exists(old_filename))
-        self.assertTrue(self.document.file.storage.exists(self.document.file.name))
-        self.assertNotEqual(self.document.file.name, "documents/" + new_name)
+        self.assertEqual(old_filename, self.document.file.name)
+        self.assertEqual(self.document.file.name, "documents/" + new_name)
         self.assertEqual(self.document.file.read(), b"An updated test content.")
 
     def test_reupload_different_name(self):
@@ -634,7 +918,7 @@ class TestDocumentEditView(TestCase, WagtailTestUtils):
 
 
 @override_settings(WAGTAILDOCS_DOCUMENT_MODEL="tests.CustomDocument")
-class TestDocumentEditViewWithCustomDocumentModel(TestCase, WagtailTestUtils):
+class TestDocumentEditViewWithCustomDocumentModel(WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
@@ -691,12 +975,14 @@ class TestDocumentEditViewWithCustomDocumentModel(TestCase, WagtailTestUtils):
         )
 
 
-class TestDocumentDeleteView(TestCase, WagtailTestUtils):
+class TestDocumentDeleteView(WagtailTestUtils, TestCase):
     def setUp(self):
         self.user = self.login()
 
         # Create a document to delete
         self.document = models.Document.objects.create(title="Test document")
+
+        self.delete_url = reverse("wagtaildocs:delete", args=(self.document.id,))
 
     def test_delete_with_limited_permissions(self):
         self.user.is_superuser = False
@@ -707,27 +993,67 @@ class TestDocumentDeleteView(TestCase, WagtailTestUtils):
         )
         self.user.save()
 
-        response_get = self.client.get(
-            reverse("wagtaildocs:delete", args=(self.document.id,))
-        )
-        response_post = self.client.post(
-            reverse("wagtaildocs:delete", args=(self.document.id,))
-        )
+        response_get = self.client.get(self.delete_url)
+        response_post = self.client.post(self.delete_url)
 
         self.assertEqual(response_get.status_code, 302)
         self.assertEqual(response_post.status_code, 302)
+        self.assertTrue(
+            get_document_model().objects.filter(id=self.document.id).exists()
+        )
+
+    def test_delete_get_with_protected_reference(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            VariousOnDeleteModel.objects.create(protected_document=self.document)
+        response = self.client.get(self.delete_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailadmin/generic/confirm_delete.html")
+        self.assertTemplateUsed(response, "wagtailadmin/shared/usage_summary.html")
+        self.assertContains(
+            response,
+            reverse("wagtaildocs:document_usage", args=(self.document.id,))
+            + "?describe_on_delete=1",
+        )
+        self.assertContains(
+            response,
+            "One or more references to this document prevent it from being deleted.",
+        )
+        self.assertNotContains(response, "Yes, delete")
+        self.assertNotContains(response, "No, don't delete")
+        self.assertNotContains(
+            response,
+            f'<form action="{self.delete_url}" method="POST">',
+        )
+
+    def test_delete_post_with_protected_reference(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            VariousOnDeleteModel.objects.create(protected_document=self.document)
+        response = self.client.post(self.delete_url)
+        self.assertRedirects(response, reverse("wagtailadmin_home"))
+        self.assertTrue(
+            get_document_model().objects.filter(id=self.document.id).exists()
+        )
 
     def test_simple(self):
-        response = self.client.get(
-            reverse("wagtaildocs:delete", args=(self.document.id,))
-        )
+        response = self.client.get(self.delete_url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtaildocs/documents/confirm_delete.html")
+        self.assertTemplateUsed(response, "wagtailadmin/generic/confirm_delete.html")
+        self.assertTemplateUsed(response, "wagtailadmin/shared/usage_summary.html")
+        self.assertNotContains(
+            response,
+            "One or more references to this document prevent it from being deleted.",
+        )
+        self.assertContains(response, "Yes, delete")
+        self.assertContains(response, "No, don't delete")
+        self.assertContains(
+            response,
+            f'<form action="{self.delete_url}" method="POST">',
+        )
 
     def test_delete(self):
         # Submit title change
         response = self.client.post(
-            reverse("wagtaildocs:delete", args=(self.document.id,))
+            reverse("wagtaildocs:delete", args=(self.document.id,)), follow=True
         )
 
         # User should be redirected back to the index
@@ -736,18 +1062,23 @@ class TestDocumentDeleteView(TestCase, WagtailTestUtils):
         # Document should be deleted
         self.assertFalse(models.Document.objects.filter(id=self.document.id).exists())
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
+        # Message should be shown
+        self.assertEqual(
+            [m.message.strip() for m in response.context["messages"]],
+            [escape("Document 'Test document' deleted.")],
+        )
+
     def test_usage_link(self):
         response = self.client.get(
             reverse("wagtaildocs:delete", args=(self.document.id,))
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtaildocs/documents/confirm_delete.html")
+        self.assertTemplateUsed(response, "wagtailadmin/generic/confirm_delete.html")
         self.assertContains(response, self.document.usage_url)
-        self.assertContains(response, "Used 0 times")
+        self.assertContains(response, "This document is referenced 0 times")
 
 
-class TestMultipleDocumentUploader(TestCase, WagtailTestUtils):
+class TestMultipleDocumentUploader(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     """
     This tests the multiple document upload views located in wagtaildocs/views/multiple.py
     """
@@ -786,6 +1117,17 @@ class TestMultipleDocumentUploader(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtaildocs/multiple/add.html")
 
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {
+                    "url": reverse("wagtaildocs:index"),
+                    "label": capfirst(self.doc._meta.verbose_name_plural),
+                },
+                {"url": "", "label": "Add documents"},
+            ],
+            response.content,
+        )
+
         # no collection chooser when only one collection exists
         self.assertNotContains(response, "id_adddocument_collection")
 
@@ -802,9 +1144,20 @@ class TestMultipleDocumentUploader(TestCase, WagtailTestUtils):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtaildocs/multiple/add.html")
 
-        # collection chooser should exisst
+        # collection chooser should exist
         self.assertContains(response, "id_adddocument_collection")
         self.assertContains(response, "Evil plans")
+
+    def test_add_with_selected_collection(self):
+        root_collection = Collection.get_first_root_node()
+        collection = root_collection.add_child(name="Evil plans")
+
+        response = self.client.get(
+            reverse("wagtaildocs:add_multiple") + f"?collection_id={collection.pk}"
+        )
+        self.assertEqual(response.status_code, 200)
+        # collection chooser should have selected collection passed with parameter
+        self.assertContains(response, f'<option value="{collection.pk}" selected>')
 
     def test_add_post(self):
         """
@@ -1044,7 +1397,9 @@ class TestMultipleDocumentUploader(TestCase, WagtailTestUtils):
         )
 
         # Check that a form error was raised
-        self.assertFormError(response, "form", "title", "This field is required.")
+        self.assertFormError(
+            response.context["form"], "title", "This field is required."
+        )
 
         # Check JSON
         response_json = json.loads(response.content.decode())
@@ -1131,15 +1486,16 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
     def setUp(self):
         super().setUp()
 
-        # Create an UploadedDocument for running tests on
-        self.uploaded_document = models.UploadedDocument.objects.create(
+        # Create an UploadedFile for running tests on
+        self.uploaded_document = UploadedFile.objects.create(
+            for_content_type=ContentType.objects.get_for_model(get_document_model()),
             file=get_test_document_file(),
             uploaded_by_user=self.user,
         )
 
     def test_add_post(self):
         """
-        This tests that a POST request to the add view saves the document as an UploadedDocument
+        This tests that a POST request to the add view saves the document as an UploadedFile
         and returns an edit form
         """
         response = self.client.post(
@@ -1180,11 +1536,11 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
 
         # Check JSON
         response_json = json.loads(response.content.decode())
-        self.assertIn("uploaded_document_id", response_json)
+        self.assertIn("uploaded_file_id", response_json)
         self.assertIn("form", response_json)
         self.assertIn("success", response_json)
         self.assertEqual(
-            response_json["uploaded_document_id"],
+            response_json["uploaded_file_id"],
             response.context["uploaded_document"].id,
         )
         self.assertTrue(response_json["success"])
@@ -1217,10 +1573,10 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
 
         # Check JSON
         response_json = json.loads(response.content.decode())
-        self.assertIn("uploaded_document_id", response_json)
+        self.assertIn("uploaded_file_id", response_json)
         self.assertIn("form", response_json)
         self.assertEqual(
-            response_json["uploaded_document_id"],
+            response_json["uploaded_file_id"],
             response.context["uploaded_document"].id,
         )
         self.assertTrue(response_json["success"])
@@ -1273,11 +1629,11 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
 
         # Check JSON
         response_json = json.loads(response.content.decode())
-        self.assertIn("uploaded_document_id", response_json)
+        self.assertIn("uploaded_file_id", response_json)
         self.assertIn("form", response_json)
         self.assertIn("success", response_json)
         self.assertEqual(
-            response_json["uploaded_document_id"],
+            response_json["uploaded_file_id"],
             response.context["uploaded_document"].id,
         )
         self.assertTrue(response_json["success"])
@@ -1292,10 +1648,10 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
     def test_create_from_upload_invalid_post(self):
         """
         Posting an invalid form to the create_from_uploaded_document view throws a validation error
-        and leaves the UploadedDocument intact
+        and leaves the UploadedFile intact
         """
         doc_count_before = CustomDocumentWithAuthor.objects.count()
-        uploaded_doc_count_before = models.UploadedDocument.objects.count()
+        uploaded_doc_count_before = UploadedFile.objects.count()
 
         # Send request
         response = self.client.post(
@@ -1313,9 +1669,9 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
         )
 
         doc_count_after = CustomDocumentWithAuthor.objects.count()
-        uploaded_doc_count_after = models.UploadedDocument.objects.count()
+        uploaded_doc_count_after = UploadedFile.objects.count()
 
-        # no changes to document / UploadedDocument count
+        # no changes to document / UploadedFile count
         self.assertEqual(doc_count_after, doc_count_before)
         self.assertEqual(uploaded_doc_count_after, uploaded_doc_count_before)
 
@@ -1336,7 +1692,9 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
             "/admin/documents/multiple/delete_upload/%d/"
             % response.context["uploaded_document"].id,
         )
-        self.assertFormError(response, "form", "author", "This field is required.")
+        self.assertFormError(
+            response.context["form"], "author", "This field is required."
+        )
 
         # Check JSON
         response_json = json.loads(response.content.decode())
@@ -1349,7 +1707,7 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
         Posting a valid form to the create_from_uploaded_document view will create the document
         """
         doc_count_before = CustomDocumentWithAuthor.objects.count()
-        uploaded_doc_count_before = models.UploadedDocument.objects.count()
+        uploaded_doc_count_before = UploadedFile.objects.count()
 
         # Send request
         response = self.client.post(
@@ -1371,7 +1729,7 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
         )
 
         doc_count_after = CustomDocumentWithAuthor.objects.count()
-        uploaded_doc_count_after = models.UploadedDocument.objects.count()
+        uploaded_doc_count_after = UploadedFile.objects.count()
 
         # Check response
         self.assertEqual(response.status_code, 200)
@@ -1382,7 +1740,7 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
         self.assertIn("doc_id", response_json)
         self.assertTrue(response_json["success"])
 
-        # Document should have been created, UploadedDocument deleted
+        # Document should have been created, UploadedFile deleted
         self.assertEqual(doc_count_after, doc_count_before + 1)
         self.assertEqual(uploaded_doc_count_after, uploaded_doc_count_before - 1)
 
@@ -1396,7 +1754,7 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
 
     def test_delete_uploaded_document(self):
         """
-        This tests that a POST request to the delete view deletes the UploadedDocument
+        This tests that a POST request to the delete view deletes the UploadedFile
         """
         # Send request
         response = self.client.post(
@@ -1411,9 +1769,7 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
 
         # Make sure the document is deleted
         self.assertFalse(
-            models.UploadedDocument.objects.filter(
-                id=self.uploaded_document.id
-            ).exists()
+            UploadedFile.objects.filter(id=self.uploaded_document.id).exists()
         )
 
         # Check JSON
@@ -1421,7 +1777,7 @@ class TestMultipleCustomDocumentUploaderWithRequiredField(TestMultipleDocumentUp
         self.assertTrue(response_json["success"])
 
 
-class TestDocumentChooserView(TestCase, WagtailTestUtils):
+class TestDocumentChooserView(WagtailTestUtils, TestCase):
     def setUp(self):
         self.user = self.login()
 
@@ -1494,11 +1850,7 @@ class TestDocumentChooserView(TestCase, WagtailTestUtils):
         )
 
         # Check response
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtaildocs/chooser/results.html")
-
-        # Check that we got page one
-        self.assertEqual(response.context["results"].number, 1)
+        self.assertEqual(response.status_code, 404)
 
     def test_pagination_out_of_range(self):
         self.make_docs()
@@ -1508,14 +1860,7 @@ class TestDocumentChooserView(TestCase, WagtailTestUtils):
         )
 
         # Check response
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtaildocs/chooser/results.html")
-
-        # Check that we got the last page
-        self.assertEqual(
-            response.context["results"].number,
-            response.context["results"].paginator.num_pages,
-        )
+        self.assertEqual(response.status_code, 404)
 
     def test_construct_queryset_hook_browse(self):
         document = models.Document.objects.create(
@@ -1537,6 +1882,30 @@ class TestDocumentChooserView(TestCase, WagtailTestUtils):
             response = self.client.get(reverse("wagtaildocs_chooser:choose"))
         self.assertEqual(len(response.context["results"]), 1)
         self.assertEqual(response.context["results"][0], document)
+
+    def test_index_without_collections(self):
+        self.make_docs()
+
+        response = self.client.get(reverse("wagtaildocs:index"))
+        self.assertNotContains(response, "<th>Collection</th>", html=True)
+        self.assertNotContains(response, "<td>Root</td>", html=True)
+
+    def test_index_with_collection(self):
+        root_collection = Collection.get_first_root_node()
+        root_collection.add_child(name="Evil plans")
+
+        self.make_docs()
+
+        response = self.client.get(reverse("wagtaildocs:index"))
+        self.assertContains(response, "<th>Collection</th>", html=True)
+        self.assertContains(response, "<td>Root</td>", html=True)
+
+
+class TestDocumentChooserViewSearch(WagtailTestUtils, TransactionTestCase):
+    fixtures = ["test_empty.json"]
+
+    def setUp(self):
+        self.user = self.login()
 
     def test_construct_queryset_hook_search(self):
         document = models.Document.objects.create(
@@ -1561,25 +1930,8 @@ class TestDocumentChooserView(TestCase, WagtailTestUtils):
         self.assertEqual(len(response.context["results"]), 1)
         self.assertEqual(response.context["results"][0], document)
 
-    def test_index_without_collections(self):
-        self.make_docs()
 
-        response = self.client.get(reverse("wagtaildocs:index"))
-        self.assertNotContains(response, "<th>Collection</th>")
-        self.assertNotContains(response, "<td>Root</td>")
-
-    def test_index_with_collection(self):
-        root_collection = Collection.get_first_root_node()
-        root_collection.add_child(name="Evil plans")
-
-        self.make_docs()
-
-        response = self.client.get(reverse("wagtaildocs:index"))
-        self.assertContains(response, "<th>Collection</th>")
-        self.assertContains(response, "<td>Root</td>")
-
-
-class TestDocumentChooserChosenView(TestCase, WagtailTestUtils):
+class TestDocumentChooserChosenView(WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
@@ -1595,7 +1947,7 @@ class TestDocumentChooserChosenView(TestCase, WagtailTestUtils):
         self.assertEqual(response_json["step"], "chosen")
 
 
-class TestDocumentChooserUploadView(TestCase, WagtailTestUtils):
+class TestDocumentChooserUploadView(WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
 
@@ -1658,7 +2010,7 @@ class TestDocumentChooserUploadView(TestCase, WagtailTestUtils):
         )
 
 
-class TestDocumentChooserUploadViewWithLimitedPermissions(TestCase, WagtailTestUtils):
+class TestDocumentChooserUploadViewWithLimitedPermissions(WagtailTestUtils, TestCase):
     def setUp(self):
         add_doc_permission = Permission.objects.get(
             content_type__app_label="wagtaildocs", codename="add_document"
@@ -1731,98 +2083,168 @@ class TestDocumentChooserUploadViewWithLimitedPermissions(TestCase, WagtailTestU
         self.assertEqual(doc.get().collection, self.evil_plans_collection)
 
 
-class TestUsageCount(TestCase, WagtailTestUtils):
+class TestUsageCount(WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
         self.login()
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_unused_document_usage_count(self):
         doc = models.Document.objects.get(id=1)
         self.assertEqual(doc.get_usage().count(), 0)
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_used_document_usage_count(self):
-        doc = models.Document.objects.get(id=1)
-        page = EventPage.objects.get(id=4)
-        event_page_related_link = EventPageRelatedLink()
-        event_page_related_link.page = page
-        event_page_related_link.link_document = doc
-        event_page_related_link.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            doc = models.Document.objects.get(id=1)
+            page = EventPage.objects.get(id=4)
+            event_page_related_link = EventPageRelatedLink()
+            event_page_related_link.page = page
+            event_page_related_link.link_document = doc
+            event_page_related_link.save()
         self.assertEqual(doc.get_usage().count(), 1)
 
-    def test_usage_count_does_not_appear(self):
-        doc = models.Document.objects.get(id=1)
-        page = EventPage.objects.get(id=4)
-        event_page_related_link = EventPageRelatedLink()
-        event_page_related_link.page = page
-        event_page_related_link.link_document = doc
-        event_page_related_link.save()
-        response = self.client.get(reverse("wagtaildocs:edit", args=(1,)))
-        self.assertNotContains(response, "Used 1 time")
-
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_usage_count_appears(self):
-        doc = models.Document.objects.get(id=1)
-        page = EventPage.objects.get(id=4)
-        event_page_related_link = EventPageRelatedLink()
-        event_page_related_link.page = page
-        event_page_related_link.link_document = doc
-        event_page_related_link.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            doc = models.Document.objects.get(id=1)
+            page = EventPage.objects.get(id=4)
+            event_page_related_link = EventPageRelatedLink()
+            event_page_related_link.page = page
+            event_page_related_link.link_document = doc
+            event_page_related_link.save()
         response = self.client.get(reverse("wagtaildocs:edit", args=(1,)))
         self.assertContains(response, "Used 1 time")
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_usage_count_zero_appears(self):
         response = self.client.get(reverse("wagtaildocs:edit", args=(1,)))
         self.assertContains(response, "Used 0 times")
 
 
-class TestGetUsage(TestCase, WagtailTestUtils):
+class TestGetUsage(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     fixtures = ["test.json"]
 
     def setUp(self):
         self.login()
 
-    def test_document_get_usage_not_enabled(self):
-        doc = models.Document.objects.get(id=1)
-        self.assertEqual(list(doc.get_usage()), [])
-
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_unused_document_get_usage(self):
         doc = models.Document.objects.get(id=1)
         self.assertEqual(list(doc.get_usage()), [])
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_used_document_get_usage(self):
-        doc = models.Document.objects.get(id=1)
-        page = EventPage.objects.get(id=4)
-        event_page_related_link = EventPageRelatedLink()
-        event_page_related_link.page = page
-        event_page_related_link.link_document = doc
-        event_page_related_link.save()
-        self.assertTrue(issubclass(Page, type(doc.get_usage()[0])))
+        with self.captureOnCommitCallbacks(execute=True):
+            doc = models.Document.objects.get(id=1)
+            page = EventPage.objects.get(id=4)
+            event_page_related_link = EventPageRelatedLink()
+            event_page_related_link.page = page
+            event_page_related_link.link_document = doc
+            event_page_related_link.save()
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
+        self.assertIsInstance(doc.get_usage()[0], tuple)
+        self.assertIsInstance(doc.get_usage()[0][0], Page)
+        self.assertIsInstance(doc.get_usage()[0][1], list)
+        self.assertIsInstance(doc.get_usage()[0][1][0], ReferenceIndex)
+
     def test_usage_page(self):
-        doc = models.Document.objects.get(id=1)
-        page = EventPage.objects.get(id=4)
-        event_page_related_link = EventPageRelatedLink()
-        event_page_related_link.page = page
-        event_page_related_link.link_document = doc
-        event_page_related_link.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            doc = models.Document.objects.get(id=1)
+            page = EventPage.objects.get(id=4)
+            event_page_related_link = EventPageRelatedLink()
+            event_page_related_link.page = page
+            event_page_related_link.link_document = doc
+            event_page_related_link.save()
         response = self.client.get(reverse("wagtaildocs:document_usage", args=(1,)))
         self.assertContains(response, "Christmas")
+        self.assertContains(response, '<table class="listing">')
+        self.assertContains(response, "<td>Event page</td>", html=True)
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {
+                    "url": reverse("wagtaildocs:index"),
+                    "label": "Documents",
+                },
+                {
+                    "url": reverse("wagtaildocs:edit", args=(1,)),
+                    "label": "test document",
+                },
+                {
+                    "url": "",
+                    "label": "Usage",
+                    "sublabel": "test document",
+                },
+            ],
+            response.content,
+        )
 
-    @override_settings(WAGTAIL_USAGE_COUNT_ENABLED=True)
     def test_usage_page_no_usage(self):
         response = self.client.get(reverse("wagtaildocs:document_usage", args=(1,)))
-        # There's no usage so there should be no table rows
-        self.assertRegex(response.content.decode("utf-8"), r"<tbody>(\s|\n)*</tbody>")
+        # There's no usage so there should be no listing table
+        self.assertNotContains(response, '<table class="listing">')
+
+    def test_usage_page_with_only_change_permission(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            doc = models.Document.objects.get(id=1)
+            page = EventPage.objects.get(id=4)
+            event_page_related_link = EventPageRelatedLink()
+            event_page_related_link.page = page
+            event_page_related_link.link_document = doc
+            event_page_related_link.save()
+
+        # Create a user with change_document permission but not add_document
+        user = self.create_user(
+            username="changeonly", email="changeonly@example.com", password="password"
+        )
+        change_permission = Permission.objects.get(
+            content_type__app_label="wagtaildocs", codename="change_document"
+        )
+        admin_permission = Permission.objects.get(
+            content_type__app_label="wagtailadmin", codename="access_admin"
+        )
+        self.changers_group = Group.objects.create(name="Document changers")
+        GroupCollectionPermission.objects.create(
+            group=self.changers_group,
+            collection=Collection.get_first_root_node(),
+            permission=change_permission,
+        )
+        user.groups.add(self.changers_group)
+
+        user.user_permissions.add(admin_permission)
+        self.login(username="changeonly", password="password")
+
+        response = self.client.get(reverse("wagtaildocs:document_usage", args=[1]))
+
+        self.assertEqual(response.status_code, 200)
+        # User has no permission over the page linked to, so should not see its details
+        self.assertNotContains(response, "Christmas")
+        self.assertContains(response, "(Private page)")
+        self.assertContains(response, "<td>Event page</td>", html=True)
+
+    def test_usage_page_without_change_permission(self):
+        # Create a user with add_document permission but not change_document
+        user = self.create_user(
+            username="addonly", email="addonly@example.com", password="password"
+        )
+        add_permission = Permission.objects.get(
+            content_type__app_label="wagtaildocs", codename="add_document"
+        )
+        admin_permission = Permission.objects.get(
+            content_type__app_label="wagtailadmin", codename="access_admin"
+        )
+        self.adders_group = Group.objects.create(name="Document adders")
+        GroupCollectionPermission.objects.create(
+            group=self.adders_group,
+            collection=Collection.get_first_root_node(),
+            permission=add_permission,
+        )
+        user.groups.add(self.adders_group)
+
+        user.user_permissions.add(admin_permission)
+        self.login(username="addonly", password="password")
+
+        response = self.client.get(reverse("wagtaildocs:document_usage", args=[1]))
+
+        self.assertEqual(response.status_code, 302)
 
 
-class TestEditOnlyPermissions(TestCase, WagtailTestUtils):
+class TestEditOnlyPermissions(WagtailTestUtils, TestCase):
     def setUp(self):
         # Build a fake file
         fake_file = get_test_document_file()
@@ -1948,7 +2370,7 @@ class TestEditOnlyPermissions(TestCase, WagtailTestUtils):
             collection=self.evil_plans_collection,
             permission=add_permission,
         )
-        response = self.client.post(
+        self.client.post(
             reverse("wagtaildocs:edit", args=(self.document.id,)),
             {
                 "title": "Test document changed!",
@@ -1966,7 +2388,7 @@ class TestEditOnlyPermissions(TestCase, WagtailTestUtils):
             reverse("wagtaildocs:delete", args=(self.document.id,))
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtaildocs/documents/confirm_delete.html")
+        self.assertTemplateUsed(response, "wagtailadmin/generic/confirm_delete.html")
 
     def test_get_add_multiple(self):
         response = self.client.get(reverse("wagtaildocs:add_multiple"))

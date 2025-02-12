@@ -1,4 +1,5 @@
 import re
+from functools import lru_cache
 from html import unescape
 
 from django.core.validators import MaxLengthValidator
@@ -17,36 +18,48 @@ features = FeatureRegistry()
 # from wagtail.rich_text.rewriters along with the embed handlers / link handlers registered
 # with the feature registry
 
-FRONTEND_REWRITER = None
+
+@lru_cache(maxsize=None)
+def get_rewriter():
+    embed_rules = features.get_embed_types()
+    link_rules = features.get_link_types()
+    return MultiRuleRewriter(
+        [
+            LinkRewriter(
+                bulk_rules={
+                    linktype: handler.expand_db_attributes_many
+                    for linktype, handler in link_rules.items()
+                },
+                reference_extractors={
+                    linktype: handler.extract_references
+                    for linktype, handler in link_rules.items()
+                },
+            ),
+            EmbedRewriter(
+                bulk_rules={
+                    embedtype: handler.expand_db_attributes_many
+                    for embedtype, handler in embed_rules.items()
+                },
+                reference_extractors={
+                    embedtype: handler.extract_references
+                    for embedtype, handler in embed_rules.items()
+                },
+            ),
+        ]
+    )
 
 
 def expand_db_html(html):
     """
     Expand database-representation HTML into proper HTML usable on front-end templates
     """
-    global FRONTEND_REWRITER
+    rewriter = get_rewriter()
+    return rewriter(html)
 
-    if FRONTEND_REWRITER is None:
-        embed_rules = features.get_embed_types()
-        link_rules = features.get_link_types()
-        FRONTEND_REWRITER = MultiRuleRewriter(
-            [
-                LinkRewriter(
-                    {
-                        linktype: handler.expand_db_attributes
-                        for linktype, handler in link_rules.items()
-                    }
-                ),
-                EmbedRewriter(
-                    {
-                        embedtype: handler.expand_db_attributes
-                        for embedtype, handler in embed_rules.items()
-                    }
-                ),
-            ]
-        )
 
-    return FRONTEND_REWRITER(html)
+def extract_references_from_rich_text(html):
+    rewriter = get_rewriter()
+    yield from rewriter.extract_references(html)
 
 
 def get_text_for_indexing(richtext):
@@ -86,6 +99,11 @@ class RichText:
     def __bool__(self):
         return bool(self.source)
 
+    def __eq__(self, other):
+        if isinstance(other, RichText):
+            return self.source == other.source
+        return False
+
 
 class EntityHandler:
     """
@@ -112,6 +130,14 @@ class EntityHandler:
         model = cls.get_model()
         return model._default_manager.get(id=attrs["id"])
 
+    @classmethod
+    def get_many(cls, attrs_list: list[dict]) -> list[Model]:
+        model = cls.get_model()
+        instance_ids = [attrs.get("id") for attrs in attrs_list]
+        instances_by_id = model._default_manager.in_bulk(instance_ids)
+        instances_by_str_id = {str(k): v for k, v in instances_by_id.items()}
+        return [instances_by_str_id.get(str(id_)) for id_ in instance_ids]
+
     @staticmethod
     def expand_db_attributes(attrs: dict) -> str:
         """
@@ -119,6 +145,23 @@ class EntityHandler:
         stored in the database, returns the real HTML representation.
         """
         raise NotImplementedError
+
+    @classmethod
+    def expand_db_attributes_many(cls, attrs_list: list[dict]) -> list[str]:
+        """
+        Given a list of attribute dicts from a list of entity tags stored in
+        the database, return the real HTML representation of each one.
+        """
+        return list(map(cls.expand_db_attributes, attrs_list))
+
+    @classmethod
+    def extract_references(cls, attrs):
+        """
+        Yields a sequence of (content_type_id, object_id, model_path, content_path) tuples for the
+        database objects referenced by this entity, as per
+        wagtail.models.ReferenceIndex._extract_references_from_object
+        """
+        return []
 
 
 class LinkHandler(EntityHandler):

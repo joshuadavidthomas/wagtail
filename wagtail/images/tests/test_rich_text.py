@@ -1,20 +1,21 @@
-from bs4 import BeautifulSoup
 from django.test import TestCase
+from django.urls import reverse_lazy
 
+from wagtail.fields import RichTextField
 from wagtail.images.rich_text import ImageEmbedHandler as FrontendImageEmbedHandler
 from wagtail.images.rich_text.editor_html import (
     ImageEmbedHandler as EditorHtmlImageEmbedHandler,
 )
+from wagtail.rich_text.feature_registry import FeatureRegistry
 from wagtail.test.utils import WagtailTestUtils
 
 from .utils import Image, get_test_image_file
 
 
-class TestEditorHtmlImageEmbedHandler(TestCase, WagtailTestUtils):
+class TestEditorHtmlImageEmbedHandler(WagtailTestUtils, TestCase):
     def test_get_db_attributes(self):
-        soup = BeautifulSoup(
+        soup = self.get_soup(
             '<b data-id="test-id" data-format="test-format" data-alt="test-alt">foo</b>',
-            "html5lib",
         )
         tag = soup.b
         result = EditorHtmlImageEmbedHandler.get_db_attributes(tag)
@@ -89,7 +90,7 @@ class TestEditorHtmlImageEmbedHandler(TestCase, WagtailTestUtils):
         )
 
 
-class TestFrontendImageEmbedHandler(TestCase, WagtailTestUtils):
+class TestFrontendImageEmbedHandler(WagtailTestUtils, TestCase):
     def test_expand_db_attributes_for_frontend(self):
         Image.objects.create(id=1, title="Test", file=get_test_image_file())
         result = FrontendImageEmbedHandler.expand_db_attributes(
@@ -128,4 +129,28 @@ class TestFrontendImageEmbedHandler(TestCase, WagtailTestUtils):
         )
         self.assertTagInHTML(
             '<img class="richtext-image left" alt="" />', result, allow_extra_attrs=True
+        )
+
+
+class TestExtractReferencesWithImage(WagtailTestUtils, TestCase):
+    def test_extract_references(self):
+        self.assertEqual(
+            list(
+                RichTextField().extract_references(
+                    '<embed alt="Olivia Ava" embedtype="image" format="left" id="52"/>'
+                )
+            ),
+            [(Image, "52", "", "")],
+        )
+
+
+class TestEntityFeatureChooserUrls(TestCase):
+    def test_chooser_urls_exist(self):
+        features = FeatureRegistry()
+        image = features.get_editor_plugin("draftail", "image")
+
+        self.assertIsNotNone(image.data.get("chooserUrls"))
+        self.assertEqual(
+            image.data["chooserUrls"]["imageChooser"],
+            reverse_lazy("wagtailimages_chooser:choose"),
         )

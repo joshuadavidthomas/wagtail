@@ -4,16 +4,18 @@
 #
 # Translators:
 # Amir Mahmoodi, 2022
+# Amir Mahmoodi, 2022
+# Bardia, 2024
 # pyzenberg <pyzenberg@gmail.com>, 2017
 # pyzenberg <pyzenberg@gmail.com>, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-19 19:01+0000\n"
-"Last-Translator: Amir Mahmoodi, 2022\n"
-"Language-Team: Persian (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Bardia, 2024\n"
+"Language-Team: Persian (http://app.transifex.com/torchbox/wagtail/language/"
 "fa/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -24,6 +26,23 @@ msgstr ""
 msgid "Publish"
 msgstr "انتشار"
 
+msgid "Submit for moderation"
+msgstr "فرستادن برای نظارت"
+
+#, python-format
+msgid "Resubmit to %(task_name)s"
+msgstr "دوباره ثبت کردن در %(task_name)s"
+
+#, python-format
+msgid "Submit to %(workflow_name)s"
+msgstr "ثبت کردن در %(workflow_name)s"
+
+msgid "Restart workflow "
+msgstr "بازنشانی رویه"
+
+msgid "Cancel workflow "
+msgstr "لغو رویه کاری"
+
 msgid "Unpublish"
 msgstr "لغو انتشار"
 
@@ -32,6 +51,16 @@ msgstr "حذف"
 
 msgid "Save"
 msgstr "ذخیره"
+
+msgid "Locked"
+msgstr "قفل شده"
+
+#, python-format
+msgid "%(label)s and Publish"
+msgstr "%(label)s و انتشار"
+
+msgid "Delete "
+msgstr "حذف"
 
 #, python-format
 msgid "Used %(usage_count)s time"
@@ -68,106 +97,32 @@ msgstr "جایگزینی پیشنویس فعلی"
 msgid "Save draft"
 msgstr "ذخیره پیشنویس"
 
-#, python-format
-msgid "New  %(snippet_type_name)s"
-msgstr "%(snippet_type_name)s جدید"
-
-msgid "New"
-msgstr "جدید"
-
-msgid "Actions"
-msgstr "اعمال"
-
-msgid "Breadcrumb"
-msgstr "خرده نان"
-
-msgid "Snippets"
-msgstr "قطعه‌ها"
-
-#, python-format
-msgid ""
-"No %(snippet_type_name_plural)s have been created. Why not <a href="
-"\"%(wagtailsnippets_create_url)s\">add one</a>?"
-msgstr ""
-"هیچ %(snippet_type_name_plural)s ایجاد نشده. می‌توانید یکی را <a href="
-"\"%(wagtailsnippets_create_url)s\">ایجاد</a> نمایید."
-
-msgid "Live version"
-msgstr "نسخه منتشر شده"
-
-msgid "Current draft"
-msgstr "پیشنویس فعلی"
-
-msgid "Preview"
-msgstr "پیش‌نمایش"
-
-msgid "Edit"
-msgstr "ویرایش"
-
-msgid "Review this version"
-msgstr "بازنگری این نسخه"
-
-msgid "Compare with previous version"
-msgstr "مقایسه با نسخه‌ی قبلی"
-
-msgid "Compare with current version"
-msgstr "مقایسه با نسخه‌ی فعلی"
-
-msgid "Live"
-msgstr "منتشر شده"
-
-msgid "Draft"
-msgstr "پیشنویس"
-
-#, python-format
-msgid "Snippets %(snippet_type_name_plural)s"
-msgstr "قطعه های %(snippet_type_name_plural)s"
-
-#, python-format
-msgid "Add %(snippet_type_name)s"
-msgstr "افزودن %(snippet_type_name)s"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "استفاده از %(title)s"
-
-msgid "Usage of"
-msgstr "استفاده از"
-
-msgid "Title"
-msgstr "عنوان"
-
-msgid "Parent"
-msgstr "والد"
-
-msgid "Type"
-msgstr "نوع"
-
-msgid "Status"
-msgstr "وضعیت"
-
-msgid "Edit this page"
-msgstr "ویرایش این صفحه"
+msgid "Select all snippets in listing"
+msgstr "انتخاب تمامی اسنیپت های لیست"
 
 msgid "Choose"
 msgstr "انتخاب"
 
+msgid "Snippets"
+msgstr "قطعه‌ها"
+
 msgid "Name"
 msgstr "نام"
 
-msgid "The snippet could not be created due to errors."
-msgstr "به دلیل بروز خطا قطعه ای ساخته نشد."
+msgid "Instances"
+msgstr "موارد"
 
-msgid "The snippet could not be saved due to errors."
-msgstr "قطعه به دلیل بروز خطا ذخیره نشد."
-
-msgid "Date"
-msgstr "تاریخ"
+msgid "Home"
+msgstr "خانه"
 
 #, python-format
-msgid "Edit '%(title)s'"
-msgstr "ویرایش %(title)s"
+msgid "Choose %(object)s"
+msgstr "انتخاب %(object)s"
 
 #, python-format
-msgid "Choose %s"
-msgstr "انتخاب %s"
+msgid "Choose another %(object)s"
+msgstr "یک %(object)s دیگر انتخاب کنید"
+
+#, python-format
+msgid "Edit this %(object)s"
+msgstr "ویرایش این %(object)s"

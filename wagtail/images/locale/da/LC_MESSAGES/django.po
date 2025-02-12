@@ -7,10 +7,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:05+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Danish (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Danish (http://app.transifex.com/torchbox/wagtail/language/"
 "da/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -51,41 +51,20 @@ msgstr "Ja, slet"
 msgid "New"
 msgstr "Ny"
 
-msgid "Save"
-msgstr "Gem"
+msgid "Uploading…"
+msgstr "Uploading..."
 
-msgid "Editing"
-msgstr "Redigerer"
-
-msgid "URL"
-msgstr "URL"
+msgid "Upload"
+msgstr "Upload"
 
 msgid "Preview"
 msgstr "Forhåndsvis"
 
-msgid "Title"
-msgstr "Titel"
-
-msgid "Parent"
-msgstr "Forældre"
-
-msgid "Type"
-msgstr "Type"
-
-msgid "Status"
-msgstr "Status"
-
-msgid "Edit this page"
-msgstr "Rediger denne side"
+msgid "URL"
+msgstr "URL"
 
 msgid "Server Error"
 msgstr "Server Fejl"
 
 msgid "Delete"
 msgstr "Slet"
-
-msgid "Upload"
-msgstr "Upload"
-
-msgid "Uploading…"
-msgstr "Uploading..."

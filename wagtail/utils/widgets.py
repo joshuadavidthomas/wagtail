@@ -1,8 +1,18 @@
+from warnings import warn
+
 from django.forms.widgets import Widget
 from django.utils.safestring import mark_safe
 
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
+
 
 class WidgetWithScript(Widget):
+    warn(
+        "The usage of `WidgetWithScript` hook is deprecated. Use external scripts instead.",
+        category=RemovedInWagtail70Warning,
+        stacklevel=3,
+    )
+
     def render_html(self, name, value, attrs):
         """Render the HTML (non-JS) portion of the field markup"""
         return super().render(name, value, attrs)
@@ -29,7 +39,7 @@ class WidgetWithScript(Widget):
         widget_html = self.render_html(name, value_data, attrs)
 
         js = self.render_js_init(id_, name, value_data)
-        out = "{0}<script>{1}</script>".format(widget_html, js)
+        out = f"{widget_html}<script>{js}</script>"
         return mark_safe(out)
 
     def render_js_init(self, id_, name, value):

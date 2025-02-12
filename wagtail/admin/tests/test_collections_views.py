@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
@@ -5,8 +7,13 @@ from django.urls import reverse
 
 from wagtail.admin.admin_url_finder import AdminURLFinder
 from wagtail.documents.models import Document
-from wagtail.models import Collection, GroupCollectionPermission
+from wagtail.models import (
+    Collection,
+    CollectionViewRestriction,
+    GroupCollectionPermission,
+)
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
 
 
 class CollectionInstanceTestUtils:
@@ -42,7 +49,9 @@ class CollectionInstanceTestUtils:
         self.marketing_user.groups.add(self.marketing_group)
 
 
-class TestCollectionsIndexViewAsSuperuser(TestCase, WagtailTestUtils):
+class TestCollectionsIndexViewAsSuperuser(
+    AdminTemplateTestUtils, WagtailTestUtils, TestCase
+):
     def setUp(self):
         self.login()
 
@@ -52,7 +61,7 @@ class TestCollectionsIndexViewAsSuperuser(TestCase, WagtailTestUtils):
     def test_simple(self):
         response = self.get()
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtailadmin/collections/index.html")
+        self.assertTemplateUsed(response, "wagtailadmin/generic/index.html")
 
         # Initially there should be no collections listed
         # (Root should not be shown)
@@ -64,9 +73,12 @@ class TestCollectionsIndexViewAsSuperuser(TestCase, WagtailTestUtils):
         # Now the listing should contain our collection
         response = self.get()
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "wagtailadmin/collections/index.html")
+        self.assertTemplateUsed(response, "wagtailadmin/generic/index.html")
         self.assertNotContains(response, "No collections have been created.")
         self.assertContains(response, "Holiday snaps")
+        self.assertBreadcrumbsItemsRendered(
+            [{"url": "", "label": "Collections"}], response.content
+        )
 
     def test_ordering(self):
         root_collection = Collection.get_first_root_node()
@@ -101,7 +113,7 @@ class TestCollectionsIndexViewAsSuperuser(TestCase, WagtailTestUtils):
         )
 
 
-class TestCollectionsIndexView(CollectionInstanceTestUtils, TestCase, WagtailTestUtils):
+class TestCollectionsIndexView(CollectionInstanceTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         super().setUp()
         self.login(self.marketing_user, password="password")
@@ -186,7 +198,7 @@ class TestCollectionsIndexView(CollectionInstanceTestUtils, TestCase, WagtailTes
         self.assertContains(response, "Add a collection")
 
 
-class TestAddCollectionAsSuperuser(TestCase, WagtailTestUtils):
+class TestAddCollectionAsSuperuser(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.login()
         self.root_collection = Collection.get_first_root_node()
@@ -201,6 +213,13 @@ class TestAddCollectionAsSuperuser(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.root_collection.name)
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"label": "Collections", "url": "/admin/collections/"},
+                {"label": "New: Collection", "url": ""},
+            ],
+            response.content,
+        )
 
     def test_post(self):
         response = self.post(
@@ -221,7 +240,7 @@ class TestAddCollectionAsSuperuser(TestCase, WagtailTestUtils):
         )
 
 
-class TestAddCollection(CollectionInstanceTestUtils, TestCase, WagtailTestUtils):
+class TestAddCollection(CollectionInstanceTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         super().setUp()
         self.login(self.marketing_user, password="password")
@@ -288,7 +307,7 @@ class TestAddCollection(CollectionInstanceTestUtils, TestCase, WagtailTestUtils)
         )
 
 
-class TestEditCollectionAsSuperuser(TestCase, WagtailTestUtils):
+class TestEditCollectionAsSuperuser(AdminTemplateTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         self.user = self.login()
         self.root_collection = Collection.get_first_root_node()
@@ -318,7 +337,18 @@ class TestEditCollectionAsSuperuser(TestCase, WagtailTestUtils):
     def test_get(self):
         response = self.get()
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Delete collection")
+        delete_url = reverse(
+            "wagtailadmin_collections:delete",
+            args=(self.collection.id,),
+        )
+        self.assertContains(response, delete_url)
+        self.assertBreadcrumbsItemsRendered(
+            [
+                {"url": "/admin/collections/", "label": "Collections"},
+                {"url": "", "label": str(self.collection)},
+            ],
+            response.content,
+        )
 
     def test_cannot_edit_root_collection(self):
         response = self.get(collection_id=self.root_collection.id)
@@ -361,7 +391,7 @@ class TestEditCollectionAsSuperuser(TestCase, WagtailTestUtils):
         )
 
 
-class TestEditCollection(CollectionInstanceTestUtils, TestCase, WagtailTestUtils):
+class TestEditCollection(CollectionInstanceTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         super().setUp()
         # Grant the marketing group permission to edit their collection
@@ -466,10 +496,28 @@ class TestEditCollection(CollectionInstanceTestUtils, TestCase, WagtailTestUtils
         )
 
     def test_marketing_user_cannot_move_collection_permissions_are_assigned_to(self):
+        # Grant the marketing group permission to another collection so there is a valid destination
+        GroupCollectionPermission.objects.create(
+            group=self.marketing_group,
+            collection=self.finance_collection,
+            permission=self.add_permission,
+        )
         response = self.get(collection_id=self.marketing_collection.id)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(list(response.context["form"].fields.keys()), ["name"])
-        self.assertNotContains(response, "Delete collection")
+        delete_url = reverse(
+            "wagtailadmin_collections:delete",
+            args=(self.marketing_collection.id,),
+        )
+        self.assertNotContains(response, delete_url)
+
+    def test_cannot_move_collection_permissions_are_assigned_to_with_minimal_permission(
+        self,
+    ):
+        # Remove the "add" permission so the user only has "change" permission
+        self.users_add_permission.delete()
+        # Do the same test as above
+        self.test_marketing_user_cannot_move_collection_permissions_are_assigned_to()
 
     def test_marketing_user_cannot_move_collection_permissions_are_assigned_to_post(
         self,
@@ -503,21 +551,48 @@ class TestEditCollection(CollectionInstanceTestUtils, TestCase, WagtailTestUtils
             self.root_collection,
         )
 
+    def test_cannot_move_collection_permissions_are_assigned_to_with_minimal_permission_post(
+        self,
+    ):
+        # Remove the "add" permission so the user only has "change" permission
+        self.users_add_permission.delete()
+        # Do the same test as above
+        self.test_marketing_user_cannot_move_collection_permissions_are_assigned_to_post()
+
     def test_page_shows_delete_link_only_if_delete_permitted(self):
+        delete_url = reverse(
+            "wagtailadmin_collections:delete",
+            args=(self.marketing_sub_collection.id,),
+        )
         # Retrieve edit form and check fields
         response = self.get(collection_id=self.marketing_sub_collection.id)
-        self.assertNotContains(response, "Delete collection")
-        # Add delete permission to parent collection an try again
+        self.assertNotContains(response, delete_url)
+
+        # Add delete permission to a different collection and try again,
+        # ensure that it checks against the tree structure, and not just a
+        # "delete collection" permission on any collection
+        # See https://github.com/wagtail/wagtail/issues/10084
+        GroupCollectionPermission.objects.create(
+            group=self.marketing_group,
+            collection=self.marketing_sub_collection_2,
+            permission=self.delete_permission,
+        )
+        response = self.get(collection_id=self.marketing_sub_collection.id)
+        self.assertNotContains(response, delete_url)
+
+        # Add delete permission to parent collection and try again
         GroupCollectionPermission.objects.create(
             group=self.marketing_group,
             collection=self.marketing_collection,
             permission=self.delete_permission,
         )
         response = self.get(collection_id=self.marketing_sub_collection.id)
-        self.assertContains(response, "Delete collection")
+        self.assertContains(response, delete_url)
 
 
-class TestDeleteCollectionAsSuperuser(TestCase, WagtailTestUtils):
+class TestDeleteCollectionAsSuperuser(
+    AdminTemplateTestUtils, WagtailTestUtils, TestCase
+):
     def setUp(self):
         self.login()
         self.root_collection = Collection.get_first_root_node()
@@ -545,6 +620,7 @@ class TestDeleteCollectionAsSuperuser(TestCase, WagtailTestUtils):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "wagtailadmin/generic/confirm_delete.html")
+        self.assertBreadcrumbsNotRendered(response.content)
 
     def test_cannot_delete_root_collection(self):
         response = self.get(collection_id=self.root_collection.id)
@@ -578,6 +654,12 @@ class TestDeleteCollectionAsSuperuser(TestCase, WagtailTestUtils):
         # Should redirect back to index
         self.assertRedirects(response, reverse("wagtailadmin_collections:index"))
 
+        # Check the message content
+        self.assertEqual(
+            response.context["message"],
+            "Collection 'Holiday snaps' deleted.",
+        )
+
         # Check that the collection was deleted
         with self.assertRaises(Collection.DoesNotExist):
             Collection.objects.get(id=self.collection.id)
@@ -610,7 +692,7 @@ class TestDeleteCollectionAsSuperuser(TestCase, WagtailTestUtils):
         self.assertTrue(Collection.objects.get(id=self.root_collection.id))
 
 
-class TestDeleteCollection(CollectionInstanceTestUtils, TestCase, WagtailTestUtils):
+class TestDeleteCollection(CollectionInstanceTestUtils, WagtailTestUtils, TestCase):
     def setUp(self):
         super().setUp()
         # Grant the marketing group permission to delete
@@ -686,3 +768,45 @@ class TestDeleteCollection(CollectionInstanceTestUtils, TestCase, WagtailTestUti
 
         # Check that the collection was not deleted
         self.assertTrue(Collection.objects.get(id=self.marketing_sub_collection.id))
+
+
+class TestSetCollectionPrivacy(CollectionInstanceTestUtils, WagtailTestUtils, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.login()
+
+    def get(self, collection_id, params={}):
+        return self.client.get(
+            reverse("wagtailadmin_collections:set_privacy", args=(collection_id,)),
+            params,
+        )
+
+    def test_get_private_child(self):
+        CollectionViewRestriction.objects.create(
+            collection=self.root_collection,
+            restriction_type="password",
+            password="password123",
+        )
+        response = self.get(self.marketing_sub_collection.pk)
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response, "wagtailadmin/collection_privacy/ancestor_privacy.html"
+        )
+        self.assertContains(
+            response,
+            "This collection has been made private by a parent collection.",
+        )
+
+        # Should render without any heading, as the dialog already has a heading
+        soup = self.get_soup(json.loads(response.content)["html"])
+        self.assertIsNone(soup.select_one("header"))
+        self.assertIsNone(soup.select_one("h1"))
+
+        # Should link to the edit page for the collection with the restriction
+        link = soup.select_one("a")
+        parent_edit_url = reverse(
+            "wagtailadmin_collections:edit",
+            args=(self.root_collection.pk,),
+        )
+        self.assertEqual(link.get("href"), parent_edit_url)

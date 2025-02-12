@@ -1,7 +1,13 @@
+import re
 import warnings
 from collections import OrderedDict
 
-from django.db import DEFAULT_DB_ALIAS, NotSupportedError, connections, transaction
+from django.db import (
+    NotSupportedError,
+    connections,
+    router,
+    transaction,
+)
 from django.db.models import Case, When
 from django.db.models.aggregates import Avg, Count
 from django.db.models.constants import LOOKUP_SEP
@@ -107,7 +113,7 @@ class ObjectIndexer:
                     isinstance(current_field, SearchField)
                     and current_field.field_name == "title"
                 ):
-                    texts.append((value))
+                    texts.append(value)
 
         return " ".join(texts)
 
@@ -123,7 +129,7 @@ class ObjectIndexer:
                     isinstance(current_field, SearchField)
                     and not current_field.field_name == "title"
                 ):
-                    texts.append((value))
+                    texts.append(value)
 
         return " ".join(texts)
 
@@ -136,7 +142,7 @@ class ObjectIndexer:
         for field in self.search_fields:
             for current_field, value in self.prepare_field(self.obj, field):
                 if isinstance(current_field, AutocompleteField):
-                    texts.append((value))
+                    texts.append(value)
 
         return " ".join(texts)
 
@@ -151,17 +157,22 @@ class ObjectIndexer:
 
 
 class Index:
-    def __init__(self, backend, db_alias=None):
+    def __init__(self, backend):
         self.backend = backend
         self.name = self.backend.index_name
-        self.db_alias = DEFAULT_DB_ALIAS if db_alias is None else db_alias
-        self.connection = connections[self.db_alias]
-        if self.connection.vendor != "mysql":
+
+        self.read_connection = connections[router.db_for_read(IndexEntry)]
+        self.write_connection = connections[router.db_for_write(IndexEntry)]
+
+        if (
+            self.read_connection.vendor != "mysql"
+            or self.write_connection.vendor != "mysql"
+        ):
             raise NotSupportedError(
-                "You must select a MySQL database " "to use MySQL search."
+                "You must select a MySQL database to use MySQL search."
             )
 
-        self.entries = IndexEntry._default_manager.using(self.db_alias)
+        self.entries = IndexEntry._default_manager.all()
 
     def add_model(self, model):
         pass
@@ -201,11 +212,9 @@ class Index:
         ).update(title_norm=lavg / F("title_length"))
 
     def delete_stale_model_entries(self, model):
-        existing_pks = (
-            model._default_manager.using(self.db_alias)
-            .annotate(object_id=Cast("pk", TextField()))
-            .values("object_id")
-        )
+        existing_pks = model._default_manager.annotate(
+            object_id=Cast("pk", TextField())
+        ).values("object_id")
         content_types_pks = get_descendants_content_types_pks(model)
         stale_entries = self.entries.filter(
             content_type_id__in=content_types_pks
@@ -276,16 +285,17 @@ class Index:
             update_method(content_type_pk, indexers)
 
     def delete_item(self, item):
-        item.index_entries.using(self.db_alias).delete()
+        item.index_entries.all()._raw_delete(using=self.write_connection.alias)
 
     def __str__(self):
-        return self.nam
+        return self.name
 
 
 class MySQLSearchQueryCompiler(BaseSearchQueryCompiler):
     DEFAULT_OPERATOR = "and"
     LAST_TERM_IS_PREFIX = False
     TARGET_SEARCH_FIELD_TYPE = SearchField
+    FTS_TABLE_FIELDS = ["title", "body"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -335,9 +345,12 @@ class MySQLSearchQueryCompiler(BaseSearchQueryCompiler):
 
     def build_search_query_content(self, query, invert=False):
         if isinstance(query, PlainText):
-            terms = query.query_string.split()
+            # For Boolean full text search queries in MySQL,
+            # non-alphanumeric characters act as separators
+            terms = [term for term in re.split(r"\W+", query.query_string) if term]
+
             if not terms:
-                return None
+                return SearchQuery("")
 
             last_term = terms.pop()
 
@@ -451,7 +464,7 @@ class MySQLSearchQueryCompiler(BaseSearchQueryCompiler):
 
         search_query = self.build_search_query(query)
         match_expression = MatchExpression(
-            search_query, columns=["title", "body"], output_field=BooleanField()
+            search_query, columns=self.FTS_TABLE_FIELDS, output_field=BooleanField()
         )  # For example: MATCH (`title`, `body`) AGAINST ('+query' IN BOOLEAN MODE)
 
         # In Django 4.0 the above match expression would produce this SQL WHERE clause:
@@ -490,9 +503,7 @@ class MySQLSearchQueryCompiler(BaseSearchQueryCompiler):
         )
         if not negated:
             index_entries = index_entries.filter(match_expression)
-            if (
-                self.order_by_relevance
-            ):  # Only applies to the case where the outermost query is not a Not(), because if it is, the relevance score is always 0 (anything that matches is excluded from the results).
+            if self.order_by_relevance:  # Only applies to the case where the outermost query is not a Not(), because if it is, the relevance score is always 0 (anything that matches is excluded from the results).
                 index_entries = index_entries.order_by(score_expression.desc())
         else:
             index_entries = index_entries.exclude(match_expression)
@@ -530,6 +541,7 @@ class MySQLSearchQueryCompiler(BaseSearchQueryCompiler):
 class MySQLAutocompleteQueryCompiler(MySQLSearchQueryCompiler):
     LAST_TERM_IS_PREFIX = True
     TARGET_SEARCH_FIELD_TYPE = AutocompleteField
+    FTS_TABLE_FIELDS = ["autocomplete"]
 
     def get_config(self, backend):
         return backend.autocomplete_config
@@ -610,7 +622,7 @@ class MySQLSearchRebuilder:
 class MySQLSearchAtomicRebuilder(MySQLSearchRebuilder):
     def __init__(self, index):
         super().__init__(index)
-        self.transaction = transaction.atomic(using=index.db_alias)
+        self.transaction = transaction.atomic(using=index.write_connection.alias)
         self.transaction_opened = False
 
     def start(self):
@@ -634,6 +646,7 @@ class MySQLSearchAtomicRebuilder(MySQLSearchRebuilder):
 class MySQLSearchBackend(BaseSearchBackend):
     query_compiler_class = MySQLSearchQueryCompiler
     autocomplete_query_compiler_class = MySQLAutocompleteQueryCompiler
+
     results_class = MySQLSearchResults
     rebuilder_class = MySQLSearchRebuilder
     atomic_rebuilder_class = MySQLSearchAtomicRebuilder
@@ -641,16 +654,19 @@ class MySQLSearchBackend(BaseSearchBackend):
     def __init__(self, params):
         super().__init__(params)
         self.index_name = params.get("INDEX", "default")
-        self.config = params.get("SEARCH_CONFIG")
+
+        # MySQL backend currently has no config options
+        self.config = None
+        self.autocomplete_config = None
 
         if params.get("ATOMIC_REBUILD", False):
             self.rebuilder_class = self.atomic_rebuilder_class
 
-    def get_index_for_model(self, model, db_alias=None):
-        return Index(self, db_alias)
+    def get_index_for_model(self, model):
+        return Index(self)
 
     def get_index_for_object(self, obj):
-        return self.get_index_for_model(obj._meta.model, obj._state.db)
+        return self.get_index_for_model(obj._meta.model)
 
     def reset_index(self):
         for connection in [
@@ -658,7 +674,7 @@ class MySQLSearchBackend(BaseSearchBackend):
             for connection in connections.all()
             if connection.vendor == "mysql"
         ]:
-            IndexEntry._default_manager.using(connection.alias).delete()
+            IndexEntry._default_manager.all()._raw_delete(using=connection.alias)
 
     def add_type(self, model):
         pass  # Not needed.

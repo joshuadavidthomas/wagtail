@@ -4,19 +4,22 @@
 #
 # Translators:
 # Anastasiia La, 2021
+# Anastasiia La, 2021
+# d55ee35323c0c760f088259cd23b1b6d_9e8a7d1 <5459f3ae99ecdd5ed0be0220acd46004_1019581>, 2021
 # Mykola Zamkovoi <nickzam@gmail.com>, 2014
 # Sergiy Shkodenko <shkodenkosergiy@gmail.com>, 2018
-# Vladyslav Herasymenko <drimacus182@gmail.com>, 2022
+# Vladyslav Herasymenko <drimacus182@gmail.com>, 2022-2024
 # d55ee35323c0c760f088259cd23b1b6d_9e8a7d1 <5459f3ae99ecdd5ed0be0220acd46004_1019581>, 2021
+# Zoriana Zaiats, 2018
 # Zoriana Zaiats, 2018
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
-"Last-Translator: Vladyslav Herasymenko <drimacus182@gmail.com>, 2022\n"
-"Language-Team: Ukrainian (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Vladyslav Herasymenko <drimacus182@gmail.com>, 2022-2024\n"
+"Language-Team: Ukrainian (http://app.transifex.com/torchbox/wagtail/language/"
 "uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -37,12 +40,12 @@ msgid "Add Comment"
 msgstr "Додати коментар"
 
 #, python-format
-msgid "The minimum number of items is %d"
-msgstr "Мінімальна кількість елементів: %d"
+msgid "The minimum number of items is %(min_num)d"
+msgstr "Мінімальна кількість елементів: %(min_num)d"
 
 #, python-format
-msgid "The maximum number of items is %d"
-msgstr "Максимальна кількість елементів: %d"
+msgid "The maximum number of items is %(max_num)d"
+msgstr "Максимальна кількість елементів: %(max_num)d"
 
 msgid "Move up"
 msgstr "Перемістити нагору"
@@ -50,8 +53,11 @@ msgstr "Перемістити нагору"
 msgid "Move down"
 msgstr "Перемістити вниз"
 
+msgid "Drag"
+msgstr "Перетягнути"
+
 msgid "Duplicate"
-msgstr "Дублікат"
+msgstr "Дублювати"
 
 msgid "Delete"
 msgstr "Видалити"
@@ -87,29 +93,42 @@ msgstr "Пароль. який ви ввели, не є коректним. Бу
 msgid "Comment"
 msgstr "Коментар"
 
-msgid "<b>Page '{}' was locked</b> by <b>you</b> on <b>{}</b>."
-msgstr "<b>Сторінка '{}' заблокована</b> <b>вами</b>  на <b>{}</b>."
+msgid "Locked"
+msgstr "Заблоковано"
 
-msgid "<b>Page '{}' is locked</b> by <b>you</b>."
-msgstr "<b>Сторінка '{}' заблокована </b> <b>вами</b>."
+#, python-format
+msgid "No one can make changes while the %(model_name)s is locked"
+msgstr "Ніхто не може вносити зміни поки %(model_name)s заблоковано"
 
-msgid "<b>Page '{}' was locked</b> by <b>{}</b> on <b>{}</b>."
-msgstr "<b>Сторінка '{}' заблокована </b> користувачем <b>{}</b> на <b>{}</b>."
+msgid "Locked by you"
+msgstr "Заблоковано вами"
 
-msgid "<b>Page '{}' is locked</b>."
-msgstr "<b>Сторінка '{}' заблокована</b>."
+msgid "Locked by another user"
+msgstr "Заблоковано іншим користувачем"
 
-msgid "This page is currently awaiting moderation."
-msgstr "Ця сторінка очікує на модерацію."
+#, python-format
+msgid "Only you can make changes while the %(model_name)s is locked"
+msgstr "Тільки ви можете вносити зміни поки %(model_name)s заблоковано"
 
-msgid "This page is awaiting <b>'{}'</b> in the <b>'{}'</b> workflow."
-msgstr "Ця сторінка очікує <b>'{}'</b> в робочому процесі <b>'{}'</b>."
+#, python-format
+msgid "Only %(user)s can make changes while the %(model_name)s is locked"
+msgstr "Тільки %(user)s може вносити зміни поки %(model_name)s заблоковано"
 
-msgid "Only reviewers for this task can edit the page."
-msgstr "Лише рецензенти цього завдання можуть редагувати сторінку. "
+msgid "Unlocked"
+msgstr "Розблоковано"
 
-msgid "Page '{}' is locked and has been scheduled to go live at {}"
-msgstr "Сторінка '{}' заблокована і запланована до публікації о {}"
+#, python-brace-format
+msgid ""
+"{model_name} '{title}' is locked and has been scheduled to go live at "
+"{datetime}"
+msgstr ""
+"{model_name} '{title}' заблокована і запланована до публікації {datetime}"
+
+msgid "Locked by schedule"
+msgstr "Заблоковано через графік публікації"
+
+msgid "Currently locked and will go live on the scheduled date"
+msgstr "Зараз заблоковано і буде опубліковано у визначений час"
 
 msgid "latest revision"
 msgstr "остання ревізія"
@@ -138,8 +157,14 @@ msgstr "буде доступним до дати/часу"
 msgid "expired"
 msgstr "більше не доступне"
 
+msgid "scheduled"
+msgstr "заплановано"
+
 msgid "draft"
 msgstr "чернетка"
+
+msgid "live + scheduled"
+msgstr "наживо + заплановано"
 
 msgid "live + draft"
 msgstr "наживо + чернетка"
@@ -156,11 +181,50 @@ msgstr "заблоковано в"
 msgid "locked by"
 msgstr "заблокований"
 
+msgid "in moderation"
+msgstr "на модерації"
+
+msgid "live + in moderation"
+msgstr "наживо + на модерації"
+
+msgid "Add/edit pages you own"
+msgstr "Додавати/редагувати сторінки, які належать вам"
+
+msgid "Bulk delete"
+msgstr "Масове видалення"
+
+msgid "Delete pages with children"
+msgstr "Видаляти сторінки разом з дочірніми"
+
+msgid "Edit"
+msgstr "Редагувати"
+
+msgid "Edit any page"
+msgstr "Редагувати будь-яку сторінку"
+
+msgid "Lock"
+msgstr "Блокувати"
+
+msgid "Lock/unlock pages you've locked"
+msgstr "Заблокувати/розблокувати сторінки, які ви заблокували"
+
+msgid "Publish"
+msgstr "Опублікувати"
+
+msgid "Publish any page"
+msgstr "Публікувати будь-яку сторінку"
+
+msgid "Unlock"
+msgstr "Розблокувати"
+
+msgid "Unlock any page"
+msgstr "Розблокувати будь-яку сторінку"
+
 msgid "title"
 msgstr "заголовок"
 
 msgid "The page title as you'd like it to be seen by the public"
-msgstr "Заголовок сторінки, який міг би зацікавити публіку"
+msgstr "Заголовок сторінки, який будуть бачити читачі"
 
 msgid "slug"
 msgstr "коротка назва для URL"
@@ -182,7 +246,7 @@ msgid "owner"
 msgstr "власник"
 
 msgid "title tag"
-msgstr "тег заголовку"
+msgstr "тег title"
 
 msgid ""
 "The name of the page displayed on search engine results as the clickable "
@@ -197,7 +261,7 @@ msgstr "показати у меню"
 msgid ""
 "Whether a link to this page will appear in automatically generated menus"
 msgstr ""
-"Чи буде посилання на цю сторінку з'являтися в автоматично сгенерованих меню"
+"Чи буде посилання на цю сторінку з'являтися в автоматично згенерованих меню"
 
 msgid "meta description"
 msgstr "мета опис"
@@ -212,20 +276,11 @@ msgstr ""
 msgid "latest revision created at"
 msgstr "останню ревізію створено о"
 
-msgid "This slug is already in use"
-msgstr "Ця коротка назва вже використовується"
+msgid "For search engines"
+msgstr "Для пошукових систем"
 
-msgid "scheduled"
-msgstr "заплановано"
-
-msgid "in moderation"
-msgstr "на модерації"
-
-msgid "live + scheduled"
-msgstr "наживо + заплановано"
-
-msgid "live + in moderation"
-msgstr "наживо + на модерації"
+msgid "For site menus"
+msgstr "Для меню сайту"
 
 msgid "page"
 msgstr "сторінка"
@@ -235,9 +290,6 @@ msgstr "сторінки"
 
 msgid "object id"
 msgstr "ID об'єкту"
-
-msgid "submitted for moderation"
-msgstr "надіслано на модерацію"
 
 msgid "created at"
 msgstr "створено о"
@@ -257,44 +309,11 @@ msgstr "ревізія"
 msgid "revisions"
 msgstr "ревізії"
 
-msgid "Add/edit pages you own"
-msgstr "Додавати/редагувати сторінки, які належать вам"
-
-msgid "Edit"
-msgstr "Редагувати"
-
-msgid "Edit any page"
-msgstr "Редагувати будь-яку сторінку"
-
-msgid "Publish"
-msgstr "Опублікувати"
-
-msgid "Publish any page"
-msgstr "Публікувати будь-яку сторінку"
-
-msgid "Bulk delete"
-msgstr "Масове видалення"
-
-msgid "Delete pages with children"
-msgstr "Видаляти сторінки разом з дочірніми"
-
-msgid "Lock"
-msgstr "Блокувати"
-
-msgid "Lock/unlock pages you've locked"
-msgstr "Заблокувати/розблокувати сторінки, які ви заблокували"
-
-msgid "Unlock"
-msgstr "Розблокувати"
-
-msgid "Unlock any page"
-msgstr "Розблокувати будь-яку сторінку"
-
 msgid "group"
 msgstr "група"
 
-msgid "permission type"
-msgstr "тип дозволу"
+msgid "permission"
+msgstr "дозвіл"
 
 msgid "group page permission"
 msgstr "дозвіл для групи сторінок "
@@ -345,25 +364,11 @@ msgstr ""
 msgid "tasks"
 msgstr "завдання"
 
-msgid ""
-"Active workflows can be added to pages. Deactivating a workflow does not "
-"remove it from existing pages."
-msgstr ""
-"Активні робочі процеси можуть бути додані до сторінок. Деактивация робочого "
-"процесу не видаляє її з існуючих сторінок. "
-
 msgid "workflows"
 msgstr "робочі процеси"
 
 msgid "groups"
 msgstr "групи"
-
-msgid ""
-"Pages at this step in a workflow will be moderated or approved by these "
-"groups of users"
-msgstr ""
-"Сторінки на цьому кроці робочого процесу будуть промодеровані і схвалені "
-"цією групою користувачів "
 
 msgid "Request changes"
 msgstr "Запит на зміни"
@@ -404,16 +409,6 @@ msgstr "за вимогою"
 msgid "current task state"
 msgstr "поточний стан завдання"
 
-msgid ""
-"There may only be one in progress or needs changes workflow state per page."
-msgstr ""
-"Можливий тільки один прогрес виконання або потрібно змінити стан робочого "
-"процесу для кожної сторінки. "
-
-#, python-brace-format
-msgid "Workflow '{0}' on Page '{1}': {2}"
-msgstr "Робочий процес '{0}' на сторінці '{1}': {2}"
-
 msgid "Not started"
 msgstr "Не запущено"
 
@@ -432,9 +427,6 @@ msgstr "Пропущено"
 msgid "workflow state"
 msgstr "стан робочого процесу"
 
-msgid "page revision"
-msgstr "ревізія сторінки"
-
 msgid "started at"
 msgstr "запущено о"
 
@@ -443,10 +435,6 @@ msgstr "завершено о"
 
 msgid "finished by"
 msgstr "завершено"
-
-#, python-brace-format
-msgid "Task '{0}' on Page Revision '{1}': {2}"
-msgstr "Завдання '{0}' на ревізії сторінки '{1}': {2}"
 
 msgid "Task state"
 msgstr "Стан завдання"
@@ -484,12 +472,9 @@ msgstr "запис журналу"
 msgid "log entries"
 msgstr "записи журналу"
 
-msgid "The log action '{}' has not been registered."
-msgstr "Дію журналу \"{}\" не зареєстровано."
-
 #, python-format
-msgid "user %(id)s (deleted)"
-msgstr "користувач %(id)s (видалено)"
+msgid "The log action '%(action_name)s' has not been registered."
+msgstr "Дію журналу \"%(action_name)s\" не зареєстровано."
 
 msgid "system"
 msgstr "система"
@@ -516,17 +501,17 @@ msgstr "обмеження показу колекції"
 msgid "collections"
 msgstr "колекції"
 
-msgid "permission"
-msgstr "дозвіл"
-
 msgid "group collection permission"
 msgstr "дозволи для групи колекцій "
 
 msgid "group collection permissions"
 msgstr "дозвіл для групи колекцій "
 
+msgid "uploaded by user"
+msgstr "надіслано користувачем"
+
 msgid "hostname"
-msgstr "им'я хоста"
+msgstr "ім'я хоста"
 
 msgid "port"
 msgstr "порт"
@@ -541,7 +526,7 @@ msgstr ""
 "(перенаправлення портів буде працювати)."
 
 msgid "site name"
-msgstr "Имя сайта"
+msgstr "Назва сайту"
 
 msgid "Human-readable name for the site."
 msgstr "Ім'я сайту, зручне для людини"
@@ -579,17 +564,14 @@ msgstr ""
 msgid "Public"
 msgstr "Загальнодоступний"
 
-msgid "Private, accessible to logged-in users"
-msgstr "Приватний, доступна для користувачів, що здійснили вхід"
-
-msgid "Private, accessible with the following password"
-msgstr "Приватний, доступний з паролем"
+msgid "Private, accessible to any logged-in users"
+msgstr "Приватний, доступний для всіх залогінених користувачів"
 
 msgid "Private, accessible to users in specific groups"
 msgstr "Приватний, доступний для користувачів визначених груп"
 
-msgid "password"
-msgstr "пароль"
+msgid "shared password"
+msgstr "спільний пароль"
 
 msgid "view restriction"
 msgstr "обмеження показу"
@@ -662,12 +644,6 @@ msgstr "Зняти з публікації заплановану чернетк
 msgid "Unpublished scheduled draft"
 msgstr "Знято з публікації заплановану чернетку"
 
-msgid "Locked"
-msgstr "Заблоковано"
-
-msgid "Unlocked"
-msgstr "Розблоковано"
-
 msgid "Reject"
 msgstr "Відхилити"
 
@@ -715,24 +691,24 @@ msgid "Copied for translation"
 msgstr "Скопійовано для перекладу"
 
 msgid "Create alias"
-msgstr "Створити псевдонім"
+msgstr "Створити пов'язану копію"
 
 #, python-format
 msgid "Created an alias of %(title)s"
-msgstr "Створено псевдонім %(title)s"
+msgstr "Створено пов'язану копію %(title)s"
 
 msgid "Created an alias"
-msgstr "Створено псевдонім"
+msgstr "Створено пов'язану копію"
 
 msgid "Convert alias into ordinary page"
-msgstr "Конвертувати псевдонім на звичайну сторінку"
+msgstr "Конвертувати пов'язану копію на звичайну сторінку"
 
 #, python-format
 msgid "Converted the alias '%(title)s' into an ordinary page"
-msgstr "Конвертовано псевдонім '%(title)s' на звичайну сторінку"
+msgstr "Конвертовано пов'язану копію '%(title)s' на звичайну сторінку"
 
 msgid "Converted an alias into an ordinary page"
-msgstr "Конвертовано псевдонім на звичайну сторінку"
+msgstr "Конвертовано пов'язану копію на звичайну сторінку"
 
 msgid "Move"
 msgstr "Перемістити"
@@ -767,13 +743,13 @@ msgstr ""
 
 #, python-format
 msgid "Page scheduled for publishing at %(go_live_at)s"
-msgstr "Сторінку заплановано для публікації о %(go_live_at)s"
+msgstr "Сторінку заплановано до публікації о %(go_live_at)s"
 
 msgid "Page scheduled for publishing"
-msgstr "Сторінку заплановано для публікації"
+msgstr "Сторінку заплановано до публікації"
 
 msgid "Unschedule publication"
-msgstr "Не запланована публікація"
+msgstr "Відмінити заплановану публікацію"
 
 #, python-format
 msgid ""
@@ -812,10 +788,6 @@ msgstr "Оновлено обмеження показу"
 
 msgid "Remove view restrictions"
 msgstr "Видалити обмеження показу"
-
-#, python-format
-msgid "Removed the '%(restriction)s' view restriction"
-msgstr "Видалено обмеження показу '%(restriction)s'"
 
 msgid "Removed view restriction"
 msgstr "Видалено обмеження показу"

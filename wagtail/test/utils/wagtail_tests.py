@@ -1,11 +1,17 @@
 import warnings
 from contextlib import contextmanager
+from typing import Union
 
+from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
 from django.test.testcases import assert_and_parse_html
 
 
 class WagtailTestUtils:
+    @staticmethod
+    def get_soup(markup: Union[str, bytes]) -> BeautifulSoup:
+        return BeautifulSoup(markup, "html.parser")
+
     @staticmethod
     def create_test_user():
         """
@@ -13,10 +19,11 @@ class WagtailTestUtils:
         """
         user_model = get_user_model()
         # Create a user
-        user_data = {}
-        user_data[user_model.USERNAME_FIELD] = "test@email.com"
-        user_data["email"] = "test@email.com"
-        user_data["password"] = "password"
+        user_data = {
+            user_model.USERNAME_FIELD: "test@email.com",
+            "email": "test@email.com",
+            "password": "password",
+        }
 
         for field in user_model.REQUIRED_FIELDS:
             if field not in user_data:
@@ -183,8 +190,7 @@ class WagtailTestUtils:
             yield haystack
         else:
             for child in haystack.children:
-                for script_tag in self._find_template_script_tags(child):
-                    yield script_tag
+                yield from self._find_template_script_tags(child)
 
     def assertTagInHTML(
         self, needle, haystack, count=None, msg_prefix="", allow_extra_attrs=False

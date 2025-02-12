@@ -102,15 +102,15 @@ class FormBuilder:
         """
 
         if "\n" in field.choices:
-            choices = map(
-                lambda x: (
+            choices = (
+                (
                     x.strip().rstrip(",").strip(),
                     x.strip().rstrip(",").strip(),
-                ),
-                field.choices.split("\r\n"),
+                )
+                for x in field.choices.split("\r\n")
             )
         else:
-            choices = map(lambda x: (x.strip(), x.strip()), field.choices.split(","))
+            choices = ((x.strip(), x.strip()) for x in field.choices.split(","))
 
         return choices
 
@@ -147,8 +147,7 @@ class FormBuilder:
         return formfields
 
     def get_field_options(self, field):
-        options = {}
-        options["label"] = field.label
+        options = {"label": field.label}
         if getattr(settings, "WAGTAILFORMS_HELP_TEXT_ALLOW_HTML", False):
             options["help_text"] = field.help_text
         else:
@@ -158,7 +157,7 @@ class FormBuilder:
         return options
 
     def get_form_class(self):
-        return type(str("WagtailForm"), (BaseForm,), self.formfields)
+        return type("WagtailForm", (BaseForm,), self.formfields)
 
 
 class SelectDateForm(django.forms.Form):
@@ -174,29 +173,55 @@ class SelectDateForm(django.forms.Form):
 
 class WagtailAdminFormPageForm(WagtailAdminPageForm):
     def clean(self):
+        """
+        Dynamically detect all related AbstractFormField subclasses to ensure
+        validation is applied regardless of the related_name or if there are multiple
+        AbstractFormField subclasses related to this page.
+        """
 
-        super().clean()
+        from .models import AbstractFormField
 
-        # Check for dupe form field labels - fixes #585
-        if "form_fields" in self.formsets:
-            _forms = self.formsets["form_fields"].forms
-            for f in _forms:
-                f.is_valid()
+        cleaned_data = super().clean()
 
-            for i, form in enumerate(_forms):
-                if "label" in form.changed_data:
-                    label = form.cleaned_data.get("label")
-                    clean_name = form.instance.get_field_clean_name()
-                    for idx, ff in enumerate(_forms):
-                        # Exclude self
-                        ff_clean_name = ff.instance.get_field_clean_name()
-                        if idx != i and clean_name == ff_clean_name:
-                            form.add_error(
-                                "label",
-                                django.forms.ValidationError(
-                                    _(
-                                        "There is another field with the label %s, please change one of them."
-                                    )
-                                    % label
-                                ),
-                            )
+        form_fields_related_names = [
+            related_object.related_name
+            for related_object in self.instance._meta.related_objects
+            if issubclass(related_object.related_model, AbstractFormField)
+        ]
+
+        for related_name in form_fields_related_names:
+            if related_name not in self.formsets:
+                continue
+
+            forms = self.formsets[related_name].forms
+            for form in forms:
+                form.is_valid()
+
+            # Use existing clean_name or generate for new fields,
+            # raise an error if there are duplicate resolved clean names.
+            # Note: `clean_name` is set in `FormField.save`.
+
+            clean_names = [
+                f.instance.clean_name or f.instance.get_field_clean_name()
+                for f in forms
+            ]
+            duplicate_clean_name = next(
+                (n for n in clean_names if clean_names.count(n) > 1), None
+            )
+            if duplicate_clean_name:
+                duplicate_form_field = next(
+                    f
+                    for f in self.formsets[related_name].forms
+                    if f.instance.get_field_clean_name() == duplicate_clean_name
+                )
+                duplicate_form_field.add_error(
+                    "label",
+                    django.forms.ValidationError(
+                        _(
+                            "There is another field with the label %(label_name)s, please change one of them."
+                        )
+                        % {"label_name": duplicate_form_field.instance.label}
+                    ),
+                )
+
+        return cleaned_data

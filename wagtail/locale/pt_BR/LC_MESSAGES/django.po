@@ -8,22 +8,23 @@
 # Éder Brito <britoederr@gmail.com>, 2021
 # Gladson <gladsonbrito@gmail.com>, 2014,2017
 # Iuri L. Machado, 2021
+# Iuri L. Machado, 2021
 # Joao Garcia <joaosdgarcia@gmail.com>, 2017
 # João Luiz Lorencetti <me@dirtycoder.net>, 2016
 # Luiz Boaretto <lboaretto@gmail.com>, 2016
-# Luiz Boaretto <lboaretto@gmail.com>, 2016-2018,2020-2021
+# Luiz Boaretto <lboaretto@gmail.com>, 2016-2018,2020-2021,2024
 # Marcio Mazza <marciomazza@gmail.com>, 2016
-# Rodrigo de Almeida Sottomaior Macedo <rmsolucoeseminformatica@protonmail.com>, 2022
+# Rodrigo Sottomaior Macedo <sottomaiormacedotec@sottomaiormacedo.tech>, 2022
 # Thiago Cangussu <cng.thg@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
-"Last-Translator: Rodrigo de Almeida Sottomaior Macedo "
-"<rmsolucoeseminformatica@protonmail.com>, 2022\n"
-"Language-Team: Portuguese (Brazil) (http://www.transifex.com/torchbox/"
+"Last-Translator: Luiz Boaretto <lboaretto@gmail.com>, "
+"2016-2018,2020-2021,2024\n"
+"Language-Team: Portuguese (Brazil) (http://app.transifex.com/torchbox/"
 "wagtail/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -42,18 +43,21 @@ msgid "Add Comment"
 msgstr "Adicionar comentário"
 
 #, python-format
-msgid "The minimum number of items is %d"
-msgstr "O número mínimo de itens é %d"
+msgid "The minimum number of items is %(min_num)d"
+msgstr "O número mínimo de itens é %(min_num)d"
 
 #, python-format
-msgid "The maximum number of items is %d"
-msgstr "O número máximo de itens é %d"
+msgid "The maximum number of items is %(max_num)d"
+msgstr "O número máximo de itens é %(max_num)d"
 
 msgid "Move up"
 msgstr "Mover para cima"
 
 msgid "Move down"
 msgstr "Mover para baixo"
+
+msgid "Drag"
+msgstr "Arrastar"
 
 msgid "Duplicate"
 msgstr "Duplicar"
@@ -83,6 +87,9 @@ msgstr "Página roteável Wagtail"
 msgid "Wagtail sitemaps"
 msgstr "Mapa do site Wagtail"
 
+msgid "Unknown content type"
+msgstr "Tipo de conteúdo desconhecido"
+
 msgid "Password"
 msgstr "Senha"
 
@@ -92,30 +99,83 @@ msgstr "A senha que você digitou não está correta. Por favor, tente novamente
 msgid "Comment"
 msgstr "Comentário"
 
-msgid "<b>Page '{}' was locked</b> by <b>you</b> on <b>{}</b>."
-msgstr "<b>Página '{}' estava bloqueada</b> por <b>você</b> em <b>{}</b>."
+msgid "Locked"
+msgstr "Bloqueado"
 
-msgid "<b>Page '{}' is locked</b> by <b>you</b>."
-msgstr "<b>Página '{}' está bloqueada</b> por <b>você</b>."
-
-msgid "<b>Page '{}' was locked</b> by <b>{}</b> on <b>{}</b>."
-msgstr "<b>Página '{}' estava bloqueada</b> por <b>{}</b> em <b>{}</b>."
-
-msgid "<b>Page '{}' is locked</b>."
-msgstr "<b>Página '{}' está bloqueada</b>."
-
-msgid "This page is currently awaiting moderation."
-msgstr "Esta página está aguardando moderação."
-
-msgid "This page is awaiting <b>'{}'</b> in the <b>'{}'</b> workflow."
+#, python-format
+msgid "No one can make changes while the %(model_name)s is locked"
 msgstr ""
-"Esta página está aguardando <b>'{}'</b> no fluxo de trabalho <b>'{}'</b>."
+"Ninguém pode fazer alterações enquanto %(model_name)s estiver bloqueado"
 
-msgid "Only reviewers for this task can edit the page."
-msgstr "Apenas os revisores desta tarefa podem editar a página."
+#, python-brace-format
+msgid "<b>'{title}' was locked</b> by <b>you</b> on <b>{datetime}</b>."
+msgstr ""
+"<b>'{title}' estava bloqueado</b> por <b>você</b> em <b>{datetime}</b>."
 
-msgid "Page '{}' is locked and has been scheduled to go live at {}"
-msgstr "A página '{}' está bloqueada e foi programada para ser publicada em {}"
+#, python-brace-format
+msgid "<b>'{title}' is locked</b> by <b>you</b>."
+msgstr "<b>'{title}' está bloqueado</b> por <b>você</b>."
+
+#, python-brace-format
+msgid "<b>'{title}' is locked</b>."
+msgstr "<b>'{title}' está bloqueado</b>."
+
+msgid "Locked by you"
+msgstr "Bloqueado por você"
+
+msgid "Locked by another user"
+msgstr "Bloqueado por outro usuário"
+
+#, python-format
+msgid "Only you can make changes while the %(model_name)s is locked"
+msgstr ""
+"Somente você pode fazer alterações enquanto %(model_name)s estiver bloqueado"
+
+#, python-format
+msgid "Only %(user)s can make changes while the %(model_name)s is locked"
+msgstr ""
+"Apenas %(user)s pode fazer alterações enquanto %(model_name)s estiver "
+"bloqueado"
+
+#, python-format
+msgid "This %(model_name)s is currently awaiting moderation."
+msgstr "Este %(model_name)s está aguardando moderação."
+
+#, python-brace-format
+msgid ""
+"This {model_name} is awaiting <b>'{task_name}'</b> in the "
+"<b>'{workflow_name}'</b> workflow."
+msgstr ""
+"Este {model_name} está aguardando <b>'{task_name}'</b> no fluxo de trabalho "
+"<b>'{workflow_name}'</b>."
+
+#, python-format
+msgid "Only reviewers for this task can edit the %(model_name)s."
+msgstr "Somente revisores desta tarefa podem editar %(model_name)s."
+
+msgid "Unlocked"
+msgstr "Desbloqueado"
+
+msgid "Locked by workflow"
+msgstr "Bloqueado por fluxo de trabalho"
+
+#, python-format
+msgid ""
+"Reviewers can edit this %(model_name)s – lock it to prevent other reviewers "
+"from editing"
+msgstr ""
+"Os revisores podem editar este %(model_name)s – bloqueie-o para evitar que "
+"outros revisores editem"
+
+#, python-format
+msgid "Only reviewers can edit and approve the %(model_name)s"
+msgstr "Somente revisores podem editar e aprovar o %(model_name)s"
+
+msgid "Locked by schedule"
+msgstr "Bloqueado por agendamento"
+
+msgid "Currently locked and will go live on the scheduled date"
+msgstr "Atualmente bloqueado e entrará no ar na data agendada"
 
 msgid "latest revision"
 msgstr "última revisão"
@@ -144,14 +204,29 @@ msgstr "data/hora para expirar"
 msgid "expired"
 msgstr "expirado"
 
+msgid "scheduled"
+msgstr "agendado"
+
 msgid "draft"
 msgstr "rascunho"
+
+msgid "live + scheduled"
+msgstr "online + agendado"
 
 msgid "live + draft"
 msgstr "online + rascunho"
 
 msgid "Default"
 msgstr "Padrão"
+
+msgid "Preview in mobile size"
+msgstr "Pré-visualização no tamanho mobile"
+
+msgid "Preview in tablet size"
+msgstr "Pré-visualização no tamanho do tablet"
+
+msgid "Preview in desktop size"
+msgstr "Pré-visualização no tamanho de Desktop"
 
 msgid "locked"
 msgstr "trancado"
@@ -161,6 +236,45 @@ msgstr "bloqueado em"
 
 msgid "locked by"
 msgstr "bloqueado por"
+
+msgid "in moderation"
+msgstr "em moderação"
+
+msgid "live + in moderation"
+msgstr "online + em moderação"
+
+msgid "Add/edit pages you own"
+msgstr "Adicionar/editar suas páginas"
+
+msgid "Bulk delete"
+msgstr "Deletar em bloco"
+
+msgid "Delete pages with children"
+msgstr "Deletar páginas com filhos"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Edit any page"
+msgstr "Editar qualquer página"
+
+msgid "Lock"
+msgstr "Travar"
+
+msgid "Lock/unlock pages you've locked"
+msgstr "Bloquear/desbloquear páginas bloqueadas"
+
+msgid "Publish"
+msgstr "Publicar"
+
+msgid "Publish any page"
+msgstr "Publicar qualquer página"
+
+msgid "Unlock"
+msgstr "Desbloquear"
+
+msgid "Unlock any page"
+msgstr "Desbloquear qualquer página"
 
 msgid "title"
 msgstr "título"
@@ -218,20 +332,11 @@ msgstr ""
 msgid "latest revision created at"
 msgstr "revisão mais recente criada em"
 
-msgid "This slug is already in use"
-msgstr "Este slug já está em uso"
+msgid "For search engines"
+msgstr "Para motores de busca"
 
-msgid "scheduled"
-msgstr "agendado"
-
-msgid "in moderation"
-msgstr "em moderação"
-
-msgid "live + scheduled"
-msgstr "online + agendado"
-
-msgid "live + in moderation"
-msgstr "online + em moderação"
+msgid "For site menus"
+msgstr "Para menus de sites"
 
 msgid "page"
 msgstr "página"
@@ -241,9 +346,6 @@ msgstr "páginas"
 
 msgid "object id"
 msgstr "id do objeto"
-
-msgid "submitted for moderation"
-msgstr "enviada para moderação"
 
 msgid "created at"
 msgstr "criado em"
@@ -263,44 +365,11 @@ msgstr "revisão"
 msgid "revisions"
 msgstr "revisões"
 
-msgid "Add/edit pages you own"
-msgstr "Adicionar/editar suas páginas"
-
-msgid "Edit"
-msgstr "Editar"
-
-msgid "Edit any page"
-msgstr "Editar qualquer página"
-
-msgid "Publish"
-msgstr "Publicar"
-
-msgid "Publish any page"
-msgstr "Publicar qualquer página"
-
-msgid "Bulk delete"
-msgstr "Deletar em bloco"
-
-msgid "Delete pages with children"
-msgstr "Deletar páginas com filhos"
-
-msgid "Lock"
-msgstr "Travar"
-
-msgid "Lock/unlock pages you've locked"
-msgstr "Bloquear/desbloquear páginas bloqueadas"
-
-msgid "Unlock"
-msgstr "Desbloquear"
-
-msgid "Unlock any page"
-msgstr "Desbloquear qualquer página"
-
 msgid "group"
 msgstr "grupo"
 
-msgid "permission type"
-msgstr "tipo de permissão"
+msgid "permission"
+msgstr "permissão"
 
 msgid "group page permission"
 msgstr "grupo de permissão da página"
@@ -351,25 +420,11 @@ msgstr ""
 msgid "tasks"
 msgstr "tarefas"
 
-msgid ""
-"Active workflows can be added to pages. Deactivating a workflow does not "
-"remove it from existing pages."
-msgstr ""
-"Workflows ativos podem ser adicionados às páginas. Desativar um workflow não "
-"o remove das páginas existentes."
-
 msgid "workflows"
 msgstr "fluxos de trabalho"
 
 msgid "groups"
 msgstr "grupos"
-
-msgid ""
-"Pages at this step in a workflow will be moderated or approved by these "
-"groups of users"
-msgstr ""
-"As páginas nesta etapa de um workflow serão moderadas ou aprovadas por esses "
-"grupos de usuários"
 
 msgid "Request changes"
 msgstr "Solicitar mudanças"
@@ -410,16 +465,6 @@ msgstr "solicitado por"
 msgid "current task state"
 msgstr "estado atual da tarefa"
 
-msgid ""
-"There may only be one in progress or needs changes workflow state per page."
-msgstr ""
-"Pode haver apenas um em andamento ou precisa alterar o estado do workflow "
-"por página."
-
-#, python-brace-format
-msgid "Workflow '{0}' on Page '{1}': {2}"
-msgstr "O Workflow '{0}' na Página '{1}': {2}"
-
 msgid "Not started"
 msgstr "Não foi iniciado"
 
@@ -438,9 +483,6 @@ msgstr "Ignorado"
 msgid "workflow state"
 msgstr "situação do workflow"
 
-msgid "page revision"
-msgstr "revisão desta página"
-
 msgid "started at"
 msgstr "começou às"
 
@@ -449,10 +491,6 @@ msgstr "terminou às"
 
 msgid "finished by"
 msgstr "terminado por"
-
-#, python-brace-format
-msgid "Task '{0}' on Page Revision '{1}': {2}"
-msgstr "A tarefa '{0}' na Revisão de Página '{1}': {2}"
 
 msgid "Task state"
 msgstr "Situação da tarefa"
@@ -490,12 +528,9 @@ msgstr "entrada de log"
 msgid "log entries"
 msgstr "entradas de log"
 
-msgid "The log action '{}' has not been registered."
-msgstr "A ação de log '{}' não foi registrada."
-
 #, python-format
-msgid "user %(id)s (deleted)"
-msgstr "usuário%(id)s(excluído)"
+msgid "The log action '%(action_name)s' has not been registered."
+msgstr "A ação de log '%(action_name)s' não foi registrada."
 
 msgid "system"
 msgstr "sistema"
@@ -522,14 +557,41 @@ msgstr "visualizar restrições nas coleções"
 msgid "collections"
 msgstr "coleções"
 
-msgid "permission"
-msgstr "permissão"
-
 msgid "group collection permission"
 msgstr "grupo de permissão de coleção"
 
 msgid "group collection permissions"
 msgstr "grupo de permissões de coleção"
+
+msgid "for content type"
+msgstr "para o tipo de conteúdo"
+
+msgid "uploaded by user"
+msgstr "enviado pelo usuário"
+
+#, python-format
+msgid "the %(model_name)s will also be deleted"
+msgstr "o %(model_name)s também será excluído"
+
+msgid "prevents deletion"
+msgstr "impede a exclusão"
+
+#, python-format
+msgid "will be set to the default %(model_name)s"
+msgstr "será definido como padrão %(model_name)s"
+
+msgid "will do nothing"
+msgstr "não fará nada"
+
+msgid "may prevent deletion"
+msgstr "pode impedir a exclusão"
+
+#, python-format
+msgid "will be set to a %(model_name)s specified by the system"
+msgstr "será definido como %(model_name)s especificado pelo sistema"
+
+msgid "will unset the reference"
+msgstr "irá desmarcar a referência"
 
 msgid "hostname"
 msgstr "nome do host"
@@ -586,17 +648,25 @@ msgstr ""
 msgid "Public"
 msgstr "Público"
 
-msgid "Private, accessible to logged-in users"
-msgstr "Privado, acessível a usuários logados"
+msgid "Private, accessible with a shared password"
+msgstr "Privado, acessível com uma senha compartilhada"
 
-msgid "Private, accessible with the following password"
-msgstr "Privado, acessível com a seguinte senha"
+msgid "Private, accessible to any logged-in users"
+msgstr "Privado, acessível a qualquer usuário logado"
 
 msgid "Private, accessible to users in specific groups"
 msgstr "Privado, acessível a usuários em grupos específicos"
 
-msgid "password"
-msgstr "senha"
+msgid "shared password"
+msgstr "senha compartilhada"
+
+msgid ""
+"Shared passwords should not be used to protect sensitive content. Anyone who "
+"has this password will be able to view the content."
+msgstr ""
+"Senhas compartilhadas não devem ser usadas para proteger conteúdo "
+"confidencial. Qualquer pessoa que possua essa senha poderá visualizar o "
+"conteúdo."
 
 msgid "view restriction"
 msgstr "visualizar restrição"
@@ -665,12 +735,6 @@ msgstr "Cancelar a publicação do rascunho programado"
 
 msgid "Unpublished scheduled draft"
 msgstr "Rascunho programado não publicado"
-
-msgid "Locked"
-msgstr "Bloqueado"
-
-msgid "Unlocked"
-msgstr "Desbloqueado"
 
 msgid "Reject"
 msgstr "Rejeitar"
@@ -815,10 +879,6 @@ msgstr "Restrição de visualização atualizada"
 
 msgid "Remove view restrictions"
 msgstr "Remover restrições de visualização"
-
-#, python-format
-msgid "Removed the '%(restriction)s' view restriction"
-msgstr "Removida a restrição de visualização de '%(restriction)s' "
 
 msgid "Removed view restriction"
 msgstr "Restrição de visualização removida"

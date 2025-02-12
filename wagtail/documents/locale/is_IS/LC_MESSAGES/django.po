@@ -3,16 +3,16 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
-# Arnar Tumi Þorsteinsson <arnartumi@gmail.com>, 2015-2016,2018
-# saevarom <saevar@saevar.is>, 2017-2022
+# Arnar Tumi Þorsteinsson <arnartumi@gmail.com>, 2015-2016,2018,2024
+# saevarom <saevar@saevar.is>, 2017-2022,2024
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:06+0000\n"
-"Last-Translator: saevarom <saevar@saevar.is>, 2017-2022\n"
-"Language-Team: Icelandic (Iceland) (http://www.transifex.com/torchbox/"
+"Last-Translator: saevarom <saevar@saevar.is>, 2017-2022,2024\n"
+"Language-Team: Icelandic (Iceland) (http://app.transifex.com/torchbox/"
 "wagtail/language/is_IS/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -170,31 +170,11 @@ msgstr "Breyta skrá"
 msgid "Add a document"
 msgstr "Bæta við skrá"
 
-msgid "Add document"
-msgstr "Bæta við skrá"
-
 msgid "Uploading…"
 msgstr "Hleð upp..."
 
 msgid "Upload"
 msgstr "Hlaða upp"
-
-#, python-format
-msgid "Delete %(title)s"
-msgstr "Eyða %(title)s"
-
-msgid "Delete document"
-msgstr "Eyða skrá"
-
-#, python-format
-msgid "Editing %(title)s"
-msgstr "Breyti %(title)s"
-
-msgid "Editing"
-msgstr "Er að breyta"
-
-msgid "Save"
-msgstr "Vista"
 
 msgid "Filesize"
 msgstr "Skráarstærð"
@@ -205,29 +185,8 @@ msgstr "Skrá fannst ekki"
 msgid "Usage"
 msgstr "Notkun"
 
-msgid "Documents"
-msgstr "Skrár"
-
 msgid "Select all documents in listing"
 msgstr "Velja öll skjöl"
-
-msgid "Title"
-msgstr "Titill"
-
-msgid "File"
-msgstr "Skrá"
-
-msgid "Created"
-msgstr "Búið til"
-
-msgid "Select document"
-msgstr "Velja skjal"
-
-#, python-format
-msgid "There is %(counter)s match"
-msgid_plural "There are %(counter)s matches"
-msgstr[0] "Það er %(counter)s niðurstaða"
-msgstr[1] "Það eru %(counter)s niðurstöður"
 
 #, python-format
 msgid "Sorry, no documents match \"<em>%(query_string)s</em>\""
@@ -235,58 +194,32 @@ msgstr "Því miður eru engar skrár sem passa við \"<em>%(query_string)s</em>
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents in this collection. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents in this collection. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Þú hefur ekki hlaðið neinum skrám í þetta safn. Hví ekki að<a href="
-"\"%(wagtaildocs_add_document_url)s\">hlaða inn nokkrum núna</a>?"
+"Þú hefur ekki hlaðið neinum skrám í þetta safn. Hví ekki að<a "
+"href=\"%(wagtaildocs_add_document_url)s\">hlaða inn nokkrum núna</a>?"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Þú hefur ekki hlaðið neinum skrám. Hví ekki að<a href="
-"\"%(wagtaildocs_add_document_url)s\">hlaða inn nokkrum núna</a>?"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Notkun á %(title)s"
-
-msgid "Usage of"
-msgstr "Notkun á"
-
-msgid "Parent"
-msgstr "Yfirsíða"
-
-msgid "Type"
-msgstr "Tegund"
-
-msgid "Status"
-msgstr "Staða"
-
-msgid "Edit this page"
-msgstr "Breyta þessari síðu"
+"Þú hefur ekki hlaðið neinum skrám. Hví ekki að<a "
+"href=\"%(wagtaildocs_add_document_url)s\">hlaða inn nokkrum núna</a>?"
 
 #, python-format
 msgid ""
-"<span>%(total)s</span> Document <span class=\"visuallyhidden\">created in "
-"%(site_name)s</span>"
+"%(total)s Document <span class=\"w-sr-only\">created in %(site_name)s</span>"
 msgid_plural ""
-"<span>%(total)s</span> Documents <span class=\"visuallyhidden\">created in "
-"%(site_name)s</span>"
+"%(total)s Documents <span class=\"w-sr-only\">created in %(site_name)s</span>"
 msgstr[0] ""
-"<span>%(total)s</span> Skjal <span class=\"visuallyhidden\">búið til í "
-"%(site_name)s</span>"
+"%(total)s Skjal <span class=\"w-sr-only\">búið til undir %(site_name)s</span>"
 msgstr[1] ""
-"<span>%(total)s</span> Skjöl <span class=\"visuallyhidden\">búin til í "
-"%(site_name)s</span>"
+"%(total)s Skjöl <span class=\"w-sr-only\">búin til undir %(site_name)s</span>"
 
 msgid "Add multiple documents"
 msgstr "Bæta við mörgum skrám"
-
-msgid "Add documents"
-msgstr "Bæta við skrá"
 
 msgid "Drag and drop documents into this area to upload immediately."
 msgstr "Dragðu skrár hingað til að hlaða þeim upp."
@@ -319,6 +252,9 @@ msgstr "Aðgangsheimildir skráar"
 
 msgid "Add a document permission"
 msgstr "Bæta við aðgangsheimildum á skrá"
+
+msgid "Tags"
+msgstr "Merki"
 
 msgid "Tag"
 msgstr "Merking"
@@ -357,30 +293,54 @@ msgid_plural "%(num_parent_objects)d documents have been deleted"
 msgstr[0] "%(num_parent_objects)d skjali hefur verið eytt"
 msgstr[1] "%(num_parent_objects)d skjölum hefur verið eytt"
 
+msgid "File"
+msgstr "Skrá"
+
+msgid "Created"
+msgstr "Búið til"
+
 msgid "Choose a document"
 msgstr "Veldu skrá"
 
-msgid "Search documents"
-msgstr "Leita að skrám"
+msgid "Choose another document"
+msgstr "Veldu aðra skrá"
 
-#, python-brace-format
-msgid "Document '{0}' added."
-msgstr "Skrá '{0}' bætt við."
+msgid "Edit this document"
+msgstr "Breyta þessari skrá"
+
+msgid "Documents"
+msgstr "Skrár"
+
+msgid "Title"
+msgstr "Titill"
+
+msgid "The document could not be created due to errors."
+msgstr "Ekki var hægt að búa til skjalið þar sem villur komu upp."
+
+#, python-format
+msgid "Document '%(document_title)s' added."
+msgstr "Skrá '%(document_title)s' bætt við."
 
 msgid "The document could not be saved due to errors."
 msgstr "Ekki var hægt að vista skránna vegna villna."
 
-#, python-brace-format
-msgid "Document '{0}' updated"
-msgstr "Skrá '{0}' uppfærð"
+#, python-format
+msgid "Document '%(document_title)s' updated"
+msgstr "Skrá '%(document_title)s' uppfærð"
 
 msgid ""
 "The file could not be found. Please change the source or delete the document"
 msgstr "Skráin fannst ekki. Vinsamlegast breyttu upprunanum eða eyddu skránni"
 
-#, python-brace-format
-msgid "Document '{0}' deleted."
-msgstr "Skrá '{0}' hefur verið eytt."
+msgid "Delete document"
+msgstr "Eyða skrá"
+
+#, python-format
+msgid "Document '%(document_title)s' deleted."
+msgstr "Skrá '%(document_title)s' hefur verið eytt."
+
+msgid "Add documents"
+msgstr "Bæta við skrá"
 
 msgid "Document"
 msgstr "Skrá"

@@ -1,30 +1,19 @@
-@mixin login-fullscreen-background() {
-  @at-root {
-    :root {
-      --w-login-fullscreen-background: radial-gradient(
-        100% 300.28% at 100% 0%,
-        theme('colors.primary.DEFAULT') 0%,
-        theme('colors.primary.DEFAULT') 32.94%,
-        theme('colors.primary.DEFAULT') 49.9%,
-        theme('colors.primary.DEFAULT') 50.2%,
-        theme('colors.secondary.DEFAULT') 100%
-      );
-    }
-  }
+@use '../tools' as *;
 
-  // support older browsers that do not support radial gradient 'at' usage
-  background: theme('colors.primary.DEFAULT');
-  /* stylelint-disable-next-line declaration-block-no-duplicate-properties */
-  background: var(
-    --w-login-fullscreen-background,
-    theme('colors.primary.DEFAULT')
+:root {
+  --w-login-fullscreen-background: radial-gradient(
+    100% 300.28% at 100% 0%,
+    theme('colors.primary.DEFAULT') 0%,
+    theme('colors.primary.DEFAULT') 32.94%,
+    theme('colors.primary.DEFAULT') 49.9%,
+    theme('colors.primary.DEFAULT') 50.2%,
+    theme('colors.secondary.DEFAULT') 100%
   );
 }
 
 .login {
-  @include login-fullscreen-background;
-
-  color: theme('colors.primary.DEFAULT');
+  color: theme('colors.text-label');
+  background: var(--w-login-fullscreen-background);
 
   .wrapper {
     align-items: center;
@@ -51,11 +40,12 @@
   }
 
   .content-wrapper {
-    border: 0;
+    // border style needed in forced color mode
+    border: 3px solid transparent;
     height: auto;
     float: none;
     padding: theme('spacing.10') theme('spacing.12');
-    background: theme('colors.white.DEFAULT');
+    background: theme('colors.surface-page');
     box-shadow: theme('boxShadow.md');
     border-radius: theme('borderRadius.md');
     margin-bottom: 15vh; // should appear slightly above centre
@@ -119,6 +109,6 @@
 
   .login-logo {
     margin: theme('spacing.8') auto 0;
-    width: theme('spacing.8');
+    width: theme('spacing.32');
   }
 }

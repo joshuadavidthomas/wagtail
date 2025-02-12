@@ -99,8 +99,11 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock', () => {
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>plenty</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         strings: {
+          CAPTION: 'Caption',
+          CAPTION_HELP_TEXT:
+            'A heading that identifies the overall topic of the table, and is useful for screen reader users.',
           ADD_COLUMN: 'Add column',
           ADD_ROW: 'Add row',
           COLUMN_HEADING: 'Column heading',
@@ -123,6 +126,7 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock', () => {
           { type: 'test_block_b', heading: 'Quantity' },
         ],
         rows: [{ values: ['Cheese', 3] }, { values: ['Peas', 5] }],
+        caption: 'A shopping list',
       },
     );
   });
@@ -131,6 +135,9 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock', () => {
     expect(document.body.innerHTML).toMatchSnapshot();
     expect(boundBlock.columns.length).toBe(2);
     expect(boundBlock.rows.length).toBe(2);
+    expect(document.getElementsByName('mytable-caption')[0].value).toBe(
+      'A shopping list',
+    );
   });
 
   test('can be cleared', () => {
@@ -141,6 +148,14 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock', () => {
       '0',
     );
     expect(document.getElementsByName('mytable-row-count')[0].value).toBe('0');
+    expect(document.getElementsByName('mytable-caption')[0].value).toBe('');
+  });
+
+  test('supports adding a caption', () => {
+    boundBlock.setCaption('A shopping list');
+    expect(document.getElementsByName('mytable-caption')[0].value).toBe(
+      'A shopping list',
+    );
   });
 
   test('supports inserting columns', () => {
@@ -191,6 +206,24 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock', () => {
     expect(boundBlock.rows.length).toBe(2);
     expect(document.getElementsByName('mytable-row-count')[0].value).toBe('3');
   });
+
+  test('setError passes error messages to children', () => {
+    boundBlock.setError({
+      blockErrors: {
+        0: {
+          1: { messages: ['This is not enough cheese.'] },
+        },
+      },
+    });
+    expect(document.body.innerHTML).toMatchSnapshot();
+  });
+
+  test('setError shows non-block errors', () => {
+    boundBlock.setError({
+      messages: ['This is just generally wrong.'],
+    });
+    expect(document.body.innerHTML).toMatchSnapshot();
+  });
 });
 
 describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock in StreamBlock', () => {
@@ -232,6 +265,7 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock in StreamBloc
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -255,7 +289,7 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock in StreamBloc
                 icon: 'placeholder',
                 classname: null,
                 helpText: 'use <strong>plenty</strong> of these',
-                helpIcon: '<div class="icon-help">?</div>',
+                helpIcon: '<svg></svg>',
                 strings: {
                   ADD_COLUMN: 'Add column',
                   ADD_ROW: 'Add row',
@@ -277,13 +311,14 @@ describe('wagtail.contrib.typed_table_block.blocks.TypedTableBlock in StreamBloc
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>plenty</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         maxNum: null,
         minNum: null,
         blockCounts: {},
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',

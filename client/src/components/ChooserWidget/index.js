@@ -1,26 +1,34 @@
-import { chooserModalOnloadHandlers } from '../../includes/chooserModal';
+import EventEmitter from 'events';
+import { ChooserModal } from '../../includes/chooserModal';
 
-export class Chooser {
-  modalOnloadHandlers = chooserModalOnloadHandlers;
-
+export class Chooser extends EventEmitter {
+  chooserModalClass = ChooserModal;
   titleStateKey = 'title'; // key used in the 'state' dictionary to hold the human-readable title
   editUrlStateKey = 'edit_url'; // key used in the 'state' dictionary to hold the URL of the edit page
-  chosenResponseName = 'chosen'; // identifier for the ModalWorkflow response that indicates an item was chosen
 
-  constructor(id) {
+  constructor(id, opts = {}) {
+    super();
+    this.opts = opts;
     this.initHTMLElements(id);
     this.state = this.getStateFromHTML();
 
-    for (const btn of this.chooserElement.querySelectorAll('.action-choose')) {
+    for (const btn of this.chooserElement.querySelectorAll(
+      '[data-chooser-action-choose]',
+    )) {
       btn.addEventListener('click', () => {
         this.openChooserModal();
       });
     }
-    for (const btn of this.chooserElement.querySelectorAll('.action-clear')) {
+    for (const btn of this.chooserElement.querySelectorAll(
+      '[data-chooser-action-clear]',
+    )) {
       btn.addEventListener('click', () => {
         this.clear();
       });
     }
+
+    // attach a reference to this widget object onto the root element of the chooser
+    this.chooserElement.widget = this;
   }
 
   initHTMLElements(id) {
@@ -29,8 +37,9 @@ export class Chooser {
       '[data-chooser-title]',
     );
     this.input = document.getElementById(id);
-    this.editLink = this.chooserElement.querySelector('.edit-link');
-    this.chooserBaseUrl = this.chooserElement.dataset.chooserUrl;
+    this.editLink = this.chooserElement.querySelector(
+      '[data-chooser-edit-link]',
+    );
   }
 
   getStateFromHTML() {
@@ -53,9 +62,8 @@ export class Chooser {
         state[this.editUrlStateKey] = this.editLink.getAttribute('href');
       }
       return state;
-    } else {
-      return null;
     }
+    return null;
   }
 
   getState() {
@@ -75,17 +83,24 @@ export class Chooser {
     }
   }
 
+  setStateFromModalData(data) {
+    this.setState(data);
+    this.emit('chosen', data);
+  }
+
   clear() {
     this.setState(null);
   }
 
   renderEmptyState() {
     this.input.setAttribute('value', '');
+    this.input.dispatchEvent(new Event('change', { bubbles: true }));
     this.chooserElement.classList.add('blank');
   }
 
   renderState(newState) {
     this.input.setAttribute('value', newState.id);
+    this.input.dispatchEvent(new Event('change', { bubbles: true }));
     if (this.titleElement && this.titleStateKey) {
       this.titleElement.textContent = newState[this.titleStateKey];
     }
@@ -94,9 +109,9 @@ export class Chooser {
       const editUrl = newState[this.editUrlStateKey];
       if (editUrl) {
         this.editLink.setAttribute('href', editUrl);
-        this.editLink.classList.remove('w-hidden');
+        this.editLink.hidden = false;
       } else {
-        this.editLink.classList.add('w-hidden');
+        this.editLink.hidden = true;
       }
     }
   }
@@ -111,42 +126,62 @@ export class Chooser {
   }
 
   focus() {
-    if (this.state) {
-      this.chooserElement.querySelector('.chosen .action-choose').focus();
-    } else {
-      this.chooserElement.querySelector('.unchosen .action-choose').focus();
+    this.chooserElement.querySelector('button').focus();
+  }
+
+  getModalOptions() {
+    const filters = {};
+    if (this.opts.linkedFields) {
+      for (const [param, lookup] of Object.entries(this.opts.linkedFields)) {
+        let val;
+        if (typeof lookup === 'string') {
+          val = document.querySelector(lookup).value;
+        } else if (lookup.id) {
+          val = document.getElementById(lookup.id).value;
+        } else if (lookup.selector) {
+          val = document.querySelector(lookup.selector).value;
+        } else if (lookup.match && this.chooserElement.id) {
+          const match = this.chooserElement.id.match(new RegExp(lookup.match));
+          if (match) {
+            let id = match[0];
+            if (lookup.append) {
+              id += lookup.append;
+            }
+            val = document.getElementById(id).value;
+          }
+        }
+        if (val) {
+          filters[param] = val;
+        }
+      }
     }
-  }
-
-  getModalUrl() {
-    return this.chooserBaseUrl;
-  }
-
-  getModalUrlParams() {
+    if (Object.keys(filters).length) {
+      return { linkedFieldFilters: filters };
+    }
     return null;
   }
 
   openChooserModal() {
-    // eslint-disable-next-line no-undef
-    ModalWorkflow({
-      url: this.getModalUrl(),
-      urlParams: this.getModalUrlParams(),
-      onload: this.modalOnloadHandlers,
-      responses: {
-        [this.chosenResponseName]: (result) => {
-          this.setState(result);
-        },
-      },
+    if (!this.modal) {
+      // eslint-disable-next-line new-cap
+      this.modal = new this.chooserModalClass(
+        this.opts.modalUrl || this.chooserElement.dataset.chooserUrl,
+      );
+    }
+    this.modal.open(this.getModalOptions(), (result) => {
+      this.setStateFromModalData(result);
     });
   }
 }
 
 export class ChooserFactory {
   widgetClass = Chooser;
+  chooserModalClass = ChooserModal;
 
-  constructor(html, idPattern) {
+  constructor(html, idPattern, opts = {}) {
     this.html = html;
     this.idPattern = idPattern;
+    this.opts = opts;
   }
 
   render(placeholder, name, id, initialState) {
@@ -154,8 +189,34 @@ export class ChooserFactory {
     // eslint-disable-next-line no-param-reassign
     placeholder.outerHTML = html;
     // eslint-disable-next-line new-cap
-    const chooser = new this.widgetClass(id);
+    const chooser = new this.widgetClass(id, this.opts);
     chooser.setState(initialState);
     return chooser;
+  }
+
+  getModalOptions() {
+    return null;
+  }
+
+  openModal(callback, customOptions) {
+    if (!this.modal) {
+      if (!this.opts.modalUrl) {
+        throw new Error(
+          'ChooserFactory must be passed a modalUrl option if openModal is used',
+        );
+      }
+
+      // eslint-disable-next-line new-cap
+      this.modal = new this.chooserModalClass(this.opts.modalUrl);
+    }
+    const options = { ...this.getModalOptions(), ...customOptions };
+    this.modal.open(options, callback);
+  }
+
+  /**
+   * retrieve the widget object corresponding to the given HTML ID
+   */
+  getById(id) {
+    return document.getElementById(`${id}-chooser`).widget;
   }
 }

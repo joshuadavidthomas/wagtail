@@ -1,273 +1,307 @@
 import os
 
+from django.contrib.admin.utils import quote
 from django.core.exceptions import PermissionDenied
-from django.core.paginator import Paginator
-from django.shortcuts import get_object_or_404, redirect
-from django.template.response import TemplateResponse
-from django.urls import reverse
-from django.utils.decorators import method_decorator
+from django.http.response import HttpResponse as HttpResponse
+from django.utils.functional import cached_property
 from django.utils.http import urlencode
 from django.utils.translation import gettext as _
-from django.views.generic import TemplateView
+from django.utils.translation import gettext_lazy, ngettext
 
 from wagtail.admin import messages
 from wagtail.admin.auth import PermissionPolicyChecker
-from wagtail.admin.forms.search import SearchForm
-from wagtail.admin.models import popular_tags_for_model
-from wagtail.admin.views.pages.utils import get_valid_next_url_from_request
+from wagtail.admin.filters import BaseMediaFilterSet
+from wagtail.admin.ui.tables import (
+    BulkActionsCheckboxColumn,
+    Column,
+    DateColumn,
+    DownloadColumn,
+    Table,
+    TitleColumn,
+)
+from wagtail.admin.utils import get_valid_next_url_from_request, set_query_params
+from wagtail.admin.views import generic
 from wagtail.documents import get_document_model
 from wagtail.documents.forms import get_document_form
 from wagtail.documents.permissions import permission_policy
-from wagtail.models import Collection
 
 permission_checker = PermissionPolicyChecker(permission_policy)
+Document = get_document_model()
 
 
-class BaseListingView(TemplateView):
-    @method_decorator(permission_checker.require_any("add", "change", "delete"))
-    def get(self, request):
-        return super().get(request)
+class BulkActionsColumn(BulkActionsCheckboxColumn):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, obj_type="document", **kwargs)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Get documents (filtered by user permission)
-        documents = permission_policy.instances_user_has_any_permission_for(
-            self.request.user, ["change", "delete"]
-        )
-
-        # Ordering
-        if "ordering" in self.request.GET and self.request.GET["ordering"] in [
-            "title",
-            "-created_at",
-        ]:
-            ordering = self.request.GET["ordering"]
-        else:
-            ordering = "-created_at"
-        documents = documents.order_by(ordering)
-
-        # Filter by collection
-        self.current_collection = None
-        collection_id = self.request.GET.get("collection_id")
-        if collection_id:
-            try:
-                self.current_collection = Collection.objects.get(id=collection_id)
-                documents = documents.filter(collection=self.current_collection)
-            except (ValueError, Collection.DoesNotExist):
-                pass
-
-        # Search
-        query_string = None
-        if "q" in self.request.GET:
-            self.form = SearchForm(self.request.GET, placeholder=_("Search documents"))
-            if self.form.is_valid():
-                query_string = self.form.cleaned_data["q"]
-                documents = documents.search(query_string)
-        else:
-            self.form = SearchForm(placeholder=_("Search documents"))
-
-        # Pagination
-        paginator = Paginator(documents, per_page=20)
-        documents = paginator.get_page(self.request.GET.get("p"))
-
-        next_url = reverse("wagtaildocs:index")
-        request_query_string = self.request.META.get("QUERY_STRING")
-        if request_query_string:
-            next_url += "?" + request_query_string
-
-        context.update(
-            {
-                "ordering": ordering,
-                "documents": documents,
-                "query_string": query_string,
-                "is_searching": bool(query_string),
-                "next": next_url,
-            }
-        )
+    def get_header_context_data(self, parent_context):
+        context = super().get_header_context_data(parent_context)
+        parent = parent_context.get("current_collection")
+        if parent:
+            context["parent"] = parent.id
         return context
 
 
-class IndexView(BaseListingView):
+class DocumentTable(Table):
+    def get_context_data(self, parent_context):
+        context = super().get_context_data(parent_context)
+        context["current_collection"] = parent_context.get("current_collection")
+        return context
+
+
+class DocumentsFilterSet(BaseMediaFilterSet):
+    permission_policy = permission_policy
+
+    class Meta:
+        model = Document
+        fields = []
+
+
+class IndexView(generic.IndexView):
+    permission_policy = permission_policy
+    any_permission_required = ["add", "change", "delete"]
+    context_object_name = "documents"
+    page_title = gettext_lazy("Documents")
+    header_icon = "doc-full-inverse"
+    page_kwarg = "p"
+    paginate_by = 20
+    index_url_name = "wagtaildocs:index"
+    index_results_url_name = "wagtaildocs:index_results"
+    add_url_name = "wagtaildocs:add_multiple"
+    edit_url_name = "wagtaildocs:edit"
     template_name = "wagtaildocs/documents/index.html"
+    results_template_name = "wagtaildocs/documents/index_results.html"
+    default_ordering = "title"
+    table_class = DocumentTable
+    filterset_class = DocumentsFilterSet
+    model = get_document_model()
+    add_item_label = gettext_lazy("Add a document")
+    show_other_searches = True
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def get_base_queryset(self):
+        # Get documents (filtered by user permission)
+        return self.permission_policy.instances_user_has_any_permission_for(
+            self.request.user, ["change", "delete"]
+        ).select_related("collection")
 
+    @cached_property
+    def current_collection(self):
+        # Upon validation, the cleaned data is a Collection instance
+        return self.filters and self.filters.form.cleaned_data.get("collection_id")
+
+    @cached_property
+    def columns(self):
+        columns = [
+            BulkActionsColumn("bulk_actions"),
+            TitleColumn(
+                "title",
+                label=_("Title"),
+                sort_key="title",
+                get_url=self.get_edit_url,
+                get_title_id=lambda doc: f"document_{quote(doc.pk)}_title",
+            ),
+            DownloadColumn("filename", label=_("File")),
+            DateColumn(
+                "created_at",
+                label=_("Created"),
+                sort_key="created_at",
+                width="16%",
+            ),
+        ]
+        if self.filters and "collection_id" in self.filters.filters:
+            columns.insert(
+                3,
+                Column("collection", label=_("Collection"), accessor="collection.name"),
+            )
+        return columns
+
+    @cached_property
+    def collections(self):
         collections = permission_policy.collections_user_has_any_permission_for(
             self.request.user, ["add", "change"]
         )
         if len(collections) < 2:
             collections = None
+        return collections
 
-        Document = get_document_model()
+    def get_next_url(self):
+        next_url = self.index_url
+        request_query_string = self.request.META.get("QUERY_STRING")
+        if request_query_string:
+            next_url += "?" + request_query_string
+        return next_url
 
-        context.update(
-            {
-                "search_form": self.form,
-                "popular_tags": popular_tags_for_model(get_document_model()),
-                "user_can_add": permission_policy.user_has_permission(
-                    self.request.user, "add"
-                ),
-                "collections": collections,
-                "current_collection": self.current_collection,
-                "app_label": Document._meta.app_label,
-                "model_name": Document._meta.model_name,
-            }
+    def get_add_url(self):
+        # Pass the collection filter to prefill the add form's collection field
+        return set_query_params(
+            super().get_add_url(),
+            {"collection_id": self.current_collection and self.current_collection.pk},
         )
+
+    def get_edit_url(self, instance):
+        return set_query_params(
+            super().get_edit_url(instance),
+            {"next": self.get_next_url()},
+        )
+
+    def get_filterset_kwargs(self):
+        kwargs = super().get_filterset_kwargs()
+        kwargs["is_searching"] = self.is_searching
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["current_collection"] = self.current_collection
         return context
 
 
-class ListingResultsView(BaseListingView):
-    template_name = "wagtaildocs/documents/results.html"
+class CreateView(generic.CreateView):
+    permission_policy = permission_policy
+    index_url_name = "wagtaildocs:index"
+    add_url_name = "wagtaildocs:add"
+    edit_url_name = "wagtaildocs:edit"
+    error_message = gettext_lazy("The document could not be created due to errors.")
+    template_name = "wagtaildocs/documents/add.html"
+    header_icon = "doc-full-inverse"
+
+    @cached_property
+    def model(self):
+        # Use a property instead of setting this as a class attribute so it is
+        # accessed at request-time, thus can be tested with override_settings
+        return get_document_model()
+
+    def get_form_class(self):
+        return get_document_form(self.model)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def get_initial_form_instance(self):
+        return self.model(uploaded_by_user=self.request.user)
+
+    def get_success_message(self, instance):
+        return _("Document '%(document_title)s' added.") % {
+            "document_title": instance.title
+        }
 
 
-@permission_checker.require("add")
-def add(request):
-    Document = get_document_model()
-    DocumentForm = get_document_form(Document)
+class EditView(generic.EditView):
+    permission_policy = permission_policy
+    pk_url_kwarg = "document_id"
+    error_message = gettext_lazy("The document could not be saved due to errors.")
+    template_name = "wagtaildocs/documents/edit.html"
+    index_url_name = "wagtaildocs:index"
+    edit_url_name = "wagtaildocs:edit"
+    delete_url_name = "wagtaildocs:delete"
+    header_icon = "doc-full-inverse"
+    context_object_name = "document"
 
-    if request.method == "POST":
-        doc = Document(uploaded_by_user=request.user)
-        form = DocumentForm(
-            request.POST, request.FILES, instance=doc, user=request.user
+    @cached_property
+    def model(self):
+        return get_document_model()
+
+    def get_form_class(self):
+        return get_document_form(self.model)
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not self.permission_policy.user_has_permission_for_instance(
+            self.request.user, self.permission_required, obj
+        ):
+            raise PermissionDenied
+        return obj
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def get_success_message(self):
+        return _("Document '%(document_title)s' updated") % {
+            "document_title": self.object.title
+        }
+
+    @cached_property
+    def next_url(self):
+        return get_valid_next_url_from_request(self.request)
+
+    def get_success_url(self):
+        return self.next_url or super().get_success_url()
+
+    def get_delete_url(self):
+        delete_url = super().get_delete_url()
+        if self.next_url:
+            delete_url += "?" + urlencode({"next": self.next_url})
+        return delete_url
+
+    def render_to_response(self, context, **response_kwargs):
+        if self.object.is_stored_locally():
+            # Give error if document file doesn't exist
+            if not os.path.isfile(self.object.file.path):
+                messages.error(
+                    self.request,
+                    _(
+                        "The file could not be found. Please change the source or delete the document"
+                    ),
+                    buttons=[messages.button(self.get_delete_url(), _("Delete"))],
+                )
+
+        return super().render_to_response(context, **response_kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["usage_count_val"] = self.object.get_usage().count()
+        context["filesize"] = self.object.get_file_size()
+        context["next"] = self.next_url
+        return context
+
+
+class DeleteView(generic.DeleteView):
+    model = get_document_model()
+    pk_url_kwarg = "document_id"
+    permission_policy = permission_policy
+    permission_required = "delete"
+    header_icon = "doc-full-inverse"
+    usage_url_name = "wagtaildocs:document_usage"
+    delete_url_name = "wagtaildocs:delete"
+    index_url_name = "wagtaildocs:index"
+    page_title = gettext_lazy("Delete document")
+
+    def user_has_permission(self, permission):
+        return self.permission_policy.user_has_permission_for_instance(
+            self.request.user, permission, self.object
         )
-        if form.is_valid():
-            form.save()
 
-            messages.success(
-                request,
-                _("Document '{0}' added.").format(doc.title),
-                buttons=[
-                    messages.button(
-                        reverse("wagtaildocs:edit", args=(doc.id,)), _("Edit")
-                    )
-                ],
-            )
-            return redirect("wagtaildocs:index")
-        else:
-            messages.error(request, _("The document could not be saved due to errors."))
-    else:
-        form = DocumentForm(user=request.user)
-
-    return TemplateResponse(
-        request,
-        "wagtaildocs/documents/add.html",
-        {
-            "form": form,
-        },
-    )
-
-
-@permission_checker.require("change")
-def edit(request, document_id):
-    Document = get_document_model()
-    DocumentForm = get_document_form(Document)
-
-    doc = get_object_or_404(Document, id=document_id)
-
-    if not permission_policy.user_has_permission_for_instance(
-        request.user, "change", doc
-    ):
-        raise PermissionDenied
-
-    next_url = get_valid_next_url_from_request(request)
-
-    if request.method == "POST":
-        form = DocumentForm(
-            request.POST, request.FILES, instance=doc, user=request.user
+    @property
+    def confirmation_message(self):
+        # This message will only appear in the singular, but we specify a plural
+        # so it can share the translation string with confirm_bulk_delete.html
+        return ngettext(
+            "Are you sure you want to delete this document?",
+            "Are you sure you want to delete these documents?",
+            1,
         )
-        if form.is_valid():
-            doc = form.save()
 
-            edit_url = reverse("wagtaildocs:edit", args=(doc.id,))
-            redirect_url = "wagtaildocs:index"
-            if next_url:
-                edit_url = f"{edit_url}?{urlencode({'next': next_url})}"
-                redirect_url = next_url
-
-            messages.success(
-                request,
-                _("Document '{0}' updated").format(doc.title),
-                buttons=[messages.button(edit_url, _("Edit"))],
-            )
-            return redirect(redirect_url)
-        else:
-            messages.error(request, _("The document could not be saved due to errors."))
-    else:
-        form = DocumentForm(instance=doc, user=request.user)
-
-    try:
-        local_path = doc.file.path
-    except NotImplementedError:
-        # Document is hosted externally (eg, S3)
-        local_path = None
-
-    if local_path:
-        # Give error if document file doesn't exist
-        if not os.path.isfile(local_path):
-            messages.error(
-                request,
-                _(
-                    "The file could not be found. Please change the source or delete the document"
-                ),
-                buttons=[
-                    messages.button(
-                        reverse("wagtaildocs:delete", args=(doc.id,)), _("Delete")
-                    )
-                ],
-            )
-
-    return TemplateResponse(
-        request,
-        "wagtaildocs/documents/edit.html",
-        {
-            "document": doc,
-            "filesize": doc.get_file_size(),
-            "form": form,
-            "user_can_delete": permission_policy.user_has_permission_for_instance(
-                request.user, "delete", doc
-            ),
-            "next": next_url,
-        },
-    )
+    def get_success_message(self):
+        return _("Document '%(document_title)s' deleted.") % {
+            "document_title": self.object.title
+        }
 
 
-@permission_checker.require("delete")
-def delete(request, document_id):
-    Document = get_document_model()
-    doc = get_object_or_404(Document, id=document_id)
+class UsageView(generic.UsageView):
+    model = get_document_model()
+    pk_url_kwarg = "document_id"
+    permission_policy = permission_policy
+    permission_required = "change"
+    header_icon = "doc-full-inverse"
+    index_url_name = "wagtaildocs:index"
+    edit_url_name = "wagtaildocs:edit"
 
-    if not permission_policy.user_has_permission_for_instance(
-        request.user, "delete", doc
-    ):
-        raise PermissionDenied
+    def user_has_permission(self, permission):
+        return self.permission_policy.user_has_permission_for_instance(
+            self.request.user, permission, self.object
+        )
 
-    next_url = get_valid_next_url_from_request(request)
-
-    if request.method == "POST":
-        doc.delete()
-        messages.success(request, _("Document '{0}' deleted.").format(doc.title))
-        return redirect(next_url) if next_url else redirect("wagtaildocs:index")
-
-    return TemplateResponse(
-        request,
-        "wagtaildocs/documents/confirm_delete.html",
-        {
-            "document": doc,
-            "next": next_url,
-        },
-    )
-
-
-def usage(request, document_id):
-    Document = get_document_model()
-    doc = get_object_or_404(Document, id=document_id)
-
-    paginator = Paginator(doc.get_usage(), per_page=20)
-    used_by = paginator.get_page(request.GET.get("p"))
-
-    return TemplateResponse(
-        request,
-        "wagtaildocs/documents/usage.html",
-        {"document": doc, "used_by": used_by},
-    )
+    def get_page_subtitle(self):
+        return self.object.title

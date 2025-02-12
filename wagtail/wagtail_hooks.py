@@ -1,17 +1,25 @@
+from typing import TYPE_CHECKING
+
 from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.views import redirect_to_login
 from django.db import models
 from django.urls import reverse
+from django.utils.cache import add_never_cache_headers
 from django.utils.text import capfirst
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
 
 from wagtail import hooks
+from wagtail.compat import HTTPMethod
 from wagtail.coreutils import get_content_languages
 from wagtail.log_actions import LogFormatter
 from wagtail.models import ModelLogEntry, Page, PageLogEntry, PageViewRestriction
 from wagtail.rich_text.pages import PageLinkHandler
+from wagtail.utils.timestamps import parse_datetime_localized, render_timestamp
+
+if TYPE_CHECKING:
+    from django.http import HttpRequest
 
 
 def require_wagtail_login(next):
@@ -21,35 +29,51 @@ def require_wagtail_login(next):
     return redirect_to_login(next, login_url)
 
 
-@hooks.register("before_serve_page")
-def check_view_restrictions(page, request, serve_args, serve_kwargs):
-    """
-    Check whether there are any view restrictions on this page which are
-    not fulfilled by the given request object. If there are, return an
-    HttpResponse that will notify the user of that restriction (and possibly
-    include a password / login form that will allow them to proceed). If
-    there are no such restrictions, return None
-    """
-    for restriction in page.get_view_restrictions():
-        if not restriction.accept_request(request):
-            if restriction.restriction_type == PageViewRestriction.PASSWORD:
-                from wagtail.forms import PasswordViewRestrictionForm
+@hooks.register("on_serve_page")
+def check_view_restrictions(callback):
+    def inner(page, request, serve_args, serve_kwargs):
+        """
+        Check whether there are any view restrictions on this page which are
+        not fulfilled by the given request object. If there are, return an
+        HttpResponse that will notify the user of that restriction (and possibly
+        include a password / login form that will allow them to proceed). If
+        there are no such restrictions, return None
+        """
+        restrictions = page.get_view_restrictions()
+        response = None
+        for restriction in restrictions:
+            if not restriction.accept_request(request):
+                if restriction.restriction_type == PageViewRestriction.PASSWORD:
+                    from wagtail.forms import PasswordViewRestrictionForm
 
-                form = PasswordViewRestrictionForm(
-                    instance=restriction,
-                    initial={"return_url": request.get_full_path()},
-                )
-                action_url = reverse(
-                    "wagtailcore_authenticate_with_password",
-                    args=[restriction.id, page.id],
-                )
-                return page.serve_password_required_response(request, form, action_url)
+                    form = PasswordViewRestrictionForm(
+                        instance=restriction,
+                        initial={"return_url": request.get_full_path()},
+                    )
+                    action_url = reverse(
+                        "wagtailcore_authenticate_with_password",
+                        args=[restriction.id, page.id],
+                    )
 
-            elif restriction.restriction_type in [
-                PageViewRestriction.LOGIN,
-                PageViewRestriction.GROUPS,
-            ]:
-                return require_wagtail_login(next=request.get_full_path())
+                    response = page.serve_password_required_response(
+                        request, form, action_url
+                    )
+                    add_never_cache_headers(response)
+                    return response
+                elif restriction.restriction_type in [
+                    PageViewRestriction.LOGIN,
+                    PageViewRestriction.GROUPS,
+                ]:
+                    response = require_wagtail_login(next=request.get_full_path())
+                    add_never_cache_headers(response)
+                    return response
+
+        response = callback(page, request, serve_args, serve_kwargs)
+        if restrictions:
+            add_never_cache_headers(response)
+        return response
+
+    return inner
 
 
 @hooks.register("register_rich_text_features")
@@ -126,6 +150,8 @@ def register_core_log_actions(actions):
     )
     actions.register_action("wagtail.lock", _("Lock"), _("Locked"))
     actions.register_action("wagtail.unlock", _("Unlock"), _("Unlocked"))
+
+    # Legacy moderation actions
     actions.register_action("wagtail.moderation.approve", _("Approve"), _("Approved"))
     actions.register_action("wagtail.moderation.reject", _("Reject"), _("Rejected"))
 
@@ -152,7 +178,11 @@ def register_core_log_actions(actions):
                     "Reverted to previous revision with id %(revision_id)s from %(created_at)s"
                 ) % {
                     "revision_id": log_entry.data["revision"]["id"],
-                    "created_at": log_entry.data["revision"]["created"],
+                    "created_at": render_timestamp(
+                        parse_datetime_localized(
+                            log_entry.data["revision"]["created"],
+                        )
+                    ),
                 }
             except KeyError:
                 return _("Reverted to previous revision")
@@ -245,12 +275,24 @@ def register_core_log_actions(actions):
                         "Revision %(revision_id)s from %(created_at)s scheduled for publishing at %(go_live_at)s."
                     ) % {
                         "revision_id": log_entry.data["revision"]["id"],
-                        "created_at": log_entry.data["revision"]["created"],
-                        "go_live_at": log_entry.data["revision"]["go_live_at"],
+                        "created_at": render_timestamp(
+                            parse_datetime_localized(
+                                log_entry.data["revision"]["created"],
+                            )
+                        ),
+                        "go_live_at": render_timestamp(
+                            parse_datetime_localized(
+                                log_entry.data["revision"]["go_live_at"],
+                            )
+                        ),
                     }
                 else:
                     return _("Page scheduled for publishing at %(go_live_at)s") % {
-                        "go_live_at": log_entry.data["revision"]["go_live_at"],
+                        "go_live_at": render_timestamp(
+                            parse_datetime_localized(
+                                log_entry.data["revision"]["go_live_at"],
+                            )
+                        ),
                     }
             except KeyError:
                 return _("Page scheduled for publishing")
@@ -266,12 +308,28 @@ def register_core_log_actions(actions):
                         "Revision %(revision_id)s from %(created_at)s unscheduled from publishing at %(go_live_at)s."
                     ) % {
                         "revision_id": log_entry.data["revision"]["id"],
-                        "created_at": log_entry.data["revision"]["created"],
-                        "go_live_at": log_entry.data["revision"]["go_live_at"],
+                        "created_at": render_timestamp(
+                            parse_datetime_localized(
+                                log_entry.data["revision"]["created"],
+                            )
+                        ),
+                        "go_live_at": render_timestamp(
+                            parse_datetime_localized(
+                                log_entry.data["revision"]["go_live_at"],
+                            )
+                        )
+                        if log_entry.data["revision"]["go_live_at"]
+                        else None,
                     }
                 else:
                     return _("Page unscheduled for publishing at %(go_live_at)s") % {
-                        "go_live_at": log_entry.data["revision"]["go_live_at"],
+                        "go_live_at": render_timestamp(
+                            parse_datetime_localized(
+                                log_entry.data["revision"]["go_live_at"],
+                            )
+                        )
+                        if log_entry.data["revision"]["go_live_at"]
+                        else None,
                     }
             except KeyError:
                 return _("Page unscheduled from publishing")
@@ -306,7 +364,9 @@ def register_core_log_actions(actions):
 
         def format_message(self, log_entry):
             try:
-                return _("Removed the '%(restriction)s' view restriction") % {
+                return _(
+                    "Removed the '%(restriction)s' view restriction. The page is public."
+                ) % {
                     "restriction": log_entry.data["restriction"]["title"],
                 }
             except KeyError:
@@ -514,3 +574,18 @@ def register_workflow_log_actions(actions):
                 }
             except (KeyError, TypeError):
                 return _("Workflow cancelled")
+
+
+@hooks.register("before_serve_page", order=0)
+def check_request_method(page: Page, request: "HttpRequest", *args, **kwargs):
+    """
+    Before serving, check the request method is permitted by the page,
+    and use the page object's :meth:``wagtail.models.Page.handle_options_request``
+    method to generate a response if the OPTIONS HTTP verb is used.
+    """
+    check_response = page.check_request_method(request, *args, **kwargs)
+    if check_response is not None:
+        return check_response
+    if request.method == HTTPMethod.OPTIONS.value:
+        return page.handle_options_request(request, *args, **kwargs)
+    return None

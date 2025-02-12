@@ -8,7 +8,6 @@ from django.utils.translation import gettext_lazy as _
 
 from wagtail import hooks
 from wagtail.admin.ui.components import Component
-from wagtail.models import UserPagePermissionsProxy
 
 
 class ActionMenuItem(Component):
@@ -29,7 +28,7 @@ class ActionMenuItem(Component):
     def get_user_page_permissions_tester(self, context):
         if "user_page_permissions_tester" in context:
             return context["user_page_permissions_tester"]
-        return context["user_page_permissions"].for_page(context["page"])
+        return context["page"].permissions_for_user(context["request"].user)
 
     def is_shown(self, context):
         """
@@ -41,7 +40,6 @@ class ActionMenuItem(Component):
             'view' = 'create', 'edit' or 'revisions_revert'
             'page' (if view = 'edit' or 'revisions_revert') = the page being edited
             'parent_page' (if view = 'create') = the parent page of the page being created
-            'user_page_permissions' = a UserPagePermissionsProxy for the current user, to test permissions against
             'lock' = a Lock object if the page is locked, otherwise None
             'locked_for_user' = True if the lock prevents the current user from editing the page
             may also contain:
@@ -79,8 +77,8 @@ class PublishMenuItem(ActionMenuItem):
     def is_shown(self, context):
         if context["view"] == "create":
             return (
-                context["user_page_permissions"]
-                .for_page(context["parent_page"])
+                context["parent_page"]
+                .permissions_for_user(context["request"].user)
                 .can_publish_subpage()
             )
         else:  # view == 'edit' or 'revisions_revert'
@@ -99,7 +97,7 @@ class SubmitForModerationMenuItem(ActionMenuItem):
     icon_name = "resubmit"
 
     def is_shown(self, context):
-        if not getattr(settings, "WAGTAIL_MODERATION_ENABLED", True):
+        if not getattr(settings, "WAGTAIL_WORKFLOW_ENABLED", True):
             return False
 
         if context["view"] == "create":
@@ -122,13 +120,15 @@ class SubmitForModerationMenuItem(ActionMenuItem):
             workflow_state
             and workflow_state.status == workflow_state.STATUS_NEEDS_CHANGES
         ):
-            context["label"] = _("Resubmit to {}").format(
-                workflow_state.current_task_state.task.name
-            )
+            context["label"] = _("Resubmit to %(task_name)s") % {
+                "task_name": workflow_state.current_task_state.task.name
+            }
         elif page:
             workflow = page.get_workflow()
             if workflow:
-                context["label"] = _("Submit to {}").format(workflow.name)
+                context["label"] = _("Submit to %(workflow_name)s") % {
+                    "workflow_name": workflow.name
+                }
         return context
 
 
@@ -163,7 +163,7 @@ class RestartWorkflowMenuItem(ActionMenuItem):
     icon_name = "login"
 
     def is_shown(self, context):
-        if not getattr(settings, "WAGTAIL_MODERATION_ENABLED", True):
+        if not getattr(settings, "WAGTAIL_WORKFLOW_ENABLED", True):
             return False
         elif context["view"] == "edit":
             workflow_state = context["page"].current_workflow_state
@@ -195,8 +195,7 @@ class CancelWorkflowMenuItem(ActionMenuItem):
 class UnpublishMenuItem(ActionMenuItem):
     label = _("Unpublish")
     name = "action-unpublish"
-    icon_name = "download-alt"
-    classname = "action-secondary"
+    icon_name = "download"
 
     def is_shown(self, context):
         if context["view"] == "edit":
@@ -238,7 +237,7 @@ BASE_PAGE_ACTION_MENU_ITEMS = None
 def _get_base_page_action_menu_items():
     """
     Retrieve the global list of menu items for the page action menu,
-    which may then be customised on a per-request basis
+    which may then be customized on a per-request basis
     """
     global BASE_PAGE_ACTION_MENU_ITEMS
 
@@ -268,12 +267,10 @@ class PageActionMenu:
         self.context = kwargs
         self.context["request"] = request
         page = self.context.get("page")
-        user_page_permissions = UserPagePermissionsProxy(self.request.user)
-        self.context["user_page_permissions"] = user_page_permissions
         if page:
-            self.context[
-                "user_page_permissions_tester"
-            ] = user_page_permissions.for_page(page)
+            self.context["user_page_permissions_tester"] = page.permissions_for_user(
+                self.request.user
+            )
 
         self.menu_items = []
 
@@ -320,6 +317,9 @@ class PageActionMenu:
             self.default_item = None
 
     def render_html(self):
+        if not self.default_item:
+            return ""
+
         rendered_menu_items = [
             menu_item.render_html(self.context) for menu_item in self.menu_items
         ]
@@ -338,7 +338,7 @@ class PageActionMenu:
 
     @cached_property
     def media(self):
-        media = Media()
+        media = self.default_item.media if self.default_item else Media()
         for item in self.menu_items:
             media += item.media
         return media

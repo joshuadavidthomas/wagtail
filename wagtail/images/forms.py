@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.conf import settings
 from django.forms.models import modelform_factory
@@ -9,6 +11,7 @@ from wagtail.admin.forms.collections import (
     CollectionChoiceField,
     collection_member_permission_formset_factory,
 )
+from wagtail.admin.forms.tags import validate_tag_length
 from wagtail.admin.widgets import AdminTagWidget
 from wagtail.images.fields import WagtailImageField
 from wagtail.images.formats import get_image_formats
@@ -77,6 +80,11 @@ class BaseImageForm(BaseCollectionMemberForm):
                 attrs={"class": "focal_point_height"}
             ),
         }
+
+    def clean_tags(self):
+        tags = self.cleaned_data["tags"]
+        validate_tag_length(tags)
+        return tags
 
 
 def get_image_base_form():
@@ -184,9 +192,44 @@ class URLGeneratorForm(forms.Form):
             ("fill", _("Resize to fill")),
         ),
     )
-    width = forms.IntegerField(label=_("Width"), min_value=0)
-    height = forms.IntegerField(label=_("Height"), min_value=0)
-    closeness = forms.IntegerField(label=_("Closeness"), min_value=0, initial=0)
+    width = forms.IntegerField(
+        label=_("Width"),
+        min_value=0,
+        widget=forms.NumberInput(
+            attrs={
+                "disabled": True,
+                "data-w-rules-target": "enable",
+                "data-w-rules": json.dumps(
+                    {"filter_method": ["width", "max", "min", "fill"]}
+                ),
+            },
+        ),
+    )
+    height = forms.IntegerField(
+        label=_("Height"),
+        min_value=0,
+        widget=forms.NumberInput(
+            attrs={
+                "disabled": True,
+                "data-w-rules-target": "enable",
+                "data-w-rules": json.dumps(
+                    {"filter_method": ["height", "max", "min", "fill"]}
+                ),
+            }
+        ),
+    )
+    closeness = forms.IntegerField(
+        label=_("Closeness"),
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(
+            attrs={
+                "disabled": True,
+                "data-w-rules-target": "enable",
+                "data-w-rules": json.dumps({"filter_method": ["fill"]}),
+            }
+        ),
+    )
 
 
 GroupImagePermissionFormSet = collection_member_permission_formset_factory(

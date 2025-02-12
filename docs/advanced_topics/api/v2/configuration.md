@@ -1,6 +1,6 @@
 (api_v2_configuration)=
 
-# Wagtail API v2 Configuration Guide
+# Wagtail API v2 configuration guide
 
 This section of the docs will show you how to set up a public API for your
 Wagtail site.
@@ -31,6 +31,8 @@ Optionally, you may also want to add `rest_framework` to `INSTALLED_APPS`.
 This would make the API browsable when viewed from a web browser but is not
 required for basic JSON-formatted output.
 
+(api_v2_configure_endpoints)=
+
 ### Configure endpoints
 
 Next, it's time to configure which content will be exposed on the API. Each
@@ -38,13 +40,42 @@ content type (such as pages, images and documents) has its own endpoint.
 Endpoints are combined by a router, which provides the url configuration you
 can hook into the rest of your project.
 
-Wagtail provides three endpoint classes you can use:
+Wagtail provides multiple endpoint classes you can use:
 
--   Pages {class}`wagtail.api.v2.views.PagesAPIViewSet`
--   Images {class}`wagtail.images.api.v2.views.ImagesAPIViewSet`
--   Documents {class}`wagtail.documents.api.v2.views.DocumentsAPIViewSet`
+-   Pages `wagtail.api.v2.views.PagesAPIViewSet`
+-   Images `wagtail.images.api.v2.views.ImagesAPIViewSet`
+-   Documents `wagtail.documents.api.v2.views.DocumentsAPIViewSet`
+-   Redirects `wagtail.contrib.redirects.api.RedirectsAPIViewSet` see [](redirects_api_endpoint)
 
 You can subclass any of these endpoint classes to customize their functionality.
+For example, in this case, if you need to change the `APIViewSet` by setting a desired renderer class:
+
+```python
+from rest_framework.renderers import JSONRenderer
+
+# ...
+
+class CustomPagesAPIViewSet(PagesAPIViewSet):
+    renderer_classes = [JSONRenderer]
+    name = "pages"
+
+api_router.register_endpoint("pages", CustomPagesAPIViewSet)
+```
+
+Or changing the desired model to use for page results.
+
+```python
+from rest_framework.renderers import JSONRenderer
+
+# ...
+
+class PostPagesAPIViewSet(PagesAPIViewSet):
+    model = models.BlogPage
+
+
+api_router.register_endpoint("posts", PostPagesAPIViewSet)
+```
+
 Additionally, there is a base endpoint class you can use for adding different
 content types to the API: `wagtail.api.v2.views.BaseAPIViewSet`
 
@@ -106,29 +137,29 @@ For example:
 ```python
 # blog/models.py
 
-from wagtail.api import apifield
+from wagtail.api import APIField
 
-class blogpageauthor(orderable):
-    page = models.foreignkey('blog.blogpage', on_delete=models.cascade, related_name='authors')
-    name = models.charfield(max_length=255)
+class BlogPageAuthor(Orderable):
+    page = models.ForeignKey('blog.BlogPage', on_delete=models.CASCADE, related_name='authors')
+    name = models.CharField(max_length=255)
 
     api_fields = [
-        apifield('name'),
+        APIField('name'),
     ]
 
 
-class blogpage(page):
-    published_date = models.datetimefield()
-    body = richtextfield()
-    feed_image = models.foreignkey('wagtailimages.image', on_delete=models.set_null, null=true, ...)
-    private_field = models.charfield(max_length=255)
+class BlogPage(Page):
+    published_date = models.DateTimeField()
+    body = RichTextField()
+    feed_image = models.ForeignKey('wagtailimages.Image', on_delete=models.SET_NULL, null=True, ...)
+    private_field = models.CharField(max_length=255)
 
-    # export fields over the api
+    # Export fields over the API
     api_fields = [
-        apifield('published_date'),
-        apifield('body'),
-        apifield('feed_image'),
-        apifield('authors'),  # this will nest the relevant blogpageauthor objects in the api response
+        APIField('published_date'),
+        APIField('body'),
+        APIField('feed_image'),
+        APIField('authors'),  # This will nest the relevant BlogPageAuthor objects in the API response
     ]
 ```
 
@@ -137,9 +168,25 @@ This will make `published_date`, `body`, `feed_image` and a list of
 fields, you must select the `blog.BlogPage` type using the `?type`
 [parameter in the API itself](apiv2_custom_page_fields).
 
+(form_page_fields_api_field)=
+
+### Adding form fields to the API
+
+If you have a FormBuilder page called `FormPage` this is an example of how you would expose the form fields to the API:
+
+```python
+from wagtail.api import APIField
+
+class FormPage(AbstractEmailForm):
+    #...
+    api_fields = [
+        APIField('form_fields'),
+    ]
+```
+
 ### Custom serializers
 
-[Serializers](https://www.django-rest-framework.org/api-guide/fields) are used to convert the database representation of a model into
+[Serializers](https://www.django-rest-framework.org/api-guide/fields/) are used to convert the database representation of a model into
 JSON format. You can override the serializer for any field using the
 `serializer` keyword argument:
 
@@ -183,6 +230,8 @@ This adds two fields to the API (other fields omitted for brevity):
     "published_date_display": "Thursday 06 April 2017"
 }
 ```
+
+(api_v2_images)=
 
 ### Images in the API
 
@@ -241,6 +290,56 @@ Note: `download_url` is the original uploaded file path, whereas
 When you are using another storage backend, such as S3, `download_url` will return
 a URL to the image if your media files are properly configured.
 
+For cases where the source image set may contain SVGs, the `ImageRenditionField` constructor takes a `preserve_svg` argument. The behavior of `ImageRenditionField` when `preserve_svg` is `True` is as described for the `image` template tag's `preserve-svg` argument (see the documentation on [](svg_images)).
+
+### Authentication
+
+To protect the access to your API, you can implement an [authentication](https://www.django-rest-framework.org/api-guide/authentication/) method provided by the Django REST Framework, for example the [Token Authentication](https://www.django-rest-framework.org/api-guide/authentication/#tokenauthentication):
+
+```python
+# api.py
+
+from rest_framework.permissions import IsAuthenticated
+
+# ...
+
+class CustomPagesAPIViewSet(PagesAPIViewSet):
+    name = "pages"
+    permission_classes = (IsAuthenticated,)
+
+
+api_router.register_endpoint("pages", CustomPagesAPIViewSet)
+```
+
+Extend settings with
+
+```python
+# settings.py
+
+INSTALLED_APPS = [
+    ...
+
+    'rest_framework.authtoken',
+
+    ...
+]
+
+...
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication"
+    ],
+}
+```
+
+Don't forget to run the app's migrations.
+
+Your API endpoint will be accessible only with the Authorization header containing the generated `Token exampleSecretToken123xyz`.
+Tokens can be generated in the Django admin under Auth Token or using the `manage.py` command `drf_create_token`.
+
+Note: If you use `TokenAuthentication` in production you must ensure that your API is only available over `https`.
+
 ## Additional settings
 
 ### `WAGTAILAPI_BASE_URL`
@@ -250,7 +349,7 @@ a URL to the image if your media files are properly configured.
 This is used in two places, when generating absolute URLs to document files and
 invalidating the cache.
 
-Generating URLs to documents will fall back the the current request's hostname
+Generating URLs to documents will fall back the current request's hostname
 if this is not set. Cache invalidation cannot do this, however, so this setting
 must be set when using this module alongside the `wagtailfrontendcache` module.
 

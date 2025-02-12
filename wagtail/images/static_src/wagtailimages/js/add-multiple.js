@@ -1,25 +1,13 @@
 $(function () {
-  // prevents browser default drag/drop
-  $(document).on('drop dragover', function (e) {
-    e.preventDefault();
-  });
-
   $('#fileupload').fileupload({
     dataType: 'html',
     sequentialUploads: true,
     dropZone: $('.drop-zone'),
-    acceptFileTypes: window.fileupload_opts.accepted_file_types,
-    maxFileSize: window.fileupload_opts.max_file_size,
     previewMinWidth: 150,
     previewMaxWidth: 150,
     previewMinHeight: 150,
     previewMaxHeight: 150,
-    messages: {
-      acceptFileTypes: window.fileupload_opts.errormessages.accepted_file_types,
-      maxFileSize: window.fileupload_opts.errormessages.max_file_size,
-    },
     add: function (e, data) {
-      $('.messages').empty();
       var $this = $(this);
       var that = $this.data('blueimp-fileupload') || $this.data('fileupload');
       var li = $($('#upload-list-item').html()).addClass('upload-uploading');
@@ -39,7 +27,7 @@ $(function () {
           });
 
           data.context.find('.preview .thumb').each(function (index, elm) {
-            $(elm).addClass('hasthumb');
+            $(elm).find('.icon').remove();
             $(elm).append(data.files[index].preview);
           });
         })
@@ -106,7 +94,7 @@ $(function () {
 
     /**
      * Allow a custom title to be defined by an event handler for this form.
-     * If event.preventDefault is called, the original behaviour of using the raw
+     * If event.preventDefault is called, the original behavior of using the raw
      * filename (with extension) as the title is preserved.
      *
      * @example
@@ -122,7 +110,6 @@ $(function () {
     formData: function (form) {
       var filename = this.files[0].name;
       var data = { title: filename.replace(/\.[^.]+$/, '') };
-      var maxTitleLength = window.fileupload_opts.max_title_length;
 
       var event = form.get(0).dispatchEvent(
         new CustomEvent('wagtail:images-upload', {
@@ -131,7 +118,7 @@ $(function () {
           detail: {
             data: data,
             filename: filename,
-            maxTitleLength: maxTitleLength,
+            maxTitleLength: this.maxTitleLength,
           },
         }),
       );
@@ -204,16 +191,17 @@ $(function () {
       url: this.action,
     }).done(function (data) {
       if (data.success) {
-        var statusText = $('.status-msg.update-success').text();
-        addMessage('success', statusText);
+        var text = $('.status-msg.update-success').first().text();
+        document.dispatchEvent(
+          new CustomEvent('w-messages:add', {
+            detail: { clear: true, text, type: 'success' },
+          }),
+        );
         itemElement.slideUp(function () {
           $(this).remove();
         });
       } else {
         form.replaceWith(data.form);
-
-        // run tagit enhancement on new form
-        $('.tag_field input', form).tagit(window.tagit_opts);
       }
     });
   });

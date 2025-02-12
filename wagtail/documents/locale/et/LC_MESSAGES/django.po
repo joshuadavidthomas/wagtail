@@ -4,15 +4,16 @@
 #
 # Translators:
 # Erlend Eelmets <debcf78e@opayq.com>, 2020
+# Erlend Eelmets <debcf78e@opayq.com>, 2020
 # Matt Westcott <matthew@torchbox.com>, 2020
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:06+0000\n"
 "Last-Translator: Matt Westcott <matthew@torchbox.com>, 2020\n"
-"Language-Team: Estonian (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Estonian (http://app.transifex.com/torchbox/wagtail/language/"
 "et/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -89,31 +90,11 @@ msgstr "Muuda dokumenti:"
 msgid "Add a document"
 msgstr "Lisage dokument"
 
-msgid "Add document"
-msgstr "Lisage dokument"
-
 msgid "Uploading…"
 msgstr "Üleslaadimine ..."
 
 msgid "Upload"
 msgstr "Laadi üles"
-
-#, python-format
-msgid "Delete %(title)s"
-msgstr "Kustuta %(title)s"
-
-msgid "Delete document"
-msgstr "Kustuta dokument"
-
-#, python-format
-msgid "Editing %(title)s"
-msgstr "%(title)s muutmine"
-
-msgid "Editing"
-msgstr "Redigeerimine"
-
-msgid "Save"
-msgstr "Salvesta"
 
 msgid "Filesize"
 msgstr "Faili suurus"
@@ -124,62 +105,28 @@ msgstr "Faili ei leitud"
 msgid "Usage"
 msgstr "Kasutamine"
 
-msgid "Documents"
-msgstr "Dokumendid"
-
-msgid "Title"
-msgstr "Pealkiri"
-
-msgid "File"
-msgstr "Fail"
-
-msgid "Created"
-msgstr "Loodud"
-
 #, python-format
 msgid "Sorry, no documents match \"<em>%(query_string)s</em>\""
 msgstr "Vabandust, ükski dokument ei ühti \"<em>%(query_string)s</em>\\"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents in this collection. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents in this collection. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
 "Te pole sellesse kogusse ühtegi dokumenti üles laadinud. Miks mitte laadida "
 "<a href=\"%(wagtaildocs_add_document_url)s\">üles üks</a>?"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Te pole üles laadinud ühtegi dokumenti. Miks mitte laadida <a href="
-"\"%(wagtaildocs_add_document_url)s\">üles üks</a>?"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "%(title)s kasutamine"
-
-msgid "Usage of"
-msgstr "Kasutamine"
-
-msgid "Parent"
-msgstr "Vanem"
-
-msgid "Type"
-msgstr "Tüüp"
-
-msgid "Status"
-msgstr "Staatus"
-
-msgid "Edit this page"
-msgstr "Muutke seda lehte"
+"Te pole üles laadinud ühtegi dokumenti. Miks mitte laadida <a "
+"href=\"%(wagtaildocs_add_document_url)s\">üles üks</a>?"
 
 msgid "Add multiple documents"
 msgstr "Lisage mitu dokumenti"
-
-msgid "Add documents"
-msgstr "Lisage dokumendid"
 
 msgid "Drag and drop documents into this area to upload immediately."
 msgstr "Kohe üleslaadimiseks lohistage dokumendid sellesse piirkonda."
@@ -214,30 +161,51 @@ msgstr "Lisage dokumendi luba"
 msgid "Delete"
 msgstr "Kustuta"
 
+msgid "File"
+msgstr "Fail"
+
+msgid "Created"
+msgstr "Loodud"
+
 msgid "Choose a document"
 msgstr "Valige dokument"
 
-msgid "Search documents"
-msgstr "Dokumentide otsimine"
+msgid "Choose another document"
+msgstr "Valige mõni muu dokument"
 
-#, python-brace-format
-msgid "Document '{0}' added."
-msgstr "Dokument '{0}' on lisatud."
+msgid "Edit this document"
+msgstr "Muutke seda dokumenti"
+
+msgid "Documents"
+msgstr "Dokumendid"
+
+msgid "Title"
+msgstr "Pealkiri"
+
+#, python-format
+msgid "Document '%(document_title)s' added."
+msgstr "Dokument '%(document_title)s' on lisatud."
 
 msgid "The document could not be saved due to errors."
 msgstr "Vigade tõttu ei õnnestunud dokumenti salvestada."
 
-#, python-brace-format
-msgid "Document '{0}' updated"
-msgstr "Dokumendi '{0}' värskendamine on toimunud"
+#, python-format
+msgid "Document '%(document_title)s' updated"
+msgstr "Dokumendi '%(document_title)s' värskendamine on toimunud"
 
 msgid ""
 "The file could not be found. Please change the source or delete the document"
 msgstr "Faili ei leitud. Palun muutke allikat või kustutage dokument"
 
-#, python-brace-format
-msgid "Document '{0}' deleted."
-msgstr "Dokument '{0}' on kustutatud."
+msgid "Delete document"
+msgstr "Kustuta dokument"
+
+#, python-format
+msgid "Document '%(document_title)s' deleted."
+msgstr "Dokument '%(document_title)s' on kustutatud."
+
+msgid "Add documents"
+msgstr "Lisage dokumendid"
 
 msgid "Document"
 msgstr "Dokument"

@@ -4,18 +4,34 @@
 # Stefano Marchetto <airbatum@gmail.com>, 2022
 # Guglielmo Celata <guglielmo.celata@gmail.com>, 2022
 # giammi <gian-maria.daffre@giammi.org>, 2022
-# Giacomo Ghizzani <giacomo.ghz@gmail.com>, 2022
-# Marco Badan <marco.badan@gmail.com>, 2022
 # gcm, 2022
+# Marco Badan <marco.badan@gmail.com>, 2024
+# Loic Teixeira, 2024
+# Giacomo Ghizzani <giacomo.ghz@gmail.com>, 2025
 #
 msgid ""
 msgstr ""
-"Last-Translator: gcm, 2022\n"
-"Language-Team: Italian (https://www.transifex.com/torchbox/teams/8009/it/)\n"
+"Last-Translator: Giacomo Ghizzani <giacomo.ghz@gmail.com>, 2025\n"
+"Language-Team: Italian (https://app.transifex.com/torchbox/teams/8009/it/)\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: it\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
+
+msgid "(New)"
+msgstr "(Nuova)"
+
+msgid "%(num)s error"
+msgid_plural "%(num)s errors"
+msgstr[0] "%(num)s errore"
+msgstr[1] "%(num)s errori"
+msgstr[2] "%(num)s errori"
+
+msgid "%(num)s pixel"
+msgid_plural "%(num)s pixels"
+msgstr[0] "%(num)s pixel"
+msgstr[1] "%(num)s pixel"
+msgstr[2] "%(num)s pixel"
 
 msgid "Add a comment"
 msgstr "Aggiungi un commento"
@@ -26,11 +42,17 @@ msgstr "Testo alternativo"
 msgid "Are you sure?"
 msgstr "Sei sicuro/a?"
 
+msgid "Blocks"
+msgstr "Blocchi"
+
 msgid "Broken link"
 msgstr "Link non funzionante"
 
 msgid "Cancel"
 msgstr "Annulla"
+
+msgid "Character count:"
+msgstr "Conteggio caratteri:"
 
 msgid "Close"
 msgstr "Chiudi"
@@ -56,17 +78,23 @@ msgstr "Eliminazione in corso"
 msgid "Edit"
 msgstr "Modifica"
 
-msgid "Edit '{title}'"
-msgstr "Modifica '{title}'"
+msgid "Edit '%(title)s'"
+msgstr "Modifica '%(title)s'"
 
-msgid "Edit your account"
-msgstr "Modifica il tuo account"
+msgid "Enter your comments..."
+msgstr "Inserisci i tuoi commenti..."
+
+msgid "Expand all"
+msgstr "Espandi tutto"
 
 msgid "Focus comment"
 msgstr "Evidenzia commento"
 
 msgid "Horizontal line"
 msgstr "Linea orizzontale"
+
+msgid "Insert a block"
+msgstr "Inserisci un blocco"
 
 msgid "Line break"
 msgstr "Interruzione di linea"
@@ -94,6 +122,12 @@ msgstr "Esplora pagine"
 
 msgid "Pages"
 msgstr "Pagine"
+
+msgid "Pin toolbar"
+msgstr "Blocca toolbar"
+
+msgid "Preview"
+msgstr "Anteprima"
 
 msgid "Reload saved content"
 msgstr "Ricarica il contenuto salvato"
@@ -138,6 +172,9 @@ msgstr "Salvataggio in corso..."
 msgid "Search"
 msgstr "Cerca"
 
+msgid "Search options…"
+msgstr "Opzioni di ricerca..."
+
 msgid "See all"
 msgstr "Vedi tutto"
 
@@ -159,8 +196,17 @@ msgstr ""
 "L'editor è appena andato in crash. Il contenuto è stato reimpostato "
 "sull'ultima versione salvata."
 
+msgid "The maximum number of items is %(max_num)d"
+msgstr "Il numero massimo di elementi è %(max_num)d"
+
+msgid "The minimum number of items is %(min_num)d"
+msgstr "Il numero minimo di elementi è %(min_num)d"
+
 msgid "This field is required."
 msgstr "Questo campo è obbligatorio."
+
+msgid "Toggle side panel"
+msgstr "Attiva/disattiva barra laterale"
 
 msgid "Toggle sidebar"
 msgstr "Attiva/disattiva barra laterale"
@@ -168,5 +214,11 @@ msgstr "Attiva/disattiva barra laterale"
 msgid "Unfocus comment"
 msgstr "Deseleziona commento"
 
-msgid "View child pages of '{title}'"
-msgstr "Mostra sotto-pagine di '{title}'"
+msgid "Unpin toolbar"
+msgstr "Sblocca toolbar"
+
+msgid "View child pages of '%(title)s'"
+msgstr "Mostra sotto-pagine di '%(title)s'"
+
+msgid "Write something or type ‘/’ to insert a block"
+msgstr "Scrivi qualcosa o digita '/' per inserire un blocco"

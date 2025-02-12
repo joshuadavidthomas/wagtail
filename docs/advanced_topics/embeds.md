@@ -3,11 +3,11 @@
 # Embedded content
 
 Wagtail supports generating embed code from URLs to content on external
-providers such as Youtube or Twitter. By default, Wagtail will fetch the embed
+providers such as YouTube or Reddit. By default, Wagtail will fetch the embed
 code directly from the relevant provider's site using the oEmbed protocol.
 
 Wagtail has a built-in list of the most common providers and this list can be
-changed [with a setting](customising_embed_providers). Wagtail also supports
+changed [with a setting](customizing_embed_providers). Wagtail also supports
 fetching embed code using [Embedly](embedly) and [custom embed finders](custom_embed_finders).
 
 ## Embedding content on your site
@@ -112,9 +112,9 @@ following link:
 
 <https://github.com/wagtail/wagtail/blob/main/wagtail/embeds/oembed_providers.py>
 
-(customising_embed_providers)=
+(customizing_embed_providers)=
 
-#### Customising the provider list
+#### Customizing the provider list
 
 You can limit which providers may be used by specifying the list of providers
 in the finder configuration.
@@ -145,12 +145,12 @@ WAGTAILEMBEDS_FINDERS = [
 ]
 ```
 
-#### Customising an individual provider
+#### Customizing an individual provider
 
-Multiple finders can be chained together. This can be used for customising the
+Multiple finders can be chained together. This can be used for customizing the
 configuration for one provider without affecting the others.
 
-For example, this is how you can instruct Youtube to return videos in HTTPS
+For example, this is how you can instruct YouTube to return videos in HTTPS
 (which must be done explicitly for YouTube):
 
 ```python
@@ -179,16 +179,16 @@ If multiple providers can handle a URL (for example, a YouTube video was
 requested using the configuration above), the topmost finder is chosen to
 perform the request.
 
-Wagtail will not try to run any other finder, even if the chosen one didn't
+Wagtail will not try to run any other finder, even if the chosen one doesn't
 return an embed.
 
 (facebook_and_instagram_embeds)=
 
 ### Facebook and Instagram
 
-As of October 2020, Facebook deprecated their public oEmbed APIs. If you would
+As of October 2020, Meta deprecated their public oEmbed APIs. If you would
 like to embed Facebook or Instagram posts in your site, you will need to
-use the new authenticated APIs. This requires you to set up a Facebook
+use the new authenticated APIs. This requires you to set up a Meta
 Developer Account and create a Facebook App that includes the _oEmbed Product_.
 Instructions for creating the necessary app are in the requirements sections of the
 [Facebook](https://developers.facebook.com/docs/plugins/oembed)
@@ -196,8 +196,8 @@ and [Instagram](https://developers.facebook.com/docs/instagram/oembed) documenta
 
 As of June 2021, the _oEmbed Product_ has been replaced with the _oEmbed Read_
 feature. In order to embed Facebook and Instagram posts your app must activate
-the _oEmbed Read_ feature. Furthermore the app must be reviewed and accepted
-by Facebook. You can find the announcement in the
+the _oEmbed Read_ feature. Furthermore, the app must be reviewed and accepted
+by Meta. You can find the announcement in the
 [API changelog](https://developers.facebook.com/docs/graph-api/changelog/version11.0/#oembed).
 
 Apps that activated the oEmbed Product before June 8, 2021 need to activate
@@ -361,7 +361,7 @@ WAGTAILEMBEDS_FINDERS = [
 
         (text)
 
-        The author name of the content that is being embedded.
+        The author's name of the content that is being embedded.
 
     .. attribute:: provider_name
 
@@ -405,3 +405,5 @@ repopulate the records that are being used on the site.
 You may want to do this if you've changed from oEmbed to Embedly or vice-versa
 as the embed code they generate may be slightly different and lead to
 inconsistency on your site.
+
+In general, whenever you make changes to embed settings you are recommended to clear out Embed objects using [`purge_embeds` command](purge_embeds).

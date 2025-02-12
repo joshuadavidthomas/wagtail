@@ -1,4 +1,3 @@
-from django.contrib.auth.models import Permission
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
@@ -24,13 +23,9 @@ class SitesMenuItem(MenuItem):
 @hooks.register("register_settings_menu_item")
 def register_sites_menu_item():
     return SitesMenuItem(
-        _("Sites"), reverse("wagtailsites:index"), icon_name="site", order=602
-    )
-
-
-@hooks.register("register_permissions")
-def register_permissions():
-    return Permission.objects.filter(
-        content_type__app_label="wagtailcore",
-        codename__in=["add_site", "change_site", "delete_site"],
+        _("Sites"),
+        reverse("wagtailsites:index"),
+        name="sites",
+        icon_name="site",
+        order=602,
     )

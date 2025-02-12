@@ -5,14 +5,15 @@
 # Translators:
 # Mahmud Abdur Rahman <clanlord.ikot@gmail.com>, 2021
 # MA Rahman <ugikot@gmail.com>, 2020
+# MA Rahman <ugikot@gmail.com>, 2020
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:50+0000\n"
-"Last-Translator: Mahmud Abdur Rahman <clanlord.ikot@gmail.com>, 2021\n"
-"Language-Team: Bengali (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: MA Rahman <ugikot@gmail.com>, 2020\n"
+"Language-Team: Bengali (http://app.transifex.com/torchbox/wagtail/language/"
 "bn/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -26,11 +27,13 @@ msgstr "প্রকাশ করুন "
 msgid "Submit for moderation"
 msgstr "সম্পাদনার জন্য জমা দিন "
 
-msgid "Resubmit to {}"
-msgstr "পুনরায় জমা দিন {}"
+#, python-format
+msgid "Resubmit to %(task_name)s"
+msgstr "পুনরায় জমা দিন %(task_name)s"
 
-msgid "Submit to {}"
-msgstr "জমা দিন {}"
+#, python-format
+msgid "Submit to %(workflow_name)s"
+msgstr "জমা দিন %(workflow_name)s"
 
 msgid "Restart workflow "
 msgstr "কর্মপ্রবাহ পুনরায় আরম্ভ করুন"
@@ -68,6 +71,9 @@ msgstr "তারিখ"
 msgid "All"
 msgstr "সকল"
 
+msgid "Collection"
+msgstr "সংগ্রহ"
+
 msgid "Preferred language"
 msgstr "পছন্দের ভাষা"
 
@@ -97,9 +103,6 @@ msgstr "URL"
 
 msgid "Search"
 msgstr "সার্চ"
-
-msgid "Collection"
-msgstr "সংগ্রহ"
 
 msgid "Parent"
 msgstr "জনক"
@@ -138,6 +141,12 @@ msgstr "সংগ্রহ মুছে দিন"
 msgid "You cannot edit another user's comment."
 msgstr "আপনি অন্য ব্যবহারকারীর মন্তব্য সম্পাদনা করতে পারবেন না।"
 
+msgid "Go live date/time must be before expiry date/time"
+msgstr "লাইভ তারিখ/সময় মেয়াদ শেষ হওয়ার তারিখ/সময়ের আগে হতে হবে"
+
+msgid "Expiry date/time must be in the future"
+msgstr "মেয়াদ শেষ হওয়ার তারিখ/সময় ভবিষ্যতে হতে হবে"
+
 msgid "New title"
 msgstr "নতুন শিরোনাম"
 
@@ -171,24 +180,6 @@ msgstr "ভবিষ্যতের পরিবর্তনের সাথে 
 msgid "You cannot copy a page into itself when copying subpages"
 msgstr "সাব পেজ কপি করার সময় আপনি একটি পেজ কপি করতে পারবেন না"
 
-msgid "This slug is already in use"
-msgstr "এই স্লাগ ইতিমধ্যে ব্যবহার করা হয়"
-
-msgid "Go live date/time must be before expiry date/time"
-msgstr "লাইভ তারিখ/সময় মেয়াদ শেষ হওয়ার তারিখ/সময়ের আগে হতে হবে"
-
-msgid "Expiry date/time must be in the future"
-msgstr "মেয়াদ শেষ হওয়ার তারিখ/সময় ভবিষ্যতে হতে হবে"
-
-msgid "Scheduled publishing"
-msgstr "নির্ধারিত প্রকাশনা"
-
-msgid "For search engines"
-msgstr "সার্চ ইঞ্জিনের জন্য"
-
-msgid "For site menus"
-msgstr "সাইট মেনুগুলির জন্য"
-
 msgid "Content"
 msgstr "বিষয়বস্তু"
 
@@ -215,3 +206,6 @@ msgstr "লক করুন "
 
 msgid "Editing"
 msgstr "সম্পাদিত হচ্ছে"
+
+msgid "Site"
+msgstr "সাইট "

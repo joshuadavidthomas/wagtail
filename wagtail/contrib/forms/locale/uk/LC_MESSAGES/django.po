@@ -3,6 +3,7 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# d55ee35323c0c760f088259cd23b1b6d_9e8a7d1 <5459f3ae99ecdd5ed0be0220acd46004_1019581>, 2021
 # Mykola Zamkovoi <nickzam@gmail.com>, 2014
 # Sergiy Shkodenko <shkodenkosergiy@gmail.com>, 2018
 # d55ee35323c0c760f088259cd23b1b6d_9e8a7d1 <5459f3ae99ecdd5ed0be0220acd46004_1019581>, 2021
@@ -10,11 +11,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-09-11 15:42+0000\n"
 "Last-Translator: d55ee35323c0c760f088259cd23b1b6d_9e8a7d1 "
 "<5459f3ae99ecdd5ed0be0220acd46004_1019581>, 2021\n"
-"Language-Team: Ukrainian (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Ukrainian (http://app.transifex.com/torchbox/wagtail/language/"
 "uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -35,8 +36,10 @@ msgid "Date to"
 msgstr "Дата кінця"
 
 #, python-format
-msgid "There is another field with the label %s, please change one of them."
-msgstr "Є інше поле з міткою %s, будь ласка, змініть одну з них."
+msgid ""
+"There is another field with the label %(label_name)s, please change one of "
+"them."
+msgstr "Є інше поле з міткою %(label_name)s, будь ласка, змініть одну з них."
 
 msgid "Single line text"
 msgstr "Однорядковий текст"
@@ -139,8 +142,8 @@ msgid "subject"
 msgstr "предмет"
 
 #, python-format
-msgid "%s submissions"
-msgstr "%s подання"
+msgid "%(model_name)s submissions"
+msgstr "%(model_name)s подання"
 
 #, python-format
 msgid "Delete form data %(title)s"
@@ -152,20 +155,12 @@ msgstr "Видалити з даних"
 msgid "Delete"
 msgstr "Видалити"
 
-msgid "Forms"
-msgstr "Форми"
-
-msgid "Pages"
-msgstr "Сторінки"
-
-msgid "Title"
-msgstr "Заголовок"
-
-msgid "Origin"
-msgstr "Оригінал"
-
 msgid "Delete selected submissions"
 msgstr "Видалили обрані подання"
+
+#, python-format
+msgid "There have been no submissions of the '%(title)s' form."
+msgstr "Немає подань для \"%(title)s\" форми."
 
 msgid "Total submissions"
 msgstr "Всього подань"
@@ -173,28 +168,21 @@ msgstr "Всього подань"
 msgid "Latest submission"
 msgstr "Останнє подання"
 
-msgid "No form pages have been created."
-msgstr "Сторінки із формами відсутні, їх не було створено."
-
 #, python-format
 msgid "Submissions of %(form_title)s"
 msgstr "Подання для %(form_title)s"
 
-msgid "Download XLSX"
-msgstr "Завантажити XLSX"
+msgid "Forms"
+msgstr "Форми"
 
-msgid "Download CSV"
-msgstr "Завантажити CSV"
+msgid "Title"
+msgstr "Заголовок"
 
-#, python-format
-msgid "There have been no submissions of the '%(title)s' form."
-msgstr "Немає подань для \"%(title)s\" форми."
+msgid "Origin"
+msgstr "Оригінал"
 
-msgid "Filter"
-msgstr "Фільтр"
-
-msgid "Apply filters"
-msgstr "Застосувати фільтри"
+msgid "Pages"
+msgstr "Сторінки"
 
 #, python-format
 msgid "One submission has been deleted."

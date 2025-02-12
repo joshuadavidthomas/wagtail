@@ -10,10 +10,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
-"Last-Translator: Kyungil Choi <hanpama@gmail.com>, 2015,2017,2019-2020\n"
-"Language-Team: Korean (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Jihan Chung <jihanchung20@gmail.com>, 2015\n"
+"Language-Team: Korean (http://app.transifex.com/torchbox/wagtail/language/"
 "ko/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -25,18 +25,21 @@ msgid "Wagtail core"
 msgstr "웨그테일 코어"
 
 #, python-format
-msgid "The minimum number of items is %d"
-msgstr "항목은 최소 %d개 이상이어야 합니다"
+msgid "The minimum number of items is %(min_num)d"
+msgstr "항목은 최소 %(min_num)d개 이상이어야 합니다"
 
 #, python-format
-msgid "The maximum number of items is %d"
-msgstr "항목은 최대 개수는 %d개입니다"
+msgid "The maximum number of items is %(max_num)d"
+msgstr "항목은 최대 개수는 %(max_num)d개입니다"
 
 msgid "Move up"
 msgstr "위로 이동"
 
 msgid "Move down"
 msgstr "아래로 이동"
+
+msgid "Drag"
+msgstr "끌기"
 
 msgid "Delete"
 msgstr "삭제"
@@ -63,26 +66,11 @@ msgstr "입력한 비밀번호가 올바르지 않습니다. 다시 시도해 �
 msgid "Comment"
 msgstr "댓글"
 
-msgid "<b>Page '{}' was locked</b> by <b>you</b> on <b>{}</b>."
-msgstr "<b>'{}' 페이지의 잠금</b>이 <b>당신</b>에 의해 <b>{}</b>에 적용됨."
+msgid "Locked"
+msgstr "잠겨 있는"
 
-msgid "<b>Page '{}' is locked</b> by <b>you</b>."
-msgstr "<b>'{}' 페이지의 잠금</b>이 <b>당신</b>에 의해 적용됨."
-
-msgid "<b>Page '{}' was locked</b> by <b>{}</b> on <b>{}</b>."
-msgstr "<b>'{}' 페이지의 잠금</b>이 <b>{}</b>에 의해 <b>{}</b>에 적용됨."
-
-msgid "<b>Page '{}' is locked</b>."
-msgstr "<b>'{}' 페이지가 잠김</b>."
-
-msgid "This page is currently awaiting moderation."
-msgstr "이 페이지는 현재 검토를 기다리고 있습니다"
-
-msgid "This page is awaiting <b>'{}'</b> in the <b>'{}'</b> workflow."
-msgstr "페이지가 <b>'{}'</b>워크플로우에서 <b>'{}'</b>를 기다리고 있습니다"
-
-msgid "Only reviewers for this task can edit the page."
-msgstr "오직 이 작업의 후기만이 페이지 수정 가능"
+msgid "Unlocked"
+msgstr "잠금 풀림"
 
 msgid "live"
 msgstr "라이브"
@@ -105,8 +93,14 @@ msgstr "만료 날짜/시간"
 msgid "expired"
 msgstr "만료"
 
+msgid "scheduled"
+msgstr "예약됨"
+
 msgid "draft"
 msgstr "초안"
+
+msgid "live + scheduled"
+msgstr "라이브 + 예약됨"
 
 msgid "live + draft"
 msgstr "라이브 + 초안"
@@ -122,6 +116,39 @@ msgstr "잠긴 시간:"
 
 msgid "locked by"
 msgstr "잠근 사람:"
+
+msgid "Add/edit pages you own"
+msgstr "페이지 추가/수정"
+
+msgid "Bulk delete"
+msgstr "한 번에 지우기"
+
+msgid "Delete pages with children"
+msgstr "하위 페이지들과 함께 지우기"
+
+msgid "Edit"
+msgstr "수정"
+
+msgid "Edit any page"
+msgstr "페이지 수정"
+
+msgid "Lock"
+msgstr "잠금"
+
+msgid "Lock/unlock pages you've locked"
+msgstr "잠긴 페이지 잠금/잠금 해제"
+
+msgid "Publish"
+msgstr "게시"
+
+msgid "Publish any page"
+msgstr "페이지 게시"
+
+msgid "Unlock"
+msgstr "잠금 풀기"
+
+msgid "Unlock any page"
+msgstr "모든 페이지 잠금 풀기"
 
 msgid "title"
 msgstr "제목"
@@ -158,23 +185,17 @@ msgstr "이 페이지에 대한 링크가 자동적으로 생성된 메뉴에 �
 msgid "latest revision created at"
 msgstr "최근 수정안 작성일:"
 
-msgid "This slug is already in use"
-msgstr "이 슬러그는 이미 사용되고 있습니다"
+msgid "For search engines"
+msgstr "엔진을 검색하기 위해"
 
-msgid "scheduled"
-msgstr "예약됨"
-
-msgid "live + scheduled"
-msgstr "라이브 + 예약됨"
+msgid "For site menus"
+msgstr "메뉴를 배치하기 위해"
 
 msgid "page"
 msgstr "페이지"
 
 msgid "pages"
 msgstr "페이지"
-
-msgid "submitted for moderation"
-msgstr "검토를 위해 제출됨"
 
 msgid "created at"
 msgstr "생성된 일시"
@@ -188,44 +209,11 @@ msgstr "컨텐트 JSON"
 msgid "approved go live at"
 msgstr "라이브 승인 일시:"
 
-msgid "Add/edit pages you own"
-msgstr "페이지 추가/수정"
-
-msgid "Edit"
-msgstr "수정"
-
-msgid "Edit any page"
-msgstr "페이지 수정"
-
-msgid "Publish"
-msgstr "게시"
-
-msgid "Publish any page"
-msgstr "페이지 게시"
-
-msgid "Bulk delete"
-msgstr "한 번에 지우기"
-
-msgid "Delete pages with children"
-msgstr "하위 페이지들과 함께 지우기"
-
-msgid "Lock"
-msgstr "잠금"
-
-msgid "Lock/unlock pages you've locked"
-msgstr "잠긴 페이지 잠금/잠금 해제"
-
-msgid "Unlock"
-msgstr "잠금 풀기"
-
-msgid "Unlock any page"
-msgstr "모든 페이지 잠금 풀기"
-
 msgid "group"
 msgstr "그룹"
 
-msgid "permission type"
-msgstr "권한 형태"
+msgid "permission"
+msgstr "권한"
 
 msgid "group page permission"
 msgstr "그룹 페이지 권한"
@@ -251,9 +239,6 @@ msgstr "승인"
 msgid "Not started"
 msgstr "시작되지 않음"
 
-msgid "page revision"
-msgstr "페이지 수정안"
-
 msgid "collection"
 msgstr "모음"
 
@@ -266,14 +251,14 @@ msgstr "모음 보기 제한 사항"
 msgid "collections"
 msgstr "모음"
 
-msgid "permission"
-msgstr "권한"
-
 msgid "group collection permission"
 msgstr "그룹 모음 권한"
 
 msgid "group collection permissions"
 msgstr "그룹 모음 권한"
+
+msgid "uploaded by user"
+msgstr "업로드한 사용자:"
 
 msgid "hostname"
 msgstr "호스트명"
@@ -329,17 +314,8 @@ msgstr ""
 msgid "Public"
 msgstr "공개"
 
-msgid "Private, accessible to logged-in users"
-msgstr "비공개, 로그인한 사용자들이 접근 가능"
-
-msgid "Private, accessible with the following password"
-msgstr "비공개, 다음의 비밀번호로 접근 가능"
-
 msgid "Private, accessible to users in specific groups"
 msgstr "비공개, 특정한 그룹 안의 사용자들이 접근 가능"
-
-msgid "password"
-msgstr "비밀번호"
 
 msgid "view restriction"
 msgstr "제한 사항 보기"
@@ -383,12 +359,6 @@ msgstr "출시된"
 
 msgid "Unpublish"
 msgstr "게시 해제"
-
-msgid "Locked"
-msgstr "잠겨 있는"
-
-msgid "Unlocked"
-msgstr "잠금 풀림"
 
 msgid "Reject"
 msgstr "거절"

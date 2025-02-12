@@ -14,6 +14,7 @@ If you'd like to get a quick feel for Wagtail, try spinning up a `temporary deve
   * :doc:`getting_started/index`
   * :doc:`getting_started/tutorial`
   * :doc:`getting_started/demo_site`
+  * :doc:`tutorial/index`
 
 * **Using Wagtail**
 
@@ -21,12 +22,13 @@ If you'd like to get a quick feel for Wagtail, try spinning up a `temporary deve
   * :doc:`topics/writing_templates`
   * :doc:`topics/images`
   * :doc:`topics/search/index`
+  * :doc:`topics/snippets/index`
   * :doc:`advanced_topics/third_party_tutorials`
 
 
 * **For editors**
 
-  * :doc:`Editors guide <editor_manual/index>`
+  * `Editors guide (separate site) <https://guide.wagtail.org/>`_
 
 
 Index
@@ -38,10 +40,12 @@ Index
    :titlesonly:
 
    getting_started/index
+   tutorial/index
    topics/index
    advanced_topics/index
    extending/index
    reference/index
+   deployment/index
    support
    editor_manual/index
    contributing/index

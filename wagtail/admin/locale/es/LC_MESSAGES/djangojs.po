@@ -2,21 +2,31 @@
 # Translators:
 # Daniel Wohlgemuth <daniel.wohlgemuth.epp@gmail.com>, 2022
 # 67feb0cba3962a6c9f09eb0e43697461_528661a <cbde1c637170da616adcdde6daca673c_96059>, 2022
-# Mauricio Baeza <python@amigos.email>, 2022
 # Oscar Luciano Espirilla Flores, 2022
-# Amós Oviedo <amos.oviedo@gmail.com>, 2022
 # Hector Garcia <torkoff@gmail.com>, 2022
 # José Luis <alagunajs@gmail.com>, 2022
-# X Bello <xbello@gmail.com>, 2022
+# Antoni Aloy <aaloy@apsl.net>, 2022
+# X Bello <xbello@gmail.com>, 2023
+# Loic Teixeira, 2024
+# Amós Oviedo <amos.oviedo@gmail.com>, 2025
 #
 msgid ""
 msgstr ""
-"Last-Translator: X Bello <xbello@gmail.com>, 2022\n"
-"Language-Team: Spanish (https://www.transifex.com/torchbox/teams/8009/es/)\n"
+"Last-Translator: Amós Oviedo <amos.oviedo@gmail.com>, 2025\n"
+"Language-Team: Spanish (https://app.transifex.com/torchbox/teams/8009/es/)\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: es\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
+
+msgid "(%(number)s new items in this menu)"
+msgstr "(%(number)s nuevos items en este menú)"
+
+msgid "(1 new item in this menu)"
+msgstr "(1 elemento nuevo en este menú)"
+
+msgid "(New)"
+msgstr "(Nuevo)"
 
 msgid "Add a comment"
 msgstr "Añadir un comentario"
@@ -42,6 +52,9 @@ msgstr "Número de caracteres:"
 msgid "Close"
 msgstr "Cerrar"
 
+msgid "Collapse all"
+msgstr "Cerrar todo"
+
 msgid "Comment"
 msgstr "Comentario"
 
@@ -63,11 +76,8 @@ msgstr "Eliminando"
 msgid "Edit"
 msgstr "Editar"
 
-msgid "Edit '{title}'"
-msgstr "Editar '{title}'"
-
-msgid "Edit your account"
-msgstr "Editar tu cuenta"
+msgid "Edit '%(title)s'"
+msgstr "Editar '%(title)s'"
 
 msgid "Enter your comments..."
 msgstr "Introduce tus comentarios..."
@@ -77,6 +87,9 @@ msgstr "Introduce tu respuesta"
 
 msgid "Error while sending preview data."
 msgstr "Error al enviar datos de vista previa."
+
+msgid "Expand all"
+msgstr "Expandir todo"
 
 msgid "Focus comment"
 msgstr "Enfocar comentario"
@@ -114,6 +127,9 @@ msgstr "Explorador de página"
 msgid "Pages"
 msgstr "Páginas"
 
+msgid "Preview"
+msgstr "Vista previa"
+
 msgid "Reload saved content"
 msgstr "Recargar contenido guardado"
 
@@ -134,9 +150,6 @@ msgstr "Resolver"
 
 msgid "Retry"
 msgstr "Reintentar"
-
-msgid "Rich text"
-msgstr "Texto enriquecido"
 
 msgid "Save"
 msgstr "Guardar"
@@ -159,9 +172,6 @@ msgstr "Guardando..."
 msgid "Search"
 msgstr "Buscar"
 
-msgid "Search blocks"
-msgstr "Buscar bloques"
-
 msgid "See all"
 msgstr "Ver todo"
 
@@ -183,8 +193,17 @@ msgstr ""
 "El editor simplemente se colgó. El contenido se ha restablecido a la última "
 "versión guardada."
 
+msgid "The maximum number of items is %(max_num)d"
+msgstr "El máximo número de elementos es %(max_num)d"
+
+msgid "The minimum number of items is %(min_num)d"
+msgstr "El mínimo número de elementos es %(min_num)d"
+
 msgid "This field is required."
 msgstr "Este campo es necesario."
+
+msgid "Toggle side panel"
+msgstr "Alternar menú lateral"
 
 msgid "Toggle sidebar"
 msgstr "Alternar menú lateral"
@@ -192,8 +211,8 @@ msgstr "Alternar menú lateral"
 msgid "Unfocus comment"
 msgstr "Desenfocar comentario"
 
-msgid "View child pages of '{title}'"
-msgstr "Ver páginas hijas de '{title}'"
+msgid "View child pages of '%(title)s'"
+msgstr "Ver páginas hijas de '%(title)s'"
 
 msgid "Write something or type ‘/’ to insert a block"
 msgstr "Escribe algo o pulsa '/' para insertar un bloque"

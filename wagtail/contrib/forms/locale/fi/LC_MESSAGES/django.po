@@ -6,16 +6,17 @@
 # Aarni Koskela, 2016
 # Aarni Koskela, 2016
 # Eetu Häivälä, 2016
+# Eetu Häivälä, 2016
 # Jiri Grönroos <jiri.gronroos@iki.fi>, 2020,2022
 # Valter Maasalo <vmaasalo@gmail.com>, 2020
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-09-11 15:42+0000\n"
-"Last-Translator: Jiri Grönroos <jiri.gronroos@iki.fi>, 2020,2022\n"
-"Language-Team: Finnish (http://www.transifex.com/torchbox/wagtail/language/"
+"Last-Translator: Valter Maasalo <vmaasalo@gmail.com>, 2020\n"
+"Language-Team: Finnish (http://app.transifex.com/torchbox/wagtail/language/"
 "fi/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -33,9 +34,12 @@ msgid "Date to"
 msgstr "Asti"
 
 #, python-format
-msgid "There is another field with the label %s, please change one of them."
+msgid ""
+"There is another field with the label %(label_name)s, please change one of "
+"them."
 msgstr ""
-"On olemassa toinenkin kenttä tekstillä %s, ole hyvä ja muuta yhtä niistä."
+"On olemassa toinenkin kenttä tekstillä %(label_name)s, ole hyvä ja muuta "
+"yhtä niistä."
 
 msgid "Single line text"
 msgstr "Yhden rivin teksti"
@@ -151,8 +155,8 @@ msgid "subject"
 msgstr "otsake"
 
 #, python-format
-msgid "%s submissions"
-msgstr "%s lähetykset"
+msgid "%(model_name)s submissions"
+msgstr "%(model_name)s lähetykset"
 
 #, python-format
 msgid "Delete form data %(title)s"
@@ -169,20 +173,12 @@ msgstr[1] "Haluatko varmasti poistaa nämä lähetetyt lomakkeet?"
 msgid "Delete"
 msgstr "Poista"
 
-msgid "Forms"
-msgstr "Lomakkeet"
-
-msgid "Pages"
-msgstr "Sivut"
-
-msgid "Title"
-msgstr "Otsikko"
-
-msgid "Origin"
-msgstr "Lähde"
-
 msgid "Delete selected submissions"
 msgstr "Poista valitut tiedot"
+
+#, python-format
+msgid "There have been no submissions of the '%(title)s' form."
+msgstr "Lomaketta '%(title)s' ei ole lähetetty kertaakaan."
 
 msgid "Total submissions"
 msgstr "Lähettyjä yhteensä"
@@ -190,28 +186,24 @@ msgstr "Lähettyjä yhteensä"
 msgid "Latest submission"
 msgstr "Viimeksi lähetetty"
 
-msgid "No form pages have been created."
-msgstr "Lomakesivuja ei ole luotu."
-
 #, python-format
 msgid "Submissions of %(form_title)s"
 msgstr "Lähetetyt %(form_title)s -lomakkeet"
 
-msgid "Download XLSX"
-msgstr "Lataa XLSX"
+msgid "Page type"
+msgstr "Sivutyyppi"
 
-msgid "Download CSV"
-msgstr "Lataa CSV"
+msgid "Forms"
+msgstr "Lomakkeet"
 
-#, python-format
-msgid "There have been no submissions of the '%(title)s' form."
-msgstr "Lomaketta '%(title)s' ei ole lähetetty kertaakaan."
+msgid "Title"
+msgstr "Otsikko"
 
-msgid "Filter"
-msgstr "Suodatin"
+msgid "Origin"
+msgstr "Lähde"
 
-msgid "Apply filters"
-msgstr "Toteuta suodatukset"
+msgid "Pages"
+msgstr "Sivut"
 
 #, python-format
 msgid "One submission has been deleted."

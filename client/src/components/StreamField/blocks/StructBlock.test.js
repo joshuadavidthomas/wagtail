@@ -1,10 +1,7 @@
 import $ from 'jquery';
 import { FieldBlockDefinition } from './FieldBlock';
 import { StreamBlockDefinition } from './StreamBlock';
-import {
-  StructBlockDefinition,
-  StructBlockValidationError,
-} from './StructBlock';
+import { StructBlockDefinition } from './StructBlock';
 
 window.$ = $;
 
@@ -54,12 +51,6 @@ class DummyWidgetDefinition {
   }
 }
 
-class ValidationError {
-  constructor(messages) {
-    this.messages = messages;
-  }
-}
-
 describe('telepath: wagtail.blocks.StructBlock', () => {
   let boundBlock;
 
@@ -102,7 +93,7 @@ describe('telepath: wagtail.blocks.StructBlock', () => {
         icon: 'title',
         classname: 'struct-block',
         helpText: 'use <strong>lots</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
       },
     );
 
@@ -177,17 +168,25 @@ describe('telepath: wagtail.blocks.StructBlock', () => {
   });
 
   test('setError passes error messages to children', () => {
-    boundBlock.setError([
-      new StructBlockValidationError({
-        size: [new ValidationError(['This is too big'])],
-      }),
-    ]);
+    boundBlock.setError({
+      blockErrors: {
+        size: { messages: ['This is too big.'] },
+      },
+    });
+    expect(document.body.innerHTML).toMatchSnapshot();
+  });
+
+  test('setError shows non-block errors', () => {
+    boundBlock.setError({
+      messages: ['This is just generally wrong.'],
+    });
     expect(document.body.innerHTML).toMatchSnapshot();
   });
 });
 
 describe('telepath: wagtail.blocks.StructBlock with formTemplate', () => {
   let boundBlock;
+  let blockDefWithBadLabelFormat;
 
   beforeEach(() => {
     // Create mocks for callbacks
@@ -198,42 +197,48 @@ describe('telepath: wagtail.blocks.StructBlock with formTemplate', () => {
     focus = jest.fn();
 
     // Define a test block
+    const blockOpts = {
+      label: 'Heading block',
+      required: false,
+      icon: 'title',
+      formTemplate: `<div class="custom-form-template">
+        <p>here comes the first field:</p>
+        <div data-structblock-child="heading_text"></div>
+        <p>and here is the second:</p>
+        <div data-structblock-child="size"></div>
+      </div>`,
+      labelFormat: '{heading_text} - {size}',
+    };
+    const headingTextBlockDef = new FieldBlockDefinition(
+      'heading_text',
+      new DummyWidgetDefinition('Heading widget'),
+      {
+        label: 'Heading text',
+        required: true,
+        icon: 'placeholder',
+        classname: 'w-field w-field--char_field w-field--text_input',
+      },
+    );
+    const sizeBlockDef = new FieldBlockDefinition(
+      'size',
+      new DummyWidgetDefinition('Size widget'),
+      {
+        label: 'Size',
+        required: false,
+        icon: 'placeholder',
+        classname: 'w-field w-field--choice_field w-field--select',
+      },
+    );
+
     const blockDef = new StructBlockDefinition(
       'heading_block',
-      [
-        new FieldBlockDefinition(
-          'heading_text',
-          new DummyWidgetDefinition('Heading widget'),
-          {
-            label: 'Heading text',
-            required: true,
-            icon: 'placeholder',
-            classname: 'w-field w-field--char_field w-field--text_input',
-          },
-        ),
-        new FieldBlockDefinition(
-          'size',
-          new DummyWidgetDefinition('Size widget'),
-          {
-            label: 'Size',
-            required: false,
-            icon: 'placeholder',
-            classname: 'w-field w-field--choice_field w-field--select',
-          },
-        ),
-      ],
-      {
-        label: 'Heading block',
-        required: false,
-        icon: 'title',
-        formTemplate: `<div class="custom-form-template">
-          <p>here comes the first field:</p>
-          <div data-structblock-child="heading_text"></div>
-          <p>and here is the second:</p>
-          <div data-structblock-child="size"></div>
-        </div>`,
-        labelFormat: '{heading_text} - {size}',
-      },
+      [headingTextBlockDef, sizeBlockDef],
+      blockOpts,
+    );
+    blockDefWithBadLabelFormat = new StructBlockDefinition(
+      'heading_block',
+      [headingTextBlockDef, sizeBlockDef],
+      { ...blockOpts, labelFormat: '{bad_variable} - {size}' },
     );
 
     // Render it
@@ -307,6 +312,19 @@ describe('telepath: wagtail.blocks.StructBlock with formTemplate', () => {
       'label: the-prefix-heading_text - label: the-prefix-size',
     );
   });
+
+  test('getTextLabel() gracefully handles bad variables in labelFormat', () => {
+    document.body.innerHTML = '<div id="placeholder"></div>';
+    boundBlock = blockDefWithBadLabelFormat.render(
+      $('#placeholder'),
+      'the-prefix',
+      {
+        heading_text: 'Test heading text',
+        size: '123',
+      },
+    );
+    expect(boundBlock.getTextLabel()).toBe(' - label: the-prefix-size');
+  });
 });
 
 describe('telepath: wagtail.blocks.StructBlock in stream block', () => {
@@ -348,6 +366,7 @@ describe('telepath: wagtail.blocks.StructBlock in stream block', () => {
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',
@@ -376,7 +395,7 @@ describe('telepath: wagtail.blocks.StructBlock in stream block', () => {
         icon: 'title',
         classname: 'struct-block',
         helpText: 'use <strong>lots</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
       },
     );
 
@@ -390,13 +409,14 @@ describe('telepath: wagtail.blocks.StructBlock in stream block', () => {
         icon: 'placeholder',
         classname: null,
         helpText: 'use <strong>plenty</strong> of these',
-        helpIcon: '<div class="icon-help">?</div>',
+        helpIcon: '<svg></svg>',
         maxNum: null,
         minNum: null,
         blockCounts: {},
         strings: {
           MOVE_UP: 'Move up',
           MOVE_DOWN: 'Move down',
+          DRAG: 'Drag',
           DELETE: 'Delete',
           DUPLICATE: 'Duplicate',
           ADD: 'Add',

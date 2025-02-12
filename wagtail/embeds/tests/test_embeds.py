@@ -37,7 +37,7 @@ from wagtail.embeds.templatetags.wagtailembeds_tags import embed_tag
 from wagtail.test.utils import WagtailTestUtils
 
 try:
-    import embedly  # noqa
+    import embedly  # noqa: F401
 
     no_embedly = False
 except ImportError:
@@ -164,15 +164,15 @@ class TestEmbeds(TestCase):
         self.assertEqual(self.hit_count, 1)
 
         # Look for the same embed again and check the hit count hasn't increased
-        embed = get_embed("www.test.com/1234", max_width=400, finder=self.dummy_finder)
+        get_embed("www.test.com/1234", max_width=400, finder=self.dummy_finder)
         self.assertEqual(self.hit_count, 1)
 
         # Look for a different embed, hit count should increase
-        embed = get_embed("www.test.com/4321", max_width=400, finder=self.dummy_finder)
+        get_embed("www.test.com/4321", max_width=400, finder=self.dummy_finder)
         self.assertEqual(self.hit_count, 2)
 
         # Look for the same embed with a different width, this should also increase hit count
-        embed = get_embed("www.test.com/4321", finder=self.dummy_finder)
+        get_embed("www.test.com/4321", finder=self.dummy_finder)
         self.assertEqual(self.hit_count, 3)
 
     def test_get_embed_nonresponsive(self):
@@ -272,7 +272,7 @@ class TestEmbedHash(TestCase):
         self.assertEqual(get_embed_hash(url, 1), "427830227a86093b50417e11dbd2f28e")
 
 
-class TestChooser(TestCase, WagtailTestUtils):
+class TestChooser(WagtailTestUtils, TestCase):
     def setUp(self):
         # login
         self.login()
@@ -652,7 +652,7 @@ class TestInstagramOEmbed(TestCase):
     def test_instagram_oembed_return_values(self, urlopen):
         urlopen.return_value = self.dummy_response
         result = InstagramOEmbedFinder(app_id="123", app_secret="abc").find_embed(
-            "https://instagr.am/p/CHeRxmnDSYe/"
+            "https://instagram.com/p/CHeRxmnDSYe/"
         )
         self.assertEqual(
             result,
@@ -671,13 +671,13 @@ class TestInstagramOEmbed(TestCase):
         request = urlopen.call_args[0][0]
         self.assertEqual(
             request.get_full_url(),
-            "https://graph.facebook.com/v11.0/instagram_oembed?url=https%3A%2F%2Finstagr.am%2Fp%2FCHeRxmnDSYe%2F&format=json",
+            "https://graph.facebook.com/v11.0/instagram_oembed?url=https%3A%2F%2Finstagram.com%2Fp%2FCHeRxmnDSYe%2F&format=json",
         )
         self.assertEqual(request.get_header("Authorization"), "Bearer 123|abc")
 
     def test_instagram_request_denied_401(self):
         err = HTTPError(
-            "https://instagr.am/p/CHeRxmnDSYe/",
+            "https://instagram.com/p/CHeRxmnDSYe/",
             code=401,
             msg="invalid credentials",
             hdrs={},
@@ -688,12 +688,12 @@ class TestInstagramOEmbed(TestCase):
             self.assertRaises(
                 AccessDeniedInstagramOEmbedException,
                 InstagramOEmbedFinder().find_embed,
-                "https://instagr.am/p/CHeRxmnDSYe/",
+                "https://instagram.com/p/CHeRxmnDSYe/",
             )
 
     def test_instagram_request_not_found(self):
         err = HTTPError(
-            "https://instagr.am/p/badrequest/",
+            "https://instagram.com/p/badrequest/",
             code=404,
             msg="Not Found",
             hdrs={},
@@ -704,7 +704,7 @@ class TestInstagramOEmbed(TestCase):
             self.assertRaises(
                 EmbedNotFoundException,
                 InstagramOEmbedFinder().find_embed,
-                "https://instagr.am/p/CHeRxmnDSYe/",
+                "https://instagram.com/p/CHeRxmnDSYe/",
             )
 
     def test_instagram_failed_request(self):
@@ -713,7 +713,7 @@ class TestInstagramOEmbed(TestCase):
             self.assertRaises(
                 EmbedNotFoundException,
                 InstagramOEmbedFinder().find_embed,
-                "https://instagr.am/p/CHeRxmnDSYe/",
+                "https://instagram.com/p/CHeRxmnDSYe/",
             )
 
 

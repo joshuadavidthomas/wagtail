@@ -1,6 +1,6 @@
 # How to add Wagtail into an existing Django project
 
-To install Wagtail completely from scratch, create a new Django project and an app within that project. For instructions on these tasks, see [Writing your first Django app](django:intro/tutorial01). Your project directory will look like the following:
+To install Wagtail completely from scratch, create a new Django project and an app within that project. For instructions on these tasks, see [Writing your first Django app](inv:django#intro/tutorial01). Your project directory will look like the following:
 
 ```
 myproject/
@@ -18,7 +18,7 @@ myproject/
     manage.py
 ```
 
-From your app directory, you can safely remove `admin.py` and `views.py`, since Wagtail will provide this functionality for your models. Configuring Django to load Wagtail involves adding modules and variables to `settings.py` and URL configuration to `urls.py`. For a more complete view of what's defined in these files, see [Django Settings](django:topics/settings) and [Django URL Dispatcher](django:topics/http/urls).
+From your app directory, you can safely remove `admin.py` and `views.py`, since Wagtail will provide this functionality for your models. Configuring Django to load Wagtail involves adding modules and variables to `settings.py` and URL configuration to `urls.py`. For a more complete view of what's defined in these files, see [Django Settings](inv:django#topics/settings) and [Django URL Dispatcher](inv:django#topics/http/urls).
 
 What follows is a settings reference which skips many boilerplate Django settings. If you just want to get your Wagtail install up quickly without fussing with settings at the moment, see [](complete_example_config).
 
@@ -64,7 +64,8 @@ INSTALLED_APPS = [
 
   'taggit',
   'modelcluster',
-
+  
+  'django.contrib.admin',
   'django.contrib.auth',
   'django.contrib.contenttypes',
   'django.contrib.sessions',
@@ -96,7 +97,7 @@ Wagtail requires several Django app modules, third-party apps, and defines sever
  The Wagtail image content type.
 
 **`wagtail.embeds`**  
- Module governing oEmbed and Embedly content in Wagtail rich text fields. See [](inserting_videos).
+ Module governing oEmbed and Embedly content in Wagtail rich text fields.
 
 **`wagtail.search`**  
  Search framework for Page content. See [](wagtailsearch).
@@ -113,10 +114,10 @@ Wagtail requires several Django app modules, third-party apps, and defines sever
 ### Third-Party Apps
 
 **`taggit`**  
- Tagging framework for Django. This is used internally within Wagtail for image and document tagging and is available for your own models as well. See [](tagging) for a Wagtail model recipe or the [Taggit Documentation](https://django-taggit.readthedocs.org/en/latest/index.html).
+ Tagging framework for Django. This is used internally within Wagtail for image and document tagging and is available for your own models as well. See [](tagging) for a Wagtail model recipe or the [Taggit Documentation](https://django-taggit.readthedocs.io/en/stable/).
 
 **`modelcluster`**  
- Extension of Django ForeignKey relation functionality, which is used in Wagtail pages for on-the-fly related object creation. For more information, see [](inline_panels) or [the django-modelcluster github project page](https://github.com/torchbox/django-modelcluster).
+ Extension of Django ForeignKey relation functionality, which is used in Wagtail pages for on-the-fly related object creation. For more information, see [](inline_panels) or [the django-modelcluster github project page](https://github.com/wagtail/django-modelcluster).
 
 ## URL Patterns
 
@@ -187,6 +188,7 @@ INSTALLED_APPS = [
     'taggit',
     'modelcluster',
 
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -293,7 +295,7 @@ INTERNAL_IPS = ('127.0.0.1', '10.0.2.2')
 # performed by this configuration is to send an email to
 # the site admins on every HTTP 500 error when DEBUG=False.
 # See https://docs.djangoproject.com/en/stable/topics/logging for
-# more details on how to customise your logging configuration.
+# more details on how to customize your logging configuration.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -328,7 +330,7 @@ WAGTAIL_SITE_NAME = 'My Project'
 # Replace the search backend
 #WAGTAILSEARCH_BACKENDS = {
 #  'default': {
-#    'BACKEND': 'wagtail.search.backends.elasticsearch5',
+#    'BACKEND': 'wagtail.search.backends.elasticsearch8',
 #    'INDEX': 'myapp'
 #  }
 #}
@@ -338,6 +340,12 @@ WAGTAIL_SITE_NAME = 'My Project'
 
 # Wagtail email notification format
 # WAGTAILADMIN_NOTIFICATION_USE_HTML = True
+
+# Allowed file extensions for documents in the document library.
+# This can be omitted to allow all files, but note that this may present a security risk
+# if untrusted users are allowed to upload files -
+# see https://docs.wagtail.org/en/stable/advanced_topics/deploying.html#user-uploaded-files
+WAGTAILDOCS_EXTENSIONS = ['csv', 'docx', 'key', 'odt', 'pdf', 'pptx', 'rtf', 'txt', 'xlsx', 'zip']
 
 # Reverse the default case-sensitive handling of tags
 TAGGIT_CASE_INSENSITIVE = True

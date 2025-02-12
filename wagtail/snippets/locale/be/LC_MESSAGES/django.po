@@ -3,26 +3,44 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# Andrei Satsevich, 2024
 # Tatsiana Tsygan <art.tatsiana@gmail.com>, 2018
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-19 19:01+0000\n"
-"Last-Translator: Tatsiana Tsygan <art.tatsiana@gmail.com>, 2018\n"
-"Language-Team: Belarusian (http://www.transifex.com/torchbox/wagtail/"
+"Last-Translator: Andrei Satsevich, 2024\n"
+"Language-Team: Belarusian (http://app.transifex.com/torchbox/wagtail/"
 "language/be/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: be\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
-"%100>=11 && n%100<=14)? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
 
 msgid "Publish"
 msgstr "Апублікаваць"
+
+msgid "Submit for moderation"
+msgstr "Адправіць на мадэрацыю"
+
+#, python-format
+msgid "Resubmit to %(task_name)s"
+msgstr "аднавіць %(task_name)s"
+
+#, python-format
+msgid "Submit to %(workflow_name)s"
+msgstr "Адправіць у %(workflow_name)s"
+
+msgid "Restart workflow "
+msgstr "Перазапусціць працоўны працэс"
+
+msgid "Cancel workflow "
+msgstr "Адмяніць працоўны працэс"
 
 msgid "Unpublish"
 msgstr "Адмяніць публікацыю"
@@ -33,8 +51,18 @@ msgstr "Выдаліць"
 msgid "Save"
 msgstr "Захаваць"
 
+msgid "Locked"
+msgstr "Заблакавана"
+
+#, python-format
+msgid "%(label)s and Publish"
+msgstr "%(label)s і Апублікаваць"
+
 msgid "Wagtail snippets"
 msgstr "Фрагменты Wagtail"
+
+msgid "Delete selected snippets"
+msgstr "Выдаліць выбраныя фрагменты"
 
 #, python-format
 msgid "Delete %(snippet_type_name)s"
@@ -68,109 +96,41 @@ msgstr "Не, не выдаляць"
 msgid "Publishing…"
 msgstr "Апублікаваць..."
 
+msgid "Publish this version"
+msgstr "Публікаваць гэтую версію"
+
 msgid "Saving…"
 msgstr "Захаванне..."
 
 msgid "Replace current draft"
 msgstr "Замяніць гэты чарнавік"
 
+msgid "Replace current revision"
+msgstr "Замяняць цяперашнюю рэвізію"
+
 msgid "Save draft"
 msgstr "Захаваць чарнавік"
-
-#, python-format
-msgid "New  %(snippet_type_name)s"
-msgstr "Новы %(snippet_type_name)s"
-
-msgid "New"
-msgstr "Новы"
-
-msgid "Actions"
-msgstr "Дзеянні"
-
-msgid "Usage"
-msgstr "Выкарыстанне"
-
-msgid "Breadcrumb"
-msgstr "Шлях па сайту"
-
-msgid "Snippets"
-msgstr "Фрагменты"
-
-#, python-format
-msgid ""
-"No %(snippet_type_name_plural)s have been created. Why not <a href="
-"\"%(wagtailsnippets_create_url)s\">add one</a>?"
-msgstr ""
-"%(snippet_type_name_plural)s яшчэ не былі створаны. Давай <a href="
-"\"%(wagtailsnippets_create_url)s\">дададзім адзін</a>?"
-
-msgid "Live version"
-msgstr "Апублікаваная версія"
-
-msgid "Current draft"
-msgstr "Чарнавік"
-
-msgid "Preview"
-msgstr "Папярэдні прагляд"
-
-msgid "Edit"
-msgstr "Рэдактаваць"
-
-msgid "Live"
-msgstr "Размешчана"
-
-msgid "Draft"
-msgstr "Чарнавік"
-
-#, python-format
-msgid "Snippets %(snippet_type_name_plural)s"
-msgstr "Фрагменты %(snippet_type_name_plural)s"
-
-#, python-format
-msgid "Add %(snippet_type_name)s"
-msgstr "Дадаць %(snippet_type_name)s"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Выкарыскоўваць %(title)s"
-
-msgid "Usage of"
-msgstr "Выкарыстоўванне"
-
-msgid "Title"
-msgstr "Назва"
-
-msgid "Parent"
-msgstr "Бацькоўскі элемент"
-
-msgid "Type"
-msgstr "Тып"
-
-msgid "Status"
-msgstr "Статус"
-
-msgid "Edit this page"
-msgstr "Рэдактаваць гэтую старонку"
 
 msgid "Choose"
 msgstr "Выбраць"
 
+msgid "Snippets"
+msgstr "Фрагменты"
+
 msgid "Name"
 msgstr "Імя"
 
-msgid "The snippet could not be created due to errors."
-msgstr "Фрагмент кода не можа быць створана з-за памылкі."
-
-msgid "The snippet could not be saved due to errors."
-msgstr "Фрагмент кода не можа быць захавана з-за памылкі."
-
-msgid "Date"
-msgstr "Дата"
+msgid "Home"
+msgstr "Галоўная"
 
 #, python-format
-msgid "Edit '%(title)s'"
-msgstr "Рэдагаваць '%(title)s'"
+msgid "Choose %(object)s"
+msgstr "Выбраць %(object)s"
 
 #, python-format
-msgid "Choose %s"
-msgstr "Выбраць %s"
+msgid "Choose another %(object)s"
+msgstr "Выбраць іншы %(object)s"
+
+#, python-format
+msgid "Edit this %(object)s"
+msgstr "Рэдактаваць гэта %(object)s"

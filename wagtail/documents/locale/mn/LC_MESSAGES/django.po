@@ -8,10 +8,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:06+0000\n"
 "Last-Translator: Myagmarjav Enkhbileg <miigaa.lucky@gmail.com>, 2019\n"
-"Language-Team: Mongolian (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Mongolian (http://app.transifex.com/torchbox/wagtail/language/"
 "mn/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -70,6 +70,9 @@ msgstr[1] "%(usage_count)s удаа ашиглагдсан байна"
 msgid "Yes, delete"
 msgstr "Тийм, устга"
 
+msgid "No, don't delete"
+msgstr "Үгүй, устгахгүй"
+
 msgid "Latest documents"
 msgstr "Сүүлийн файлууд"
 
@@ -85,31 +88,11 @@ msgstr "Файлыг солих"
 msgid "Add a document"
 msgstr "Файл нэмэх"
 
-msgid "Add document"
-msgstr "Файл нэмэх"
-
 msgid "Uploading…"
 msgstr "Хуулж байна..."
 
 msgid "Upload"
 msgstr "Хуулах"
-
-#, python-format
-msgid "Delete %(title)s"
-msgstr "%(title)s-г устгах"
-
-msgid "Delete document"
-msgstr "Файл устгах"
-
-#, python-format
-msgid "Editing %(title)s"
-msgstr "%(title)sзасч байна"
-
-msgid "Editing"
-msgstr "Засч байна"
-
-msgid "Save"
-msgstr "Хадгалах"
 
 msgid "Filesize"
 msgstr "Файлын хэмжээ"
@@ -120,51 +103,21 @@ msgstr "Файл олдсонгүй"
 msgid "Usage"
 msgstr "Хэрэглээ"
 
-msgid "Documents"
-msgstr "Файлууд"
-
-msgid "Title"
-msgstr "Гарчиг"
-
-msgid "File"
-msgstr "Файл"
-
 #, python-format
 msgid "Sorry, no documents match \"<em>%(query_string)s</em>\""
 msgstr "\"<em>%(query_string)s</em>\" утгад тохирох хайлтын илэрц олдсонгүй"
 
 #, python-format
 msgid ""
-"You haven't uploaded any documents. Why not <a href="
-"\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
+"You haven't uploaded any documents. Why not <a "
+"href=\"%(wagtaildocs_add_document_url)s\">upload one now</a>?"
 msgstr ""
-"Та ямар ч файл оруулаагүй байна. <a href=\"%(wagtaildocs_add_document_url)s"
-"\">Шинийг</a> оруулж яагаад болохгүй гэж?"
-
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "%(title)s-ын хэрэглээ"
-
-msgid "Usage of"
-msgstr "Хэрэглээ"
-
-msgid "Parent"
-msgstr "Эцэг"
-
-msgid "Type"
-msgstr "Төрөл"
-
-msgid "Status"
-msgstr "Төрөл"
-
-msgid "Edit this page"
-msgstr "Энэ хуудсыг засах"
+"Та ямар ч файл оруулаагүй байна. <a "
+"href=\"%(wagtaildocs_add_document_url)s\">Шинийг</a> оруулж яагаад болохгүй "
+"гэж?"
 
 msgid "Add multiple documents"
 msgstr "Олон файл нэмэх"
-
-msgid "Add documents"
-msgstr "Файл нэмэх"
 
 msgid "Drag and drop documents into this area to upload immediately."
 msgstr "Энэ хэсэгт файлуудаа чирж оруулж сайт руу хуулна уу."
@@ -187,33 +140,54 @@ msgstr "Файлын хандалтын эрхүүд"
 msgid "Add a document permission"
 msgstr "Файлын хандалтын эрх нэмэх"
 
+msgid "Tags"
+msgstr "Шошго"
+
 msgid "Delete"
 msgstr "Устгах"
+
+msgid "File"
+msgstr "Файл"
 
 msgid "Choose a document"
 msgstr "Файл сонгох"
 
-msgid "Search documents"
-msgstr "Файл хайх"
+msgid "Choose another document"
+msgstr "Өөр файл сонгох"
 
-#, python-brace-format
-msgid "Document '{0}' added."
-msgstr "'{0}' файл нэмэгдлээ."
+msgid "Edit this document"
+msgstr "Файлыг засах"
+
+msgid "Documents"
+msgstr "Файлууд"
+
+msgid "Title"
+msgstr "Гарчиг"
+
+#, python-format
+msgid "Document '%(document_title)s' added."
+msgstr "'%(document_title)s' файл нэмэгдлээ."
 
 msgid "The document could not be saved due to errors."
 msgstr "Алдаанаас шалтгаалж файл хадгалагдсангүй."
 
-#, python-brace-format
-msgid "Document '{0}' updated"
-msgstr "'{0}' файл шинэчлэгдлээ"
+#, python-format
+msgid "Document '%(document_title)s' updated"
+msgstr "'%(document_title)s' файл шинэчлэгдлээ"
 
 msgid ""
 "The file could not be found. Please change the source or delete the document"
 msgstr "Файл олдсонгүй. Эх файлыг солих эсвэл устгана уу"
 
-#, python-brace-format
-msgid "Document '{0}' deleted."
-msgstr "'{0}' файл устлаа."
+msgid "Delete document"
+msgstr "Файл устгах"
+
+#, python-format
+msgid "Document '%(document_title)s' deleted."
+msgstr "'%(document_title)s' файл устлаа."
+
+msgid "Add documents"
+msgstr "Файл нэмэх"
 
 msgid "Document"
 msgstr "Файл"

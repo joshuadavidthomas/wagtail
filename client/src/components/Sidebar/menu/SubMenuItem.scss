@@ -1,16 +1,19 @@
+@use '../../../../scss/tools' as *;
+@use '../../../../scss/settings' as *;
+
 .sidebar-sub-menu-trigger-icon {
   $root: &;
-  display: block;
-  width: 1rem;
-  height: 1rem;
-  inset-inline-end: 15px;
-  margin-inline-start: auto;
 
   @include transition(
     transform $menu-transition-duration ease,
     width $menu-transition-duration ease,
     height $menu-transition-duration ease
   );
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  inset-inline-end: 15px;
+  margin-inline-start: auto;
 
   &--open {
     transform-origin: 50% 50%;
@@ -26,7 +29,7 @@
 }
 
 .sidebar-sub-menu-panel {
-  @apply w-flex w-flex-col w-bg-primary-200 w-h-screen w-transition-sidebar;
+  @apply w-flex w-flex-col w-bg-surface-menu-item-active w-h-screen w-transition-sidebar;
   width: $menu-width;
 
   > h2,
@@ -36,22 +39,12 @@
 
   > h2 {
     // w-min-h-[160px] and w-mt-[35px] classes are to vertically align the title and icon combination to the search input on the left
-    @apply w-min-h-[180px] w-px-4 w-box-border w-text-center w-text-white w-mb-0 w-inline-flex w-flex-col w-justify-center w-items-center w-transition-sidebar;
-
-    &:before {
-      font-size: 4em;
-      display: block;
-      text-align: center;
-      margin: 0 0 0.2em;
-      width: 100%;
-      opacity: 0.15;
-    }
+    @apply w-min-h-[180px] w-px-4 w-box-border w-text-center w-text-text-label-menus-default w-mb-0 w-inline-flex w-flex-col w-justify-center w-items-center w-transition-sidebar;
   }
 
   ul > li {
-    position: relative;
-
     @include transition(border-color $menu-transition-duration ease);
+    position: relative;
   }
 
   > ul {
@@ -70,7 +63,7 @@
     margin: 0;
     padding: 0.9em 1.7em;
     text-align: center;
-    color: $color-menu-text;
+    color: theme('colors.text-label-menus-default');
   }
 
   &--visible {
@@ -105,4 +98,8 @@
       text-shadow: -1px -1px 0 theme('colors.black-35');
     }
   }
+}
+
+.sidebar-close-menu-button {
+  @apply w-grid sm:w-hidden w-place-items-center w-text-text-label-menus-default w-p-0 w-z-sidebar-toggle w-border-transparent w-fixed w-bg-surface-menus w-top-0 w-left-0 w-h-slim-header w-w-slim-header w-rounded-none hover:w-bg-surface-menu-item-active hover:w-text-text-label-menus-active;
 }

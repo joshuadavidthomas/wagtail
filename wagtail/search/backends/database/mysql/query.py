@@ -1,5 +1,5 @@
 import re
-from typing import Any, List, Tuple, Union
+from typing import Any, Union
 
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.models.expressions import CombinedExpression, Expression, Value
@@ -15,8 +15,7 @@ class LexemeCombinable(Expression):
     def _combine(self, other, connector, reversed, node=None):
         if not isinstance(other, LexemeCombinable):
             raise TypeError(
-                "Lexeme can only be combined with other Lexemes, "
-                "got {}.".format(type(other))
+                f"Lexeme can only be combined with other Lexemes, got {type(other)}."
             )
         if reversed:
             return CombinedLexeme(other, connector, self)
@@ -62,11 +61,11 @@ class Lexeme(LexemeCombinable, Value):
         template = "%s"
 
         if self.prefix:
-            param = "*{}".format(param)
+            param = f"{param}*"
         if self.invert:
-            param = "(-{})".format(param)
+            param = f"(-{param})"
         else:
-            param = "{}".format(param)
+            param = f"{param}"
 
         return template, [param]
 
@@ -167,7 +166,7 @@ class SearchQuery(SearchQueryCombinable, Expression):
         compiler: SQLCompiler,
         connection: BaseDatabaseWrapper,
         **extra_context: Any,
-    ) -> Tuple[str, List[Any]]:
+    ) -> tuple[str, list[Any]]:
         sql, params = compiler.compile(self.value)
         return (sql, params)
 
@@ -230,15 +229,18 @@ class MatchExpression(Expression):
     def __init__(
         self,
         query: SearchQueryCombinable,
-        columns: List[str] = None,
+        columns: list[str] = None,
         output_field: Field = BooleanField(),
     ) -> None:
         super().__init__(output_field=output_field)
         self.query = query
-        self.columns = columns or [
-            "title",
-            "body",
-        ]  # We need to provide a default list of columns if the user doesn't specify one. We have a joint index for for 'title' and 'body' (see wagtail.search.migrations.0006_customise_indexentry), so we'll pick that one.
+        self.columns = (
+            columns
+            or [
+                "title",
+                "body",
+            ]
+        )  # We need to provide a default list of columns if the user doesn't specify one. We have a joint index for for 'title' and 'body' (see wagtail.search.migrations.0006_customise_indexentry), so we'll pick that one.
 
     def as_sql(self, compiler, connection):
         compiled_query = compiler.compile(self.query)  # Compile the query to a string
@@ -246,7 +248,7 @@ class MatchExpression(Expression):
             compiled_query[1]
         )  # Substitute the params in the query
         column_list = ", ".join(
-            ["`{}`".format(column) for column in self.columns]
+            [f"`{column}`" for column in self.columns]
         )  # ['title', 'body'] becomes '`title`, `body`'
         params = [formatted_query]
         return (self.template % (column_list, "%s"), params)

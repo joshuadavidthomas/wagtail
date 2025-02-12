@@ -22,12 +22,8 @@ module.exports = {
     ],
     // Would be valuable for strict BEM components but is too hard to enforce with legacy code.
     'no-descending-specificity': null,
-    // Override stylelint-config-wagtail’s options to allow all float and clear values for now.
-    'declaration-property-value-allowed-list': {
-      // 'clear': ['both', 'none'],
-      // 'float': ['inline-start', 'inline-end', 'none', 'unset'],
-      'text-align': ['start', 'end', 'center'],
-    },
+    // Refined ordering to align with media mixin usage - see https://github.com/wagtail/stylelint-config-wagtail/issues/37
+    'order/order': ['dollar-variables', 'custom-properties', 'declarations'],
     // Some parts of declaration-strict-value commented out until we are in a position to enforce them.
     'scale-unlimited/declaration-strict-value': [
       [
@@ -47,6 +43,7 @@ module.exports = {
         // 'z-index',
       ],
       {
+        disableFix: true,
         ignoreValues: [
           'currentColor',
           'inherit',
@@ -54,6 +51,7 @@ module.exports = {
           'none',
           'unset',
           'transparent',
+          'normal',
           // System colors for forced-colors styling.
           // See https://drafts.csswg.org/css-color-4/#css-system-colors.
           'Canvas',
@@ -78,5 +76,13 @@ module.exports = {
         ],
       },
     ],
+    // Ignore rule until all existing selectors can be updated.
+    'scss/selector-no-union-class-name': null,
+    // Ignore rule until all existing classes can be updated to use BEM.
+    'selector-class-pattern': null,
+    // Allow more specificity until styles can be updated to match the more strict rules.
+    'selector-max-specificity': '0,6,3',
+    // Ignore rule until we confirmed we prefer shorthand properties for positioning.
+    'declaration-block-no-redundant-longhand-properties': null,
   },
 };

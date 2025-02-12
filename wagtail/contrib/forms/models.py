@@ -1,7 +1,6 @@
 import datetime
 import os
 
-from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import validate_email
 from django.db import models
@@ -11,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 
 from wagtail.admin.mail import send_mail
 from wagtail.admin.panels import FieldPanel
+from wagtail.api import APIField
 from wagtail.contrib.forms.utils import get_field_clean_name
 from wagtail.models import Orderable, Page
 
@@ -119,6 +119,16 @@ class AbstractFormField(Orderable):
         FieldPanel("field_type", classname="formbuilder-type"),
         FieldPanel("choices", classname="formbuilder-choices"),
         FieldPanel("default_value", classname="formbuilder-default"),
+    ]
+
+    api_fields = [
+        APIField("clean_name"),
+        APIField("label"),
+        APIField("field_type"),
+        APIField("help_text"),
+        APIField("required"),
+        APIField("choices"),
+        APIField("default_value"),
     ]
 
     def get_field_clean_name(self):
@@ -253,10 +263,11 @@ class FormMixin:
         """
         Returns list submissions view for admin.
 
-        `list_submissions_view_class` can bse set to provide custom view class.
+        `list_submissions_view_class` can be set to provide custom view class.
         Your class must be inherited from SubmissionsListView.
         """
-        view = self.get_submissions_list_view_class().as_view()
+        results_only = kwargs.pop("results_only", False)
+        view = self.get_submissions_list_view_class().as_view(results_only=results_only)
         return view(request, form_page=self, *args, **kwargs)
 
     def serve(self, request, *args, **kwargs):
@@ -287,6 +298,11 @@ class FormMixin:
             return self.render_landing_page(request)
         else:
             return super().serve_preview(request, mode_name)
+
+    def get_preview_context(self, request, mode_name):
+        context = super().get_preview_context(request, mode_name)
+        context["form"] = self.get_form(page=self, user=request.user)
+        return context
 
 
 def validate_to_address(value):
@@ -349,11 +365,11 @@ class EmailFormMixin(models.Model):
 
             # Format dates and datetime(s) with SHORT_DATE(TIME)_FORMAT
             if isinstance(value, datetime.datetime):
-                value = date_format(value, settings.SHORT_DATETIME_FORMAT)
+                value = date_format(value, "SHORT_DATETIME_FORMAT")
             elif isinstance(value, datetime.date):
-                value = date_format(value, settings.SHORT_DATE_FORMAT)
+                value = date_format(value, "SHORT_DATE_FORMAT")
 
-            content.append("{}: {}".format(field.label, value))
+            content.append(f"{field.label}: {value}")
 
         return "\n".join(content)
 

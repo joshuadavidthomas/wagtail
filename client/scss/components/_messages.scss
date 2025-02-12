@@ -1,9 +1,11 @@
+@use '../tools' as *;
+
 // Messages are specific to Django's 'Messaging' system which adds messages into the session,
 // for display on the next page visited. These appear as an animated banner at the top of the page.
 // For inline help text, see typography.scss
 .messages {
   position: relative;
-  background-color: $color-grey-1;
+  background-color: theme('colors.surface-page');
 
   .buttons {
     margin-inline-start: 1em;
@@ -17,9 +19,8 @@
   }
 
   > ul > li {
-    // @include nice-padding;
     padding: 1.6em 3em 1.6em 1.6em;
-    color: $color-white;
+    color: theme('colors.text-button');
     border-bottom: 1px solid transparent;
   }
 
@@ -37,31 +38,42 @@
     height: 1.5em;
   }
 
-  .error {
-    background-color: theme('colors.critical.200');
-  }
-
-  .warning {
-    color: $color-grey-1;
-    background-color: theme('colors.warning.100');
-  }
-
-  .success {
-    background-color: theme('colors.positive.100');
-  }
-
-  .success .button:hover {
-    background-color: $color-teal-dark;
-  }
-
-  .button-secondary {
+  .button.button-secondary {
     border-color: currentColor;
     color: inherit;
 
     &:hover {
-      border-color: transparent;
-      color: $color-white;
+      background-color: transparent;
+      color: theme('colors.text-button');
     }
+  }
+
+  .error {
+    background-color: theme('colors.critical.200');
+    color: theme('colors.white.DEFAULT');
+
+    .button:hover {
+      color: theme('colors.white.DEFAULT');
+    }
+  }
+
+  .warning {
+    background-color: theme('colors.warning.100');
+    color: theme('colors.grey.600');
+
+    @include more-contrast() {
+      background-color: theme('colors.warning.75');
+    }
+  }
+
+  .info {
+    background-color: theme('colors.info.100');
+    color: theme('colors.white.DEFAULT');
+  }
+
+  .success {
+    background-color: theme('colors.positive.100');
+    color: theme('colors.white.DEFAULT');
   }
 
   .errorlist {
@@ -76,7 +88,10 @@
 
 .ready .messages > ul,
 .messages.appear > ul {
-  transition: top 0.5s ease, opacity 0.5s ease, max-height 1.2s ease;
+  transition:
+    top 0.5s ease,
+    opacity 0.5s ease,
+    max-height 1.2s ease;
   opacity: 1;
   top: 0;
 }

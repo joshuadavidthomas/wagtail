@@ -3,31 +3,47 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# Andrei Satsevich, 2023-2024
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-02-20 21:05+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Belarusian (http://www.transifex.com/torchbox/wagtail/"
+"Last-Translator: Andrei Satsevich, 2023-2024\n"
+"Language-Team: Belarusian (http://app.transifex.com/torchbox/wagtail/"
 "language/be/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: be\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
-"%100>=11 && n%100<=14)? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
 
-msgid "Collection"
-msgstr "Калекцыя"
+msgid "Wagtail images"
+msgstr "Малявання Wagtail "
 
 msgid "Alt text"
 msgstr "Тэкст падказкі"
 
+msgid "Collection"
+msgstr "Калекцыя"
+
+msgid "Format"
+msgstr "Фармат"
+
 msgid "Filter"
 msgstr "Фільтр"
+
+msgid "Original size"
+msgstr "Арыгінальны памер"
+
+msgid "Width"
+msgstr "Шырыня"
+
+msgid "Height"
+msgstr "Вышыня"
 
 msgid "Add"
 msgstr "дадаць"
@@ -44,6 +60,15 @@ msgstr "загаловак"
 msgid "file"
 msgstr "Файл"
 
+msgid "description"
+msgstr "апісанне"
+
+msgid "width"
+msgstr "шырыня"
+
+msgid "height"
+msgstr "вышыня"
+
 msgid "created at"
 msgstr "створана"
 
@@ -52,6 +77,29 @@ msgstr "Запампована карыстальнікам"
 
 msgid "tags"
 msgstr "Тэгі"
+
+msgid "image"
+msgstr "маляванне"
+
+msgid "images"
+msgstr "Малявання"
+
+msgid "Yes, add"
+msgstr "Так, дадаць"
+
+msgid "No, don't add"
+msgstr "Не, не дадаваць"
+
+msgid "Delete images"
+msgstr "Выдаліць малявання"
+
+#, python-format
+msgid "Used %(usage_count)s time"
+msgid_plural "Used %(usage_count)s times"
+msgstr[0] "Выкарыстоўваецца %(usage_count)s раз"
+msgstr[1] "Выкарыстоўваецца %(usage_count)s разы"
+msgstr[2] "Выкарыстоўваецца %(usage_count)s разоў"
+msgstr[3] "Выкарыстоўваецца %(usage_count)s разоў"
 
 msgid "Yes, delete"
 msgstr "Так. Выдаліць"
@@ -62,14 +110,24 @@ msgstr "Не, не выдаляць"
 msgid "New"
 msgstr "Новы"
 
-msgid "Save"
-msgstr "Захаваць"
+#, python-format
+msgid "Select %(title)s"
+msgstr "Выбраць %(title)s"
 
-msgid "Delete image"
-msgstr "Выдаліць выяву"
+msgid "Choose a format"
+msgstr "Выбраць фармат"
 
-msgid "Editing"
-msgstr "Рэдагаванне"
+msgid "Add an image"
+msgstr "Дабавіць маляванне"
+
+msgid "Uploading…"
+msgstr "Запампоўваецца..."
+
+msgid "Upload"
+msgstr "Запампаваць"
+
+msgid "(optional)"
+msgstr "(не абавязкова)"
 
 msgid "Filesize"
 msgstr "Памер файла"
@@ -80,33 +138,11 @@ msgstr "Файл не знойдзены"
 msgid "Usage"
 msgstr "Выкарыстоўванне"
 
-msgid "URL"
-msgstr "URL"
-
 msgid "Preview"
 msgstr "Папярэдні прагляд"
 
-#, python-format
-msgid "Usage of %(title)s"
-msgstr "Выкарыстоўванне %(title)s"
-
-msgid "Usage of"
-msgstr "Выкарыстанне"
-
-msgid "Title"
-msgstr "Загаловак"
-
-msgid "Parent"
-msgstr "Бацькоўскі элемент"
-
-msgid "Type"
-msgstr "Тып"
-
-msgid "Status"
-msgstr "Статус"
-
-msgid "Edit this page"
-msgstr "Змяніць гэтую старонку"
+msgid "URL"
+msgstr "URL"
 
 msgid "Or choose from your computer"
 msgstr "Або абярыце на вашым кампутары"
@@ -123,8 +159,20 @@ msgstr "Памылка Сервера"
 msgid "Delete"
 msgstr "Выдаліць"
 
-msgid "Upload"
-msgstr "Запампаваць"
+msgid "Choose an image"
+msgstr "Выбраць малюнак"
 
-msgid "Uploading…"
-msgstr "Запампоўваецца..."
+msgid "Edit this image"
+msgstr "Адрэдагаваць гэты малюнак"
+
+msgid "Images"
+msgstr "Малявання"
+
+msgid "Delete image"
+msgstr "Выдаліць выяву"
+
+msgid "Add images"
+msgstr "Дабавіць адлюстравання"
+
+msgid "Change image"
+msgstr "Змяніць малюнак"

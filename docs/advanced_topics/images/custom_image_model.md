@@ -2,7 +2,7 @@
 
 # Custom image models
 
-The `Image` model can be customised, allowing additional fields to be added
+The `Image` model can be customized, allowing additional fields to be added
 to images.
 
 To do this, you need to add two models to your project:
@@ -30,14 +30,22 @@ class CustomImage(AbstractImage):
         # 'caption',
     )
 
+    @property
+    def default_alt_text(self):
+        # Force editors to add specific alt text if description is empty.
+        # Do not use image title which is typically derived from file name.
+        return getattr(self, "description", None)
 
 class CustomRendition(AbstractRendition):
     image = models.ForeignKey(CustomImage, on_delete=models.CASCADE, related_name='renditions')
 
     class Meta:
-        unique_together = (
-            ('image', 'filter_spec', 'focal_point_key'),
-        )
+       constraints = [
+            models.UniqueConstraint(
+                fields={"image", "filter_spec", "focal_point_key"},
+                name="unique_rendition",
+            )
+        ]
 ```
 
 Then set the `WAGTAILIMAGES_IMAGE_MODEL` setting to point to it:
@@ -67,3 +75,26 @@ work as before but would need to be updated in order to see any new images.
 
 .. autofunction:: get_image_model_string
 ```
+
+(custom_image_model_upload_location)=
+
+## Overriding the upload location
+
+The following methods can be overridden on your custom `Image` or `Rendition` models to customize how the original and rendition image files get stored.
+
+```{eval-rst}
+.. automodule:: wagtail.images.models
+    :no-index:
+
+.. class:: AbstractImage
+    :no-index-entry:
+
+    .. automethod:: get_upload_to
+
+.. class:: AbstractRendition
+    :no-index-entry:
+
+    .. automethod:: get_upload_to
+```
+
+Refer to the Django [`FileField.upload_to`](django.db.models.FileField.upload_to) function to further understand how the function works.

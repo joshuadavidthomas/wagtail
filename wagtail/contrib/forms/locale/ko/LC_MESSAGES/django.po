@@ -6,15 +6,16 @@
 # Jihan Chung <jihanchung20@gmail.com>, 2015
 # Jihan Chung <jihanchung20@gmail.com>, 2015
 # Kyu Choi, 2022
+# Kyu Choi, 2022
 # Kyungil Choi <hanpama@gmail.com>, 2017,2019-2020
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-18 12:14+0100\n"
+"POT-Creation-Date: 2025-01-20 17:59+0000\n"
 "PO-Revision-Date: 2014-09-11 15:42+0000\n"
 "Last-Translator: Kyu Choi, 2022\n"
-"Language-Team: Korean (http://www.transifex.com/torchbox/wagtail/language/"
+"Language-Team: Korean (http://app.transifex.com/torchbox/wagtail/language/"
 "ko/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -32,10 +33,12 @@ msgid "Date to"
 msgstr "종료일"
 
 #, python-format
-msgid "There is another field with the label %s, please change one of them."
+msgid ""
+"There is another field with the label %(label_name)s, please change one of "
+"them."
 msgstr ""
-"%s 레이블을 사용하는 다른 필드가 있습니다. 그 중 하나는 다른 걸로 바꾸어 주세"
-"요."
+"%(label_name)s 레이블을 사용하는 다른 필드가 있습니다. 그 중 하나는 다른 걸"
+"로 바꾸어 주세요."
 
 msgid "Single line text"
 msgstr "단일 라인 텍스트"
@@ -149,8 +152,8 @@ msgid "subject"
 msgstr "주제"
 
 #, python-format
-msgid "%s submissions"
-msgstr "%s 개 제출"
+msgid "%(model_name)s submissions"
+msgstr "%(model_name)s 개 제출"
 
 #, python-format
 msgid "Delete form data %(title)s"
@@ -166,20 +169,12 @@ msgstr[0] "정말 제출된 해당 폼을 삭제하길 원합니까?"
 msgid "Delete"
 msgstr "삭제"
 
-msgid "Forms"
-msgstr "양식"
-
-msgid "Pages"
-msgstr "페이지"
-
-msgid "Title"
-msgstr "제목"
-
-msgid "Origin"
-msgstr "원본"
-
 msgid "Delete selected submissions"
 msgstr "선택된 제출 삭제"
+
+#, python-format
+msgid "There have been no submissions of the '%(title)s' form."
+msgstr "'%(title)s' 양식에 관한 제출 한 결과가 없습니다."
 
 msgid "Total submissions"
 msgstr "전체 제출"
@@ -187,28 +182,21 @@ msgstr "전체 제출"
 msgid "Latest submission"
 msgstr "최근 제출"
 
-msgid "No form pages have been created."
-msgstr "양식 페이지가 생성되지 않았습니다."
-
 #, python-format
 msgid "Submissions of %(form_title)s"
 msgstr "%(form_title)s 의 제출"
 
-msgid "Download XLSX"
-msgstr "XLSX 다운로드"
+msgid "Forms"
+msgstr "양식"
 
-msgid "Download CSV"
-msgstr "CSV 다운로드"
+msgid "Title"
+msgstr "제목"
 
-#, python-format
-msgid "There have been no submissions of the '%(title)s' form."
-msgstr "'%(title)s' 양식에 관한 제출 한 결과가 없습니다."
+msgid "Origin"
+msgstr "원본"
 
-msgid "Filter"
-msgstr "필터"
-
-msgid "Apply filters"
-msgstr "필터를 적용한"
+msgid "Pages"
+msgstr "페이지"
 
 #, python-format
 msgid "One submission has been deleted."

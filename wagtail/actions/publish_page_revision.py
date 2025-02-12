@@ -1,7 +1,5 @@
 import logging
 
-from django.conf import settings
-
 from wagtail.actions.publish_revision import (
     PublishPermissionError,
     PublishRevisionAction,
@@ -34,7 +32,7 @@ class PublishPageRevisionAction(PublishRevisionAction):
     :param previous_revision: indicates a revision reversal. Should be set to the previous revision instance
     """
 
-    def check(self, skip_permission_checks=False):
+    def check(self, skip_permission_checks: bool = False):
         if (
             self.user
             and not skip_permission_checks
@@ -60,12 +58,6 @@ class PublishPageRevisionAction(PublishRevisionAction):
 
         super()._after_publish()
 
-        workflow_state = self.object.current_workflow_state
-        if workflow_state and getattr(
-            settings, "WAGTAIL_WORKFLOW_CANCEL_ON_PUBLISH", True
-        ):
-            workflow_state.cancel(user=self.user)
-
         self.object.update_aliases(
-            revision=self.revision, user=self.user, _content=self.revision.content
+            revision=self.revision, _content=self.revision.content
         )
